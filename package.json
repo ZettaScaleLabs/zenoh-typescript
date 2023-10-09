@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "fast-text-encoding": "^1.0.6",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "build:wasm": "bash zenoh-wasm/build.sh",
+    "build:ts": "tsc",
+    "build": "npm run build:wasm && npm run build:ts"
+  }
+}
