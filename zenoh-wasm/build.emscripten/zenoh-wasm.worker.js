@@ -74,7 +74,10 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
   // We don't need the module anymore; new threads will be spawned from the main thread.
   Module['wasmModule'] = null;
   var instance = new WebAssembly.Instance(module, info);
-  return receiveInstance(instance, module);
+  // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
+  // the above line no longer optimizes out down to the following line.
+  // When the regression is fixed, we can remove this if/else.
+  return receiveInstance(instance);
 }
 
 // Turn unhandled rejected promises into errors so that the main thread will be
@@ -93,6 +96,7 @@ function handleMessage(e) {
 
     // And add a callback for when the runtime is initialized.
     self.startWorker = (instance) => {
+      Module = instance;
       // Notify the main thread that this thread has loaded.
       postMessage({ 'cmd': 'loaded' });
       // Process any messages that were queued before the thread was ready.
@@ -105,8 +109,6 @@ function handleMessage(e) {
 
       // Module and memory were sent from main thread
       Module['wasmModule'] = e.data.wasmModule;
-
-      Module['sharedModules'] = e.data.sharedModules;
 
       // Use `const` here to ensure that the variable is scoped only to
       // that iteration, allowing safe reference from a closure.
@@ -124,13 +126,8 @@ function handleMessage(e) {
 
       Module['ENVIRONMENT_IS_PTHREAD'] = true;
 
-      if (typeof e.data.urlOrBlob == 'string') {
-        importScripts(e.data.urlOrBlob);
-      } else {
-        var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
-        importScripts(objectUrl);
-        URL.revokeObjectURL(objectUrl);
-      }
+      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./zenoh-wasm.js'))
+      .then(exports => exports.default(Module));
     } else if (e.data.cmd === 'run') {
       // Pass the thread address to wasm to store it for fast access.
       Module['__emscripten_thread_init'](e.data.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1);

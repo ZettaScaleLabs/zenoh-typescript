@@ -1,11 +1,23 @@
 {
+  "name": "zenoh",
   "dependencies": {
-    "fast-text-encoding": "^1.0.6",
+    "text-encoding": "^0.7.0"
+  },
+  "devDependencies": {
     "typescript": "^5.2.2"
   },
   "scripts": {
     "build:wasm": "bash zenoh-wasm/build.sh",
-    "build:ts": "tsc",
-    "build": "npm run build:wasm && npm run build:ts"
-  }
+    "build:cjs": "tsc --module commonjs --outDir dist/cjs",
+    "build:esm": "tsc",
+    "build:ts": "npm run build:cjs && npm run build:esm",
+    "build": "npm run build:wasm && npm run build:ts",
+    "example": "cd examples && npm run start"
+  },
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "files": [
+    "dist"
+  ]
 }
