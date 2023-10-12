@@ -4,12 +4,16 @@
     "text-encoding": "^0.7.0"
   },
   "devDependencies": {
-    "typescript": "^5.2.2"
+    "ts-loader": "^9.5.0",
+    "typescript": "^5.2.2",
+    "webpack-cli": "^5.1.4",
+    "exports-loader": "^4.0.0"
   },
   "scripts": {
     "build:wasm": "bash zenoh-wasm/build.sh",
     "build:cjs": "tsc --module commonjs --outDir dist/cjs",
     "build:esm": "tsc",
+    "webpack": "webpack",
     "build:ts": "npm run build:cjs && npm run build:esm",
     "build": "npm run build:wasm && npm run build:ts",
     "example": "cd examples && npm run start"

@@ -3,10 +3,23 @@ import Module from "../zenoh-wasm/build.emscripten/zenoh-wasm"
 let module: Module;
 
 export const intoKeyExpr = Symbol("intoKeyExpr")
+/**
+ * Something that may be turned into a Key Expression.
+ * 
+ * Notable default implementers:
+ * - string
+ */
 export interface IntoKeyExpr {
 	[intoKeyExpr]: () => Promise<KeyExpr>
 }
 export const intoValue = Symbol("intoValue")
+/**
+ * Something that may be turned into a Value.
+ * 
+ * Notable default implementers:
+ * - string
+ * - Uint8Array
+ */
 export interface IntoValue {
 	[intoValue]: () => Promise<Value>
 }
@@ -65,10 +78,10 @@ export class KeyExpr {
 	}
 }
 
+
 Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
 	return KeyExpr.new(this)
 })
-
 
 Object.defineProperty(String.prototype, intoValue, function (this: string) {
 	const encoder = new TextEncoder();
@@ -76,10 +89,37 @@ Object.defineProperty(String.prototype, intoValue, function (this: string) {
 	return Promise.resolve(new Value(encoded))
 })
 
+Object.defineProperty(Uint8Array.prototype, intoValue, function (this: Uint8Array) {
+	return Promise.resolve(new Value(this))
+})
+Object.defineProperty(Function.prototype, "onEvent", function (this: Function) {
+	return this;
+})
+Object.defineProperty(Function.prototype, "onClose", function (this: Function) { })
+declare global {
+	interface String extends IntoKeyExpr, IntoValue { }
+	interface Uint8Array extends IntoValue { }
+}
+
+export class Subscriber<Receiver> {
+	__ptr: number
+	receiver: Receiver
+}
+
+export interface Handler<Event, Receiver> {
+	onEvent: (event: Event) => Promise<void>
+	onClose?: () => Promise<void>
+	receiver?: Receiver
+}
+
+export class Sample { }
+
 export class Session {
+	static registry = new FinalizationRegistry((ptr: number) => (new Session(ptr)).close())
 	private __ptr: number = 0
 	private constructor(ptr: number) {
 		this.__ptr = ptr
+		Session.registry.register(this, this.__ptr, this);
 	}
 	static async open(config: Promise<Config> | Config) {
 		const cfg = await config;
@@ -94,12 +134,26 @@ export class Session {
 		}
 		return new Session(ptr)
 	}
-	static async put(keyexpr: IntoKeyExpr, value: IntoValue) {
-		const [Zenoh, ke, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()])
-		const payload = new Uint8Array(val.payload);
-		const ret = Zenoh._zw_put(ke, payload.byteOffset, payload.length);
+	async close() {
+		Session.registry.unregister(this)
+		throw "Unimplemented"
+	}
+	async put(keyexpr: IntoKeyExpr, value: IntoValue) {
+		const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
+		const payload = val.payload;
+		const ret = Zenoh._zw_put(this.__ptr, key, payload.byteOffset, payload.length);
 		if (ret < 0) {
 			throw "An error occured while putting"
+		}
+	}
+	async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
+	async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
+	async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
+		const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+		if (typeof (handler) === "function") {
+			throw "Unimplemented"
+		} else {
+			throw "Unimplemented"
 		}
 	}
 }

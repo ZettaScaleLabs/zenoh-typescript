@@ -5,7 +5,11 @@ async function main() {
 	const app = express()
 	const session = await zenoh.Session.open(zenoh.Config.new("ws/0.0.0.0:7887"))
 	console.log("Opened session")
-	app.get("/declare", (req, res) => {
+	const sub = await session.declare_subscriber("hi", {
+		async onEvent(sample) { console.log("hi") },
+	});
+	app.get("/declare", async (req, res) => {
+		await session.put("hi", "there");
 		res.send("Hello world")
 	})
 	app.listen(3000)
