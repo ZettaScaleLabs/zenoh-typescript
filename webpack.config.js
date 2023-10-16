@@ -1,10 +1,9 @@
 const path = require('path');
-const webpack = require("webpack");
 
 module.exports = {
 	entry: './src/index.ts',
 	mode: "development",
-	context: path.resolve(__dirname, "."),
+	// context: path.resolve(__dirname, "."),
 	module: {
 		rules: [
 			{
@@ -12,19 +11,20 @@ module.exports = {
 				use: 'ts-loader',
 				exclude: /node_modules/,
 			},
-			{
-				test: /zenoh-wasm\.js$/,
-				loader: "exports-loader"
-			},
+			// {
+			// 	test: /zenoh-wasm\.js$/,
+			// 	loader: `exports-loader`,
+			// 	options: {
+			// 		type: `module`,
+			// 		// this MUST be equivalent to EXPORT_NAME in complile.sh
+			// 		exports: `zenoh-wasm`,
+			// 	},
+			// },
 			// wasm files should not be processed but just be emitted and we want
 			// to have their public URL.
 			// {
-			// 	test: /zenoh-wasm\.wasm$/,
-			// 	type: "javascript/auto",
-			// 	loader: "file-loader",
-			// 	options: {
-			// 		publicPath: "dist/"
-			// 	}
+			// 	test: /\.wasm$/,
+			// 	type: "file-loader"
 			// }
 		]
 	},

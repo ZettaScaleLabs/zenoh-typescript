@@ -7,3 +7,6 @@ cd build
 echo "building from $(pwd)"
 CMAKE_EXPORT_COMPILE_COMMANDS=1 emcmake cmake ..
 make all
+cd ..
+chmod -R a+rw build.emscripten
+chmod -R a+rw build

@@ -1,9 +1,11 @@
 {
 	"compilerOptions": {
 		"sourceMap": true,
-		"module": "esnext",
+		"module": "CommonJS",
+		"baseUrl": ".",
 		"target": "es5",
-		"outDir": "dist/esm",
+		"outDir": "dist",
+		"noImplicitAny": false,
 		"lib": [
 			"ES2021",
 			"DOM"

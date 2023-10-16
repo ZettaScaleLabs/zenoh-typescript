@@ -1,4 +1,4 @@
-import Module from "../zenoh-wasm/build.emscripten/zenoh-wasm"
+import Module from "./wasm/zenoh-wasm.js"
 
 let module: Module;
 
@@ -104,6 +104,10 @@ declare global {
 export class Subscriber<Receiver> {
 	__ptr: number
 	receiver: Receiver
+	private constructor(ptr: number, receiver: Receiver) {
+		this.__ptr = ptr
+		this.receiver = receiver
+	}
 }
 
 export interface Handler<Event, Receiver> {
