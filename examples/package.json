@@ -2,12 +2,14 @@
 	"dependencies": {
 		"express": "^4.18.2",
 		"typescript": "^5.2.2",
-		"zenoh": "file:.."
+		"zenoh": "file:../dist"
 	},
 	"devDependencies": {
 		"ts-node": "10.9.1"
 	},
 	"scripts": {
-		"start": "ts-node src/index.ts"
+		"start": "ts-node src/index.ts",
+		"clean": "rm -rf node_modules",
+		"build": "npm install"
 	}
 }

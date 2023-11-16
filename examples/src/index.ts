@@ -2,6 +2,7 @@ import * as zenoh from "zenoh"
 import * as express from "express"
 
 async function main() {
+	console.log(" TEST");
 	const app = express()
 	const session = await zenoh.Session.open(zenoh.Config.new("ws/0.0.0.0:7887"))
 	console.log("Opened session")

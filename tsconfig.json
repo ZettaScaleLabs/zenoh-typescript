@@ -1,9 +1,9 @@
 {
 	"compilerOptions": {
 		"sourceMap": true,
-		"module": "CommonJS",
+		"module": "ESNext",
 		"baseUrl": ".",
-		"target": "es5",
+		"target": "ESNext",
 		"outDir": "dist",
 		"noImplicitAny": false,
 		"lib": [
@@ -11,6 +11,7 @@
 			"DOM"
 		],
 		"declaration": true,
+		
 	},
 	"include": [
 		"src/**/*"
