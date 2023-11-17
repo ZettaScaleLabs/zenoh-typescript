@@ -1,6 +1,6 @@
 import Module from "./wasm/zenoh-wasm.mjs"
 
-let module: Module;
+let module: typeof Module;
 
 export const intoKeyExpr = Symbol("intoKeyExpr")
 /**
@@ -24,9 +24,9 @@ export interface IntoValue {
 	[intoValue]: () => Promise<Value>
 }
 
-async function zenoh(): Promise<Module> {
+async function zenoh(): Promise<typeof Module> {
 	if (!module) {
-		module = await new Module();
+		module = await Module();
 	}
 	return module
 }

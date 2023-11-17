@@ -1,6 +1,12 @@
 {
   "name": "zenoh",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/esm/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "text-encoding": "^0.7.0",
     "cpx": "^1.5.0",
@@ -22,19 +28,11 @@
     "build:esm": "npx tsc",
     "build:ts": "npm run build:esm",
     "build": "npm run build:wasm && npm run build:ts && npm run build:copy_zenoh_js",
-
+    "build_js_copy": "npm run build:ts && npm run build:copy_zenoh_js",
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"dist/\"",
-    "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js}\" \"dist/cjs/wasm\"",
-
+    "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs}\" \"dist/wasm\"",
     "webpack": "webpack",
     "example": "cd examples && npm run start",
-
-    "clean_build_run": "npm run clean && npm run build && npm run start"
-  },
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
-  "files": [
-    "dist"
-  ]
+    "clean_build_run": "npm run clean && npm install && npm run build_js_copy"
+  }
 }
