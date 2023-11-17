@@ -1,15 +1,19 @@
 {
+	"type":"module",
 	"dependencies": {
 		"express": "^4.18.2",
 		"typescript": "^5.2.2",
-		"zenoh": "file:../dist"
+		"zenoh": "../dist"
 	},
 	"devDependencies": {
 		"ts-node": "10.9.1"
 	},
 	"scripts": {
-		"start": "ts-node src/index.ts",
+		"start/ts-node is broken": "ts-node src/index.ts",
+		"start/Also broken ?": "node --loader ts-node/esm ./src/index.ts",
+		"start": "npx tsc && node ./build/app.js",
 		"clean": "rm -rf node_modules",
-		"build": "npm install"
+		"build": "npm install",
+		"clean_build_run": "npm run clean && npm run build && npm run start"
 	}
 }

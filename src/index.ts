@@ -1,4 +1,4 @@
-import Module from "./wasm/zenoh-wasm.js"
+import Module from "./wasm/zenoh-wasm.mjs"
 
 let module: Module;
 

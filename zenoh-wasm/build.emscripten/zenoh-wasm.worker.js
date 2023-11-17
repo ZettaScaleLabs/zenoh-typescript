@@ -126,7 +126,7 @@ function handleMessage(e) {
 
       Module['ENVIRONMENT_IS_PTHREAD'] = true;
 
-      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./zenoh-wasm.js'))
+      (e.data.urlOrBlob ? import(e.data.urlOrBlob) : import('./zenoh-wasm.mjs'))
       .then(exports => exports.default(Module));
     } else if (e.data.cmd === 'run') {
       // Pass the thread address to wasm to store it for fast access.

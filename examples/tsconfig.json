@@ -1,13 +1,18 @@
 {
 	"compilerOptions": {
-		"module": "ESNext",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
 		"esModuleInterop": true,
 		"isolatedModules": true,
 		"target": "ESNext",
 		"sourceMap": true,
 		"outDir": "dist"
 	},
+	"ts-node": {
+		"esm": true
+	},
 	"lib": [
 		"ES2021",
-	]
+	],
+
 }

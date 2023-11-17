@@ -1,12 +1,14 @@
 {
-
   "name": "zenoh",
   "type": "module",
   "dependencies": {
     "text-encoding": "^0.7.0",
-    "cpx": "^1.5.0"
+    "cpx": "^1.5.0",
+    "typescript": "^5.2.2"
   },
   "devDependencies": {
+    "@types/node": "20.9.1",
+    "ts-node": "10.9.1",
     "cpx": "^1.5.0",
     "ts-loader": "^9.5.0",
     "typescript": "^5.2.2",
@@ -16,16 +18,18 @@
   "scripts": {
     "clean": "rm -rf dist && rm -rf node_modules",
     "build:wasm": "bash zenoh-wasm/build.sh",
-    "build:cjs": "tsc --module commonjs --outDir dist/cjs",
-    "build:esm": "tsc",
+    "build:cjs": "npx tsc --module commonjs --outDir dist/cjs",
+    "build:esm": "npx tsc",
     "build:ts": "npm run build:esm",
-    "build": "npm run build:wasm && npm run build:ts && npm run build:copy_zenh_js",
+    "build": "npm run build:wasm && npm run build:ts && npm run build:copy_zenoh_js",
 
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"dist/\"",
-    "build:copy_zenh_js": "cpx -v \"src/wasm/**/*.{wasm,js}\" \"dist/cjs/wasm\"",
+    "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js}\" \"dist/cjs/wasm\"",
 
     "webpack": "webpack",
-    "example": "cd examples && npm run start"
+    "example": "cd examples && npm run start",
+
+    "clean_build_run": "npm run clean && npm run build && npm run start"
   },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
