@@ -20,6 +20,17 @@ target_compile_options(zenohpico PUBLIC -fPIC -pthread)
 
 set(CMAKE_EXECUTABLE_SUFFIX ".mjs")
 
+set(WASM_BUILD_FLAGS " \
+-pthread \
+-fPIC \
+-D ZENOH_EMSCRIPTEN=1 \
+-D Z_LINK_WS=1 \
+-D Z_LINK_TCP=0 \
+-D Z_LINK_UDP_MULTICAST=0 \
+-D Z_LINK_UDP_UNICAST=0 \
+-D Z_SCOUTING_UDP=0 \
+-D Z_MULTI_THREAD=1")
+
 set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 -s TEXTDECODER=0 \
 -s EXPORTED_RUNTIME_METHODS=[\"UTF8ToString\"] \
@@ -28,23 +39,19 @@ set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 -s ALLOW_TABLE_GROWTH \
 -s RESERVED_FUNCTION_POINTERS=100 \
 -s ASYNCIFY=1 \
--s ENVIRONMENT=web,worker,node \
--s EXPORT_ES6=1 \
 -s USE_ES6_IMPORT_META=1 \
+-s EXPORT_ES6=1 \
 -s MODULARIZE=1 \
 -s LINKABLE=1 \
 -s EXPORT_ALL=1 \
+-s EXPORT_NAME=zenohWasm \
 -pthread \
--fPIC")
+-fPIC ")
+# Need to figure out how to emit types for C files
+#  --embind-emit-tsd =${CMAKE_SOURCE_DIR}/zenoh-wasm.d.ts \
 
-set(WASM_BUILD_FLAGS " -pthread -fPIC \
--D ZENOH_EMSCRIPTEN=1 \
--D Z_LINK_WS=1 \
--D Z_LINK_TCP=0 \
--D Z_LINK_UDP_MULTICAST=0 \
--D Z_LINK_UDP_UNICAST=0 \
--D Z_SCOUTING_UDP=0 \
--D Z_MULTI_THREAD=1")
+# set(TYPE_GENERATION_FLAG "-lembind --embind-emit-tsd /src/zenoh-wasm/build.emscripten/zenoh-wasm.d.ts")
+# set_source_files_properties(src/zenoh.c PROPERTIES COMPILE_FLAGS ${TYPE_GENERATION_FLAG})
 
 add_executable(zenoh-wasm src/zenoh.c)
 set_target_properties(zenoh-wasm PROPERTIES LINK_FLAGS ${WASM_LINK_FLAGS} )

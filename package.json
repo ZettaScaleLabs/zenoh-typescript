@@ -33,6 +33,6 @@
     "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs}\" \"dist/wasm\"",
     "webpack": "webpack",
     "example": "cd examples && npm run start",
-    "clean_build_run": "npm run clean && npm install && npm run build_js_copy"
+    "clean_build_run": "npm run clean && npm install && npm run build && npm run build_js_copy"
   }
 }
