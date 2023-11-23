@@ -1,32 +1,41 @@
 {
   "name": "zenoh",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/esm/index.mjs",
-  "types": "./dist/index.d.ts",
+  "exports": {
+    "require": "./cjs/index.js",
+    "import": "./esm/index.js"
+  },
+  "//types": ".//index.d.ts",
   "files": [
-    "dist"
+    "package.json",
+    "README.md",
+    "esm",
+    "cjs",
+    "LICENSE",
+    "src"
   ],
   "dependencies": {
-    "text-encoding": "^0.7.0",
     "cpx": "^1.5.0",
-    "typescript": "^5.2.2"
+    "text-encoding": "^0.7.0"
   },
   "devDependencies": {
     "@types/node": "20.9.1",
-    "ts-node": "10.9.1",
     "cpx": "^1.5.0",
+    "exports-loader": "^4.0.0",
     "ts-loader": "^9.5.0",
-    "typescript": "^5.2.2",
-    "webpack-cli": "^5.1.4",
-    "exports-loader": "^4.0.0"
+    "ts-node": "10.9.1",
+    "typescript": "^5.3.2",
+    "webpack-cli": "^5.1.4"
   },
   "scripts": {
     "clean": "rm -rf dist && rm -rf node_modules",
+    "build:wasm:cjs": "npm run build:wasm && npm run build:cjs",
+    "build:wasm:esm": "npm run build:wasm && npm run build:esm",
     "build:wasm": "bash zenoh-wasm/build.sh",
-    "build:cjs": "npx tsc --module commonjs --outDir dist/cjs",
-    "build:esm": "npx tsc",
-    "build:ts": "npm run build:esm",
+    "build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
+    "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json" ,
+    "build:ts": "npm run build:cjs && npm run build:esm",
+    "//build:ts": "npm run build:esm",
     "build": "npm run build:wasm && npm run build:ts && npm run build:copy_zenoh_js",
     "build_js_copy": "npm run build:ts && npm run build:copy_zenoh_js",
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"dist/\"",

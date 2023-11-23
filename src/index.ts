@@ -1,7 +1,22 @@
-import Module from "./wasm/zenoh-wasm.mjs"
+// import {dirname} from "path";
+// globalThis.__dirname = dirname(import.meta.url);
+// import { createRequire } from 'module';
+// globalThis.require = createRequire(import.meta.url);
 
-let module: typeof Module;
 
+import Module from "./wasm/zenoh-wasm.js"
+
+interface Module {
+	stringToUTF8OnStack(x: string): any,
+	_zw_default_config(clocator: any): any,
+	_zw_make_ke(arg: any): any,
+	_zw_open_session(arg: any): any,
+	_zw_put(ptr: any, key: any, payload_byteOffset: any, payload_length: any): any,
+}
+
+let module2: Module;
+
+// : {[index: string]:any} = {}
 export const intoKeyExpr = Symbol("intoKeyExpr")
 /**
  * Something that may be turned into a Key Expression.
@@ -24,11 +39,11 @@ export interface IntoValue {
 	[intoValue]: () => Promise<Value>
 }
 
-async function zenoh(): Promise<typeof Module> {
-	if (!module) {
-		module = await Module();
+async function zenoh(): Promise<Module> {
+	if (!module2) {
+		module2 = await Module();
 	}
-	return module
+	return module2
 }
 
 /**
@@ -41,6 +56,7 @@ export class Config {
 	}
 	static async new(locator: string): Promise<Config> {
 		const Zenoh = await zenoh();
+
 		const clocator = Zenoh.stringToUTF8OnStack(locator);
 		const ptr = Zenoh._zw_default_config(clocator);
 		if (ptr === 0) {
@@ -146,6 +162,7 @@ export class Session {
 		const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 		const payload = val.payload;
 		const ret = Zenoh._zw_put(this.__ptr, key, payload.byteOffset, payload.length);
+
 		if (ret < 0) {
 			throw "An error occured while putting"
 		}
@@ -154,6 +171,8 @@ export class Session {
 	async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
 	async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
 		const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+		console.log(Zenoh)
+		console.log(key)
 		if (typeof (handler) === "function") {
 			throw "Unimplemented"
 		} else {

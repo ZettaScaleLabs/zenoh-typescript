@@ -1,18 +1,23 @@
 {
 	"compilerOptions": {
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
+		"lib": [
+			"es2023"
+		],
+		"strict": true,
 		"esModuleInterop": true,
-		"isolatedModules": true,
-		"target": "ESNext",
-		"sourceMap": true,
-		"outDir": "dist"
+		"forceConsistentCasingInFileNames": true,
+		// "module": "NodeNext",
+		// "moduleResolution": "NodeNext",
+		// // "esModuleInterop": true,
+		// "isolatedModules": true,
+		// "target": "ESNext",
+		// "sourceMap": true,
+		// "outDir": "dist"
 	},
-	"ts-node": {
-		"esm": true
-	},
-	"lib": [
-		"ES2021",
-	],
-
+	// "ts-node": {
+	// 	"esm": true
+	// },
+	// "lib": [
+	// 	"ES2021",
+	// ],
 }

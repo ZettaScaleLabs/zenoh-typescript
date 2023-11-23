@@ -18,7 +18,7 @@ include_directories(${CMAKE_SOURCE_DIR}/zenoh-pico/include)
 target_compile_definitions(zenohpico PUBLIC Z_LINK_WS=1 Z_LINK_TCP=0 Z_LINK_UDP_MULTICAST=0 Z_LINK_UDP_UNICAST=0 Z_SCOUTING_UDP=0 Z_MULTI_THREAD=1)
 target_compile_options(zenohpico PUBLIC -fPIC -pthread)
 
-set(CMAKE_EXECUTABLE_SUFFIX ".mjs")
+set(CMAKE_EXECUTABLE_SUFFIX ".js")
 
 set(WASM_BUILD_FLAGS " \
 -pthread \
@@ -33,20 +33,26 @@ set(WASM_BUILD_FLAGS " \
 
 set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 -s TEXTDECODER=0 \
+-s ENVIRONMENT=web,worker \
 -s EXPORTED_RUNTIME_METHODS=[\"UTF8ToString\"] \
 -s PTHREAD_POOL_SIZE=16 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
 -s ALLOW_TABLE_GROWTH \
 -s RESERVED_FUNCTION_POINTERS=100 \
 -s ASYNCIFY=1 \
--s USE_ES6_IMPORT_META=1 \
 -s EXPORT_ES6=1 \
 -s MODULARIZE=1 \
+-s USE_ES6_IMPORT_META=1 \
 -s LINKABLE=1 \
 -s EXPORT_ALL=1 \
 -s EXPORT_NAME=zenohWasm \
 -pthread \
 -fPIC ")
+
+# -s USE_ES6_IMPORT_META=1 \
+# -s MODULARIZE=1 \
+
+# Cannot Export Types for C files
 # Need to figure out how to emit types for C files
 #  --embind-emit-tsd =${CMAKE_SOURCE_DIR}/zenoh-wasm.d.ts \
 
