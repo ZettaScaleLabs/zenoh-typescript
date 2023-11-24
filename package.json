@@ -28,20 +28,23 @@
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
-    "clean": "rm -rf dist && rm -rf node_modules",
-    "build:wasm:cjs": "npm run build:wasm && npm run build:cjs",
-    "build:wasm:esm": "npm run build:wasm && npm run build:esm",
-    "build:wasm": "bash zenoh-wasm/build.sh",
-    "build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
-    "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json" ,
-    "build:ts": "npm run build:cjs && npm run build:esm",
+    "//   DEV   //": "DEV",
+    "//build:wasm:cjs": "npm run build:wasm && npm run build:cjs",
+    "//build:wasm:esm": "npm run build:wasm && npm run build:esm",
     "//build:ts": "npm run build:esm",
-    "build": "npm run build:wasm && npm run build:ts && npm run build:copy_zenoh_js",
-    "build_js_copy": "npm run build:ts && npm run build:copy_zenoh_js",
-    "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"dist/\"",
-    "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs}\" \"dist/wasm\"",
+    "//  CLEAN   //": "",
+    "clean": "rm -rf dist esm cjs && rm -rf node_modules",
+    "//  BUILD   //": "",
+    "build": "npm run build:wasm && npm run build:ts && npm run build:copy_zenoh_js && npm run build:copy_wasm",
+    "build:wasm": "bash zenoh-wasm/build.sh",
+    "build:ts": "npm run build:esm",
+    "//build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
+    "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json",
+    "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"esm/wasm\" && cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"cjs/wasm\"",
+    "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"./cjs\" && cpx -v \"src/**/*.wasm\" \"./esm\"",
+    "//   PACKAGE   //": "",
     "webpack": "webpack",
     "example": "cd examples && npm run start",
-    "clean_build_run": "npm run clean && npm install && npm run build && npm run build_js_copy"
+    "clean_build_package": "npm run clean && npm install && npm run build "
   }
 }

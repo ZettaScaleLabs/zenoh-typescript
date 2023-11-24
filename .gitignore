@@ -3,3 +3,7 @@
 dist
 node_modules
 package-lock.json
+examples/node/src/index.js
+examples/web/src/index.js
+cjs/
+esm/

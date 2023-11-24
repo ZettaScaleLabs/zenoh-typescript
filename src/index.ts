@@ -3,7 +3,6 @@
 // import { createRequire } from 'module';
 // globalThis.require = createRequire(import.meta.url);
 
-
 import Module from "./wasm/zenoh-wasm.js"
 
 interface Module {
@@ -132,7 +131,10 @@ export interface Handler<Event, Receiver> {
 	receiver?: Receiver
 }
 
+// TODO 
 export class Sample { }
+// TODO Expose: Query, Queryable, Selector 
+
 
 export class Session {
 	static registry = new FinalizationRegistry((ptr: number) => (new Session(ptr)).close())
