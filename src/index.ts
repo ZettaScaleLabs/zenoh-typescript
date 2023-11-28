@@ -8,11 +8,6 @@ import Module from "./wasm/zenoh-wasm.js"
 interface Module {
 	stringToUTF8OnStack(x: string): any,
 	_zw_default_config(clocator: any): any,
-	_zw_make_ke(arg: any): any,
-	_zw_open_session(arg: any): Promise<any>,
-	_zw_put(ptr: any, key: any, payload_byteOffset: any, payload_length: any): any,
-	_zw_sum(num1: number, num2: number): any,
-	_zw_sum_int(num1: number, num2: number): any,
 	onRuntimeInitialized(): Promise<any>,
 	cwrap(...arg: any): any,
 	api: any
@@ -26,9 +21,9 @@ export const intoKeyExpr = Symbol("intoKeyExpr")
  * Notable default implementers:
  * - string
  */
-export interface IntoKeyExpr {
-	[intoKeyExpr]: () => Promise<KeyExpr>
-}
+// export interface IntoKeyExpr {
+// 	[intoKeyExpr]: () => Promise<KeyExpr>
+// }
 export const intoValue = Symbol("intoValue")
 /**
  * Something that may be turned into a Value.
@@ -49,19 +44,10 @@ export async function zenoh(): Promise<Module> {
 	module2.onRuntimeInitialized = async () => {
 		const api = {
 			_zw_open_session: module2.cwrap("zw_open_session", "number", ["number"], { async: true }),
-			_zw_sum: module2.cwrap("zw_sum", ["number", "number"], ["number"], { async: true }),
-			_zw_sum_int: module2.cwrap("zw_sum_int", ["number", "number"], ["number"], { async: true }),
-			// 
-			version: module2.cwrap("version", "number", []),
-			config: module2.cwrap("default_config", "number", ["string"]),
-			start_tasks: module2.cwrap("start_tasks", "number", ["number"]),
-			sleep: module2.cwrap("test_sleep", "", "number", { async: true }),
-			declare_ke: module2.cwrap("declare_ke", "number", ["number", "string"], { async: true }),
-			pub: module2.cwrap("pub", "number", ["number", "number", "string"], { async: true }),
-			sub: module2.cwrap("sub", "number", ["number", "number", "number"], { async: true }),
-			spin: module2.cwrap("spin", "", ["number"], { async: true }),
-			close: module2.cwrap("close_session", "", ["number"], { async: true }),
-			z_free: module2.cwrap("z_wasm_free", "", ["number"], { async: true })
+			_zw_start_tasks: module2.cwrap("zw_start_tasks", "number", ["number"], { async: true }),
+			_zw_declare_ke: module2.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
+			_zw_put: module2.cwrap("zw_put", "number", ["number", "number", "string", "number"], { async: true }),
+
 		};
 		module2.api = api;
 	};
@@ -101,61 +87,61 @@ export class Value {
 	[intoValue](): Promise<Value> { return Promise.resolve(this) }
 }
 
-export class KeyExpr {
-	__ptr: number
-	[intoKeyExpr](): Promise<KeyExpr> { return Promise.resolve(this) }
-	private constructor(ptr: number) {
-		this.__ptr = ptr
-	}
-	static async new(keyexpr: string): Promise<KeyExpr> {
-		const Zenoh: Module = await zenoh();
-		const ckeyexpr = Zenoh.stringToUTF8OnStack(keyexpr);
+// export class KeyExpr {
+// 	__ptr: number
+// 	[intoKeyExpr](): Promise<KeyExpr> { return Promise.resolve(this) }
+// 	private constructor(ptr: number) {
+// 		this.__ptr = ptr
+// 	}
+// 	static async new(keyexpr: string): Promise<KeyExpr> {
+// 		const Zenoh: Module = await zenoh();
+// 		const ckeyexpr = Zenoh.stringToUTF8OnStack(keyexpr);
 
-		const ptr = Zenoh._zw_make_ke(ckeyexpr);
-		if (ptr === 0) {
-			throw "Failed to construct zenoh.KeyExpr"
-		}
-		return new KeyExpr(ptr)
-	}
-}
+// 		const ptr = Zenoh._zw_make_ke(ckeyexpr);
+// 		if (ptr === 0) {
+// 			throw "Failed to construct zenoh.KeyExpr"
+// 		}
+// 		return new KeyExpr(ptr)
+// 	}
+// }
 
 
-Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
-	return KeyExpr.new(this)
-})
+// Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
+// 	return KeyExpr.new(this)
+// })
 
-Object.defineProperty(String.prototype, intoValue, function (this: string) {
-	const encoder = new TextEncoder();
-	const encoded = encoder.encode(this);
-	return Promise.resolve(new Value(encoded))
-})
+// Object.defineProperty(String.prototype, intoValue, function (this: string) {
+// 	const encoder = new TextEncoder();
+// 	const encoded = encoder.encode(this);
+// 	return Promise.resolve(new Value(encoded))
+// })
 
-Object.defineProperty(Uint8Array.prototype, intoValue, function (this: Uint8Array) {
-	return Promise.resolve(new Value(this))
-})
-Object.defineProperty(Function.prototype, "onEvent", function (this: Function) {
-	return this;
-})
-Object.defineProperty(Function.prototype, "onClose", function (this: Function) { })
-declare global {
-	interface String extends IntoKeyExpr, IntoValue { }
-	interface Uint8Array extends IntoValue { }
-}
+// Object.defineProperty(Uint8Array.prototype, intoValue, function (this: Uint8Array) {
+// 	return Promise.resolve(new Value(this))
+// })
+// Object.defineProperty(Function.prototype, "onEvent", function (this: Function) {
+// 	return this;
+// })
+// Object.defineProperty(Function.prototype, "onClose", function (this: Function) { })
+// declare global {
+// 	interface String extends IntoKeyExpr, IntoValue { }
+// 	interface Uint8Array extends IntoValue { }
+// }
 
-export class Subscriber<Receiver> {
-	__ptr: number
-	receiver: Receiver
-	private constructor(ptr: number, receiver: Receiver) {
-		this.__ptr = ptr
-		this.receiver = receiver
-	}
-}
+// export class Subscriber<Receiver> {
+// 	__ptr: number
+// 	receiver: Receiver
+// 	private constructor(ptr: number, receiver: Receiver) {
+// 		this.__ptr = ptr
+// 		this.receiver = receiver
+// 	}
+// }
 
-export interface Handler<Event, Receiver> {
-	onEvent: (event: Event) => Promise<void>
-	onClose?: () => Promise<void>
-	receiver?: Receiver
-}
+// export interface Handler<Event, Receiver> {
+// 	onEvent: (event: Event) => Promise<void>
+// 	onClose?: () => Promise<void>
+// 	receiver?: Receiver
+// }
 
 // TODO 
 export class Sample { }
@@ -163,21 +149,24 @@ export class Sample { }
 
 
 export class Session {
-	static registry = new FinalizationRegistry((ptr: number) => (new Session(ptr)).close())
+	// static registry = new FinalizationRegistry((ptr: number) => (new Session(ptr)).close())
 	private __ptr: number = 0
-	private constructor(ptr: number) {
+	//@ts-ignore
+	private __task_ptr: number = 0
+	private __zenoh: Module;
+
+	private constructor(ptr: number, task_ptr: number, zenoh: Module) {
 		this.__ptr = ptr
-		Session.registry.register(this, this.__ptr, this);
+		this.__task_ptr = task_ptr
+		this.__zenoh = zenoh
+
+		// Session.registry.register(this, this.__ptr, this);
 	}
 	static async open(config: Promise<Config> | Config) {
 		const cfg = await config;
 		const Zenoh: Module = await zenoh();
 		console.log("Zenoh object", Zenoh);
 		console.log("Zenoh.api object", Zenoh.api);
-		// console.log("Zenoh.api object", );
-		// let sum = Zenoh.api.
-		// 	Zenoh.api._zw_sum()
-		// 	Zenoh.api.zw_sum_int()
 
 		if (!cfg.check()) {
 			throw "Invalid config passed: it may have been already consumed by opening another session."
@@ -191,31 +180,53 @@ export class Session {
 			throw "Failed to open zenoh.Session";
 		}
 
-		return new Session(ptr)
+		const __task_ptr = await Zenoh.api._zw_start_tasks(ptr);
+
+		return new Session(ptr, __task_ptr, Zenoh)
 	}
 	async close() {
-		Session.registry.unregister(this)
+		// TODO: he
+		// Session.registry.unregister(this)
 		throw "Unimplemented"
 	}
-	async put(keyexpr: IntoKeyExpr, value: IntoValue) {
-		const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
-		const payload = val.payload;
-		const ret = Zenoh._zw_put(this.__ptr, key, payload.byteOffset, payload.length);
+
+	async put(keyexpr: number, value: string): Promise<number> {
+
+		const ret = await this.__zenoh.api._zw_put(this.__ptr, keyexpr, value, value.length);
 
 		if (ret < 0) {
 			throw "An error occured while putting"
 		}
+		return ret
 	}
-	async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
-	async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
-	async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
-		const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
-		console.log(Zenoh)
-		console.log(key)
-		if (typeof (handler) === "function") {
-			throw "Unimplemented"
-		} else {
-			throw "Unimplemented"
+
+	async declare_ke(keyexpr: string): Promise<number> {
+		console.log("JS declare_ke ", keyexpr);
+		const pke = this.__zenoh.stringToUTF8OnStack(keyexpr);
+
+		const ret = await this.__zenoh.api._zw_declare_ke(this.__ptr, pke);
+
+		// const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
+		// const payload = val.payload;
+		// const ret = Zenoh._zw_put(this.__ptr, key, payload.byteOffset, payload.length);
+
+		if (ret < 0) {
+			throw "An error occured while Declaring Key Expr"
 		}
+		return ret;
 	}
+
+
+	// async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
+	// async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
+	// async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
+	// 	const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+	// 	console.log(Zenoh)
+	// 	console.log(key)
+	// 	if (typeof (handler) === "function") {
+	// 		throw "Unimplemented"
+	// 	} else {
+	// 		throw "Unimplemented"
+	// 	}
+	// }
 }

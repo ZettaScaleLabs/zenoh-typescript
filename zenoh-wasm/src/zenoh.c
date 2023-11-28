@@ -35,18 +35,6 @@ void *zw_default_config(const char *locator)
 }
 
 EMSCRIPTEN_KEEPALIVE
-void *zw_sum(int num1, int num2)
-{
-  return (void*)num1 + num2;
-}
-
-EMSCRIPTEN_KEEPALIVE
-int zw_sum_int(int num1, int num2)
-{
-  return num1 + num2;
-}
-
-EMSCRIPTEN_KEEPALIVE
 void *zw_open_session(z_owned_config_t *config)
 {
   z_owned_session_t *session =
@@ -58,7 +46,6 @@ void *zw_open_session(z_owned_config_t *config)
     z_free(session);
     return NULL;
   }
-  printf("Unable to open session! %p \n", session);
   return session;
 }
 
@@ -91,6 +78,7 @@ z_owned_keyexpr_t *zw_make_ke(const char *keyexpr)
 EMSCRIPTEN_KEEPALIVE
 void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
 {
+
   z_owned_keyexpr_t *ke =
       (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
   z_keyexpr_t key = z_keyexpr(keyexpr);
@@ -100,7 +88,6 @@ void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
     printf("Unable to declare key expression!\n");
     exit(-1);
   }
-
   return ke;
 }
 

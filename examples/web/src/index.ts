@@ -8,7 +8,20 @@ async function main() {
     // 	const app = express()
     // tcp/172.17.0.1:7447
     const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
-    console.log("onnected");
+
+    const keyexpr = await session.declare_ke("demo/ts/test");
+
+
+    executeAsync(async function () {
+        var c = 0;
+        while (true) {
+            var pub_res = await session.put(keyexpr, `Hello for WASM! [${c}]`);
+            console.log("result of pub on zenoh: ", pub_res);
+            await sleep(1000);
+            c++;
+        }
+    });
+
     // console.log("Opened session")
     // const sub = await session.declare_subscriber("hi", {
     // 	async onEvent(sample) { console.log("hi") },
@@ -19,25 +32,15 @@ async function main() {
     // })
     // app.listen(3000)
 }
-main().then(() => console.log("Done")).catch(e => { 
-    console.log(e )
-    throw e 
+main().then(() => console.log("Done")).catch(e => {
+    console.log(e)
+    throw e
 })
 
+function executeAsync(func: any ) {
+    setTimeout(func, 0);
+}
 
-// import * as zenoh from "zenoh"
-// import * as express from "express"
-// async function main() {
-// 	const app = express()
-// 	const session = await zenoh.Session.open(zenoh.Config.new("ws/0.0.0.0:7887"))
-// 	console.log("Opened session")
-// 	const sub = await session.declare_subscriber("hi", {
-// 		async onEvent(sample) { console.log("hi") },
-// 	});
-// 	app.get("/declare", async (req, res) => {
-// 		await session.put("hi", "there");
-// 		res.send("Hello world")
-// 	})
-// 	app.listen(3000)
-// }
-// main().then(() => console.log("Done")).catch(e => { throw e })
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
