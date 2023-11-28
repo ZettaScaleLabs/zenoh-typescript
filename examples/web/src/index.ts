@@ -5,10 +5,10 @@ import * as zenoh from "../../../esm"
 const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 async function main() {
     console.log("WEB TEST");
-    output_area.innerText = "Test";
     // 	const app = express()
-
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:7887"))
+    // tcp/172.17.0.1:7447
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
+    console.log("onnected");
     // console.log("Opened session")
     // const sub = await session.declare_subscriber("hi", {
     // 	async onEvent(sample) { console.log("hi") },
@@ -19,7 +19,10 @@ async function main() {
     // })
     // app.listen(3000)
 }
-main().then(() => console.log("Done")).catch(e => { throw e })
+main().then(() => console.log("Done")).catch(e => { 
+    console.log(e )
+    throw e 
+})
 
 
 // import * as zenoh from "zenoh"

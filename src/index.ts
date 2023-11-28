@@ -9,13 +9,16 @@ interface Module {
 	stringToUTF8OnStack(x: string): any,
 	_zw_default_config(clocator: any): any,
 	_zw_make_ke(arg: any): any,
-	_zw_open_session(arg: any): any,
+	_zw_open_session(arg: any): Promise<any>,
 	_zw_put(ptr: any, key: any, payload_byteOffset: any, payload_length: any): any,
+	_zw_sum(num1: number, num2: number): any,
+	_zw_sum_int(num1: number, num2: number): any,
+	onRuntimeInitialized(): Promise<any>,
+	cwrap(...arg: any): any,
+	api: any
 }
-
 let module2: Module;
 
-// : {[index: string]:any} = {}
 export const intoKeyExpr = Symbol("intoKeyExpr")
 /**
  * Something that may be turned into a Key Expression.
@@ -38,10 +41,32 @@ export interface IntoValue {
 	[intoValue]: () => Promise<Value>
 }
 
-async function zenoh(): Promise<Module> {
+export async function zenoh(): Promise<Module> {
 	if (!module2) {
 		module2 = await Module();
 	}
+
+	module2.onRuntimeInitialized = async () => {
+		const api = {
+			_zw_open_session: module2.cwrap("zw_open_session", "number", ["number"], { async: true }),
+			_zw_sum: module2.cwrap("zw_sum", ["number", "number"], ["number"], { async: true }),
+			_zw_sum_int: module2.cwrap("zw_sum_int", ["number", "number"], ["number"], { async: true }),
+			// 
+			version: module2.cwrap("version", "number", []),
+			config: module2.cwrap("default_config", "number", ["string"]),
+			start_tasks: module2.cwrap("start_tasks", "number", ["number"]),
+			sleep: module2.cwrap("test_sleep", "", "number", { async: true }),
+			declare_ke: module2.cwrap("declare_ke", "number", ["number", "string"], { async: true }),
+			pub: module2.cwrap("pub", "number", ["number", "number", "string"], { async: true }),
+			sub: module2.cwrap("sub", "number", ["number", "number", "number"], { async: true }),
+			spin: module2.cwrap("spin", "", ["number"], { async: true }),
+			close: module2.cwrap("close_session", "", ["number"], { async: true }),
+			z_free: module2.cwrap("z_wasm_free", "", ["number"], { async: true })
+		};
+		module2.api = api;
+	};
+	await module2.onRuntimeInitialized()
+
 	return module2
 }
 
@@ -83,8 +108,9 @@ export class KeyExpr {
 		this.__ptr = ptr
 	}
 	static async new(keyexpr: string): Promise<KeyExpr> {
-		const Zenoh = await zenoh();
+		const Zenoh: Module = await zenoh();
 		const ckeyexpr = Zenoh.stringToUTF8OnStack(keyexpr);
+
 		const ptr = Zenoh._zw_make_ke(ckeyexpr);
 		if (ptr === 0) {
 			throw "Failed to construct zenoh.KeyExpr"
@@ -145,15 +171,26 @@ export class Session {
 	}
 	static async open(config: Promise<Config> | Config) {
 		const cfg = await config;
-		const Zenoh = await zenoh();
+		const Zenoh: Module = await zenoh();
+		console.log("Zenoh object", Zenoh);
+		console.log("Zenoh.api object", Zenoh.api);
+		// console.log("Zenoh.api object", );
+		// let sum = Zenoh.api.
+		// 	Zenoh.api._zw_sum()
+		// 	Zenoh.api.zw_sum_int()
+
 		if (!cfg.check()) {
 			throw "Invalid config passed: it may have been already consumed by opening another session."
 		}
-		const ptr = Zenoh._zw_open_session(cfg.__ptr);
+
+		const ptr = await Zenoh.api._zw_open_session(cfg.__ptr);
+		console.log("Open Session ? ", ptr);
+
 		cfg.__ptr = 0;
 		if (ptr === 0) {
 			throw "Failed to open zenoh.Session";
 		}
+
 		return new Session(ptr)
 	}
 	async close() {

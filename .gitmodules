@@ -1,3 +1,4 @@
 [submodule "zenoh-wasm/zenoh-pico"]
 	path = zenoh-wasm/zenoh-pico
 	url = git@github.com:eclipse-zenoh/zenoh-pico.git
+	branch = release-0.10.0-rc
