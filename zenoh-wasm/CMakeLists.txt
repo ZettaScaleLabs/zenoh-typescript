@@ -31,10 +31,11 @@ set(WASM_BUILD_FLAGS " \
 -D Z_SCOUTING_UDP=0 \
 -D Z_MULTI_THREAD=1")
 
+# func-wrapper Adds a JS-Callback to be passed to C to be used. 
 set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 -s TEXTDECODER=0 \
 -s ENVIRONMENT=web,worker \
--s EXPORTED_RUNTIME_METHODS=[\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
+-s EXPORTED_RUNTIME_METHODS=[\"registerJSCallback\",\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
 -s PTHREAD_POOL_SIZE=16 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
 -s ALLOW_TABLE_GROWTH \
@@ -46,11 +47,9 @@ set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 -s LINKABLE=1 \
 -s EXPORT_ALL=1 \
 -s EXPORT_NAME=zenohWasm \
+-s ALLOW_TABLE_GROWTH \
 -pthread \
 -fPIC ")
-
-# -s USE_ES6_IMPORT_META=1 \
-# -s MODULARIZE=1 \
 
 # Cannot Export Types for C files
 # Need to figure out how to emit types for C files
@@ -63,4 +62,3 @@ add_executable(zenoh-wasm src/zenoh.c)
 set_target_properties(zenoh-wasm PROPERTIES LINK_FLAGS ${WASM_LINK_FLAGS} )
 set_target_properties (zenoh-wasm PROPERTIES COMPILE_FLAGS ${WASM_BUILD_FLAGS})
 target_link_libraries(zenoh-wasm zenohpico)
-

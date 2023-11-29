@@ -1,14 +1,10 @@
-// import {dirname} from "path";
-// globalThis.__dirname = dirname(import.meta.url);
-// import { createRequire } from 'module';
-// globalThis.require = createRequire(import.meta.url);
-
 import Module from "./wasm/zenoh-wasm.js"
 
 interface Module {
 	stringToUTF8OnStack(x: string): any,
 	_zw_default_config(clocator: any): any,
 	onRuntimeInitialized(): Promise<any>,
+	registerJSCallback(callback: any): number,
 	cwrap(...arg: any): any,
 	api: any
 }
@@ -43,13 +39,18 @@ export async function zenoh(): Promise<Module> {
 
 	module2.onRuntimeInitialized = async () => {
 		const api = {
+			// Format :  module2.cwrap("c_func_name", return, func_args)
 			_zw_open_session: module2.cwrap("zw_open_session", "number", ["number"], { async: true }),
 			_zw_start_tasks: module2.cwrap("zw_start_tasks", "number", ["number"], { async: true }),
 			_zw_declare_ke: module2.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
 			_zw_put: module2.cwrap("zw_put", "number", ["number", "number", "string", "number"], { async: true }),
+			_zw_sub: module2.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
+			_test_call_js_callback: module2.cwrap("test_call_js_callback", "number", [], { async: true }),
+			_register_rm_callback: module2.cwrap("register_rm_callback", "void", ["number"], { async: true })
 
 		};
 		module2.api = api;
+
 	};
 	await module2.onRuntimeInitialized()
 
@@ -128,14 +129,14 @@ export class Value {
 // 	interface Uint8Array extends IntoValue { }
 // }
 
-// export class Subscriber<Receiver> {
-// 	__ptr: number
-// 	receiver: Receiver
-// 	private constructor(ptr: number, receiver: Receiver) {
-// 		this.__ptr = ptr
-// 		this.receiver = receiver
-// 	}
-// }
+export class Subscriber<Receiver> {
+	__sub_ptr: number
+	receiver: Receiver
+	private constructor(sub_ptr: number, receiver: Receiver) {
+		this.__sub_ptr = sub_ptr
+		this.receiver = receiver
+	}
+}
 
 // export interface Handler<Event, Receiver> {
 // 	onEvent: (event: Event) => Promise<void>
@@ -162,6 +163,7 @@ export class Session {
 
 		// Session.registry.register(this, this.__ptr, this);
 	}
+
 	static async open(config: Promise<Config> | Config) {
 		const cfg = await config;
 		const Zenoh: Module = await zenoh();
@@ -185,7 +187,7 @@ export class Session {
 		return new Session(ptr, __task_ptr, Zenoh)
 	}
 	async close() {
-		// TODO: he
+		// TODO:
 		// Session.registry.unregister(this)
 		throw "Unimplemented"
 	}
@@ -200,6 +202,7 @@ export class Session {
 		return ret
 	}
 
+	// Returns a pointer to the key expression in Zenoh Memory 
 	async declare_ke(keyexpr: string): Promise<number> {
 		console.log("JS declare_ke ", keyexpr);
 		const pke = this.__zenoh.stringToUTF8OnStack(keyexpr);
@@ -216,6 +219,29 @@ export class Session {
 		return ret;
 	}
 
+	async sub(keyexpr: string, callback: () => void): Promise<number> {
+
+		const pke = await this.declare_ke(keyexpr);
+
+		const callback_ptr: number = this.__zenoh.registerJSCallback(callback);
+		const ret = await this.__zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
+
+		if (ret < 0) {
+			throw "An error occured while putting"
+		}
+		return ret
+	}
+
+	async do_function_callback(): Promise<number> {
+		console.log("Before Call TS");
+		await this.__zenoh.api._test_call_js_callback();
+		console.log("After Call TS");
+		return 10
+	}
+
+	async register_function_callback_do_function_callback(callback: (someArg: number) => number): Promise<number> {
+		return 10
+	}
 
 	// async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
 	// async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
@@ -229,4 +255,5 @@ export class Session {
 	// 		throw "Unimplemented"
 	// 	}
 	// }
+
 }

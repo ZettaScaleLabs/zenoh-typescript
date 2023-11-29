@@ -11,6 +11,9 @@
 #include <unistd.h>
 
 extern void call_js_callback(int, uint8_t *, int);
+extern void remove_js_callback(void*);
+extern void test_call_js_callback();
+
 
 EMSCRIPTEN_KEEPALIVE
 void test_sleep(int ms) { sleep(ms); }
@@ -126,12 +129,12 @@ void wrapping_sub_callback(const z_sample_t *sample, void *ctx)
 }
 
 EMSCRIPTEN_KEEPALIVE
-void *sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
+void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
 {
   z_owned_subscriber_t *sub =
       (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
   z_owned_closure_sample_t callback =
-      z_closure(wrapping_sub_callback, NULL, (void *)js_callback);
+      z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
   // printf("JS callback is at: %p\n",js_callback);
   *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke), z_move(callback), NULL);
   if (!z_check(*sub))
@@ -159,4 +162,9 @@ call_js_function_on_another_thread(int js_callback_id)
 
   pthread_t cb_thr;
   pthread_create(&cb_thr, 0, &call_js_function, (void *)js_callback_id);
+}
+
+EMSCRIPTEN_KEEPALIVE void *test_callback_js(int js_callback_id)
+{
+  test_call_js_callback();
 }
