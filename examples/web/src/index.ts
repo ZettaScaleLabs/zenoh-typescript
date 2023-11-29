@@ -28,6 +28,12 @@ async function main() {
 
     // session.do_function_callback();
 
+    // const myvar = {
+    //     [intoKeyExpr]: () =>{
+    //         throw "potat"
+    //     }
+    // }
+
     // console.log("Opened session")
     // const sub = await session.declare_subscriber("hi", {
     // 	async onEvent(sample) { console.log("hi") },
