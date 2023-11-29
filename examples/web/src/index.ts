@@ -3,6 +3,7 @@ import * as zenoh from "../../../esm"
 const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 async function main() {
 
+    // Test push
     const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
 
     const keyexpr = await session.declare_ke("demo/ts/test");
