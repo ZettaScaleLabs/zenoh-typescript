@@ -1,3 +1,17 @@
+//
+// Copyright (c) 2023 ZettaScale Technology
+//
+// This program and the accompanying materials are made available under the
+// terms of the Eclipse Public License 2.0 which is available at
+// http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
+// which is available at https://www.apache.org/licenses/LICENSE-2.0.
+//
+// SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
+//
+// Contributors:
+//   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
+//
+
 import * as zenoh from "../../../esm"
 
 const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
@@ -19,12 +33,9 @@ async function main() {
     });
 
 
-    // function subcall {
-    // }
-
-    const result = await session.sub("demo/ts/test_server/", (...args: any) => {
-        console.log("Hello, here are your args: ", args)
-    });
+    // const result = await session.sub("demo/ts/test_server/", (...args: any) => {
+    //     console.log("Hello, here are your args: ", args)
+    // });
 
     // session.do_function_callback();
 

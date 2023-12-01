@@ -1,5 +1,6 @@
 {
   "name": "web",
+  "license":"SEE LICENSE IN 'LICENSE'",
   "version": "1.0.0",
   "description": "",
   "type": "module",
@@ -11,7 +12,6 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
   "dependencies": {},
   "devDependencies": {
     "html-webpack-plugin": "^5.5.3",

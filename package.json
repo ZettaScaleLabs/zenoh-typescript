@@ -1,5 +1,6 @@
 {
   "name": "zenoh",
+  "license":"SEE LICENSE IN 'LICENSE'",
   "type": "module",
   "exports": {
     "require": "./cjs/index.js",

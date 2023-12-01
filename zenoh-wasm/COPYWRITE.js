@@ -11,26 +11,3 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-{
-	"compilerOptions": {
-		"lib": [
-			"es2023"
-		],
-		"strict": true,
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		// "module": "NodeNext",
-		// "moduleResolution": "NodeNext",
-		// // "esModuleInterop": true,
-		// "isolatedModules": true,
-		// "target": "ESNext",
-		// "sourceMap": true,
-		// "outDir": "dist"
-	},
-	// "ts-node": {
-	// 	"esm": true
-	// },
-	// "lib": [
-	// 	"ES2021",
-	// ],
-}

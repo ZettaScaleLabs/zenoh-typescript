@@ -1,3 +1,17 @@
+#
+# Copyright (c) 2023 ZettaScale Technology
+#
+# This program and the accompanying materials are made available under the
+# terms of the Eclipse Public License 2.0 which is available at
+# http://www.eclipse.org/legal/epl-2.0, or the Apache License, Version 2.0
+# which is available at https://www.apache.org/licenses/LICENSE-2.0.
+#
+# SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
+#
+# Contributors:
+#   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
+#
+
 cmake_minimum_required(VERSION 3.10)
 
 project(zenohjs)
@@ -33,6 +47,7 @@ set(WASM_BUILD_FLAGS " \
 
 # func-wrapper Adds a JS-Callback to be passed to C to be used. 
 set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
+--extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s TEXTDECODER=0 \
 -s ENVIRONMENT=web,worker \
 -s EXPORTED_RUNTIME_METHODS=[\"registerJSCallback\",\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
@@ -54,9 +69,11 @@ set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 # Cannot Export Types for C files
 # Need to figure out how to emit types for C files
 #  --embind-emit-tsd =${CMAKE_SOURCE_DIR}/zenoh-wasm.d.ts \
-
+# can emit types for C++, add C++ interface file to make emitting types easier ?
 # set(TYPE_GENERATION_FLAG "-lembind --embind-emit-tsd /src/zenoh-wasm/build.emscripten/zenoh-wasm.d.ts")
+
 # set_source_files_properties(src/zenoh.c PROPERTIES COMPILE_FLAGS ${TYPE_GENERATION_FLAG})
+
 
 add_executable(zenoh-wasm src/zenoh.c)
 set_target_properties(zenoh-wasm PROPERTIES LINK_FLAGS ${WASM_LINK_FLAGS} )
