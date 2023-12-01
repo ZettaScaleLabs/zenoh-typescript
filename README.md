@@ -73,17 +73,16 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 ## Building the Examples
   From the `./examples/web/` directory, 
   ```bash
-  npm install && 
+  npm install && npm run develop
   ```
 
 
 [helpers.cmake]: cmake/helpers.cmake
 
 ## Running the Examples
+TODO 
 
 <!-- 
-
-TODO 
 ## API conventions
 Many of the types exposed by the `zenoh-c` API are types for which destruction is necessary. To help you spot these types, we named them with the convention that  any destructible type must start by `z_owned`.
 
