@@ -65,7 +65,7 @@ export async function zenoh(): Promise<Module> {
                 _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // TODO: add and expose zw_make_selector
-                
+
 
             };
             module2.api = api;
@@ -112,7 +112,7 @@ export class Value {
 export class KeyExpr {
     __ptr: number
     [intoKeyExpr](): Promise<KeyExpr> { return Promise.resolve(this) }
-    private constructor(ptr: number) {
+    constructor(ptr: number) {
         this.__ptr = ptr
     }
     static async new(keyexpr: string): Promise<KeyExpr> {
@@ -125,6 +125,7 @@ export class KeyExpr {
         }
         return new KeyExpr(ptr)
     }
+
 }
 
 // Mutate global Types String, Uint8Array to implement interfaces:
@@ -189,6 +190,7 @@ export class Sample {
         this.kind = kind
     }
 }
+
 // TODO Expose: 
 // Query: Has selector, and has a reply method that allows you to respond to query
 // Queryable: Can be Queried, will recieve queries, and sends back replies, 
@@ -202,29 +204,41 @@ export interface IntoSelector {
 
 declare global {
     interface String extends IntoSelector { }
-    interface[String, Map<String, String>] extends IntoSelector { } // this doesn't work, will need an overload :(
+    // interface[String, Map<String, String>] extends IntoSelector { } // this doesn't work, will need an overload :(
 }
 
 // TODO: Internals of selector need to be handled in Zenoh rather than JS
+// TODO TEST
 export class Selector {
-    __ptr: number
-    // parameters: Map<string,string>,
-    // So basically
-    async get_keyepxr(): Promise<KeyExpr> {
-        // TODO: Expose calls to zenoh Selector to Javascript
-    }
-    async parameters(): Promise<Map<string, string>> {
-        // TODO: Expose calls to zenoh Selector to Javascript
-    }
-    // if parameter does not exist, then return a undefined
-    async parameter(param_key: string): Promise<string> {
-        // TODO: Expose calls to zenoh Selector to Javascript		
-    }
-    private constructor(keyexpr: KeyExpr, parameters: Promise<Map<string, string>>) {
 
-    }   
+    key_expr: KeyExpr
+
+    // Pointer to memory location with KeyExpr
+    _parameters: Map<string, string>;
+
+    // Returns the key expression
+    async get_keyepxr(): Promise<KeyExpr> {
+        return this.key_expr
+    }
+
+    // Returns the parameters of the selector
+    async parameters(): Promise<Map<string, string>> {
+        return this._parameters
+    }
+
+    // If parameter does not exist, then returns undefined
+    async parameter(param_key: string): Promise<string | undefined> {
+        return this._parameters.get(param_key)
+    }
+
+    // TODO comment
+    private constructor(keyexpr: KeyExpr, parameters: Map<string, string>) {
+        this.key_expr = keyexpr;
+        this._parameters = parameters;
+    }
 
     static new(selector: IntoSelector) {
+        // TODO implement
         // let myMap = new Map<string, number>();
     }
 }
@@ -237,6 +251,7 @@ export class Query {
         this.selector = selector
     }
 }
+
 export class Reply { }
 
 export class Session {
