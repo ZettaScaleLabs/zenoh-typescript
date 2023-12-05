@@ -2,12 +2,8 @@
 
 > :warning: **This is a WIP Active development project**: Experiment with with it, but it is **Not** production Ready!  
 
-CI: TODO \
-Documentation Status: TODO \
-Discussion: TODO \
 [![Discord](https://img.shields.io/badge/chat-on%20discord-blue)](https://discord.gg/2GJ958VuHs)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-
 
 # Eclipse Zenoh Typescript / Javascript API
 
@@ -32,9 +28,9 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 1. Make sure that the following utilities are available on your platform. 
  - [Docker](https://www.docker.com/), Please check [here](https://docs.docker.com/engine/install/) to learn how to install it.
  - [NPM](https://www.npmjs.com/package/npm)
- - A typescript
+ - Typescript 
 
-3. Clone the [source] with `git`:
+2. Clone the [source] with `git`:
 
    ```bash
    git clone --recurse-submodules https://github.com/ZettaScale-Labs/zenoh-ts.git
@@ -43,44 +39,50 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 
 3. Build:
 
-    For now while in active development, running the command
+    While in active development, running the command
 
   ```bash
     npm clean_build_package
   ```
-  TODO - Cleanup and improve command
 
   Will run the build pipeline of 
-  - Starting a Docker container containing the [Emscripten-SDK](https://emscripten.org/) 
-  - Building [zenoh-pico] using CMake + Emscripten to target WASM 
+  - Starting a Docker container containing the [Emscripten-SDK](https://emscripten.org/)
+  - Building [zenoh-pico] to target WASM, using CMake + the Emscripten toolchain
   - Copying the artifacts from the build container to the host system
-  - This should include 
+  - The artifacts include:
     - `zenoh-wasm.js`
     - `zenoh-wasm.wasm`
     - `zenoh-wasm.worker.js`
-  - The compiling the typescript interface to Javascript, and exporting a types file.
-  - Webpack to packa
+  - The compiling the typescript interface to Javascript, and exporting a types declaration file.
+  - Webpack to package
 
-3. Install:
-  TODO
-
-4. VScode: 
-  TODO - Review `.vscode` + Dockerfile for quick building
 
 [source]: https://github.com/ZettaScale-Labs/zenoh-ts.git
 [zenoh-pico]:https://github.com/eclipse-zenoh/zenoh-pico
 
-## Building the Examples
-  From the `./examples/web/` directory, 
-  ```bash
-  npm install && npm run develop
-  ```
-
-
-[helpers.cmake]: cmake/helpers.cmake
-
 ## Running the Examples
-TODO 
+  In order to run the examples, the user must:
+
+  1. From the `./examples/web/` directory, start an instance of the web application.
+```bash
+npm install && npm run develop
+```
+
+  2. Start an instance of `zenohd` with the websocket transport enabled.
+  This can be done by building the zenoh daemon `zenohd` from [zenoh], and running the command.
+
+```
+zenohd -l ws/0.0.0.0:7447 --no-multicast-scouting
+```
+  
+  Then starting an instance of a zenoh client
+
+```
+zenohd -l ws/0.0.0.0:7447 --no-multicast-scouting
+```
+  
+
+[zenoh]: https://github.com/eclipse-zenoh/zenoh
 
 <!-- 
 ## API conventions
