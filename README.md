@@ -61,6 +61,12 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 [zenoh-pico]:https://github.com/eclipse-zenoh/zenoh-pico
 
 ## Running the Examples
+  TODO:
+  Our Example structure, will have a pub/sub pair in the browser periodically putting,
+  and a pub/sub pair locally on the command line to match, 
+  TODO:
+
+
   In order to run the examples, the user must:
 
   1. From the `./examples/web/` directory, start an instance of the web application.
@@ -72,13 +78,13 @@ npm install && npm run develop
   This can be done by building the zenoh daemon `zenohd` from [zenoh], and running the command.
 
 ```
-zenohd -l ws/0.0.0.0:7447 --no-multicast-scouting
+RUST_LOG=DEBUG zenohd -l ws/0.0.0.0:7447
 ```
   
-  Then starting an instance of a zenoh client
+  Then starting an instance of a zenoh subscriber locally
 
 ```
-zenohd -l ws/0.0.0.0:7447 --no-multicast-scouting
+cargo run --release --example z_sub -- -k demo/ts/**
 ```
   
 

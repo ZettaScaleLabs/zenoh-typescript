@@ -35,8 +35,8 @@ export const intoKeyExpr = Symbol("intoKeyExpr")
 export interface IntoKeyExpr {
     [intoKeyExpr]: () => Promise<KeyExpr>
 }
-export const intoValue = Symbol("intoValue")
 
+export const intoValue = Symbol("intoValue")
 /**
  * Something that may be turned into a Value.
  * 
@@ -56,16 +56,18 @@ export async function zenoh(): Promise<Module> {
                 // Format :  module2.cwrap("c_func_name", return, func_args)
                 _zw_open_session: module2.cwrap("zw_open_session", "number", ["number"], { async: true }),
                 _zw_start_tasks: module2.cwrap("zw_start_tasks", "number", ["number"], { async: true }),
+                // KeyExpr
                 _zw_declare_ke: module2.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
+                _zw_make_ke: module2.cwrap("zw_make_ke", "number", ["number"], { async: true }),
+                _zw_delete_ke: module2.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
+                //
                 _zw_put: module2.cwrap("zw_put", "number", ["number", "number", "string", "number"], { async: true }),
                 _zw_sub: module2.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
+
                 _test_call_js_callback: module2.cwrap("test_call_js_callback", "number", [], { async: true }),
                 _register_rm_callback: module2.cwrap("register_rm_callback", "void", ["number"], { async: true }),
-                // TODO expose _zw_make_ke FINISH 
-                _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // TODO: add and expose zw_make_selector
-
 
             };
             module2.api = api;
@@ -106,16 +108,36 @@ export class Value {
     constructor(payload: Uint8Array) {
         this.payload = payload
     }
+
+    length(): number {
+        return this.payload.length;
+    }
+
     [intoValue](): Promise<Value> { return Promise.resolve(this) }
 }
 
-export class KeyExpr {
+export class KeyExpr implements IntoSelector {
     __ptr: number
+
+    // 
+    static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: number) => (new KeyExpr(ptr)).delete());
+
+    // 
     [intoKeyExpr](): Promise<KeyExpr> { return Promise.resolve(this) }
+    [intoSelector](): Promise<Selector> { return Promise.resolve(new Selector(this)) }
+
     constructor(ptr: number) {
         this.__ptr = ptr
+        KeyExpr.registry.register(this, this.__ptr, this);
     }
+    private async delete() {
+        const Zenoh = await zenoh();
+        Zenoh.api._zw_delete_ke(this.__ptr); // delete the C ptr
+        KeyExpr.registry.unregister(this); // make sure we aren't called again
+    }
+
     static async new(keyexpr: string): Promise<KeyExpr> {
+
         const Zenoh = await zenoh();
         const ckeyexpr = Zenoh.stringToUTF8OnStack(keyexpr);
 
@@ -130,7 +152,6 @@ export class KeyExpr {
 
 // Mutate global Types String, Uint8Array to implement interfaces:
 // IntoKeyExpr, IntoValue,
-
 
 Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
     return KeyExpr.new(this)
@@ -154,10 +175,10 @@ Object.defineProperty(Function.prototype, "onEvent", function (this: Function) {
 Object.defineProperty(Function.prototype, "onClose", function (this: Function) { })
 
 // Applies Globally Interface Extension for  String,Uint8Array
-declare global {
-    interface String extends IntoKeyExpr, IntoValue { }
-    interface Uint8Array extends IntoValue { }
-}
+// declare global {
+//     interface String extends IntoKeyExpr, IntoValue { }
+//     interface Uint8Array extends IntoValue { }
+// }
 
 export class Subscriber<Receiver> {
     __sub_ptr: number
@@ -194,27 +215,29 @@ export class Sample {
 // TODO Expose: 
 // Query: Has selector, and has a reply method that allows you to respond to query
 // Queryable: Can be Queried, will recieve queries, and sends back replies, 
-// 	Selector : basically <keyexpr>?arg1=lol&arg2=hi
 
 export const intoSelector = Symbol("intoSelector")
 
 export interface IntoSelector {
-    [intoKeyExpr]: () => Promise<Selector>
+    [intoSelector]: () => Promise<Selector>
 }
 
 declare global {
+    // interface for KeyExpr?params to selector
     interface String extends IntoSelector { }
-    // interface[String, Map<String, String>] extends IntoSelector { } // this doesn't work, will need an overload :(
+    // interface for [KeyExpr, params] to selector
+    // interface [String, Map<String, String>] extends IntoSelector {  } // this doesn't work, will need an overload :(
 }
 
 // TODO: Internals of selector need to be handled in Zenoh rather than JS
-// TODO TEST
+// TODO: TEST
+// Selector : High level <keyexpr>?arg1=lol&arg2=hi
 export class Selector {
-
+    // KeyExpr object
     key_expr: KeyExpr
 
-    // Pointer to memory location with KeyExpr
-    _parameters: Map<string, string>;
+    // Optional : parameter field
+    _parameters?: string;
 
     // Returns the key expression
     async get_keyepxr(): Promise<KeyExpr> {
@@ -222,26 +245,49 @@ export class Selector {
     }
 
     // Returns the parameters of the selector
+    /// Note: Keep this async incase in the future we want to call C code
     async parameters(): Promise<Map<string, string>> {
-        return this._parameters
+
+        const params = new Map<string, string>();
+        for (const pair of this._parameters?.split("&") || []) {
+            const [key, value] = pair.split("=");
+            params.set(key, value);
+        }
+
+        return params; // If parameter does not exist, then returns undefined
     }
 
-    // If parameter does not exist, then returns undefined
     async parameter(param_key: string): Promise<string | undefined> {
-        return this._parameters.get(param_key)
+
+        for (const pair of this._parameters?.split("&") || []) {
+            const [key, value] = pair.split("=");
+            if (key === param_key) {
+                return value
+            }
+        }
+        return undefined; // If parameter does not exist, then returns undefined
     }
 
     // TODO comment
-    private constructor(keyexpr: KeyExpr, parameters: Map<string, string>) {
+    constructor(keyexpr: KeyExpr, parameters?: string) {
         this.key_expr = keyexpr;
         this._parameters = parameters;
     }
 
-    static new(selector: IntoSelector) {
-        // TODO implement
-        // let myMap = new Map<string, number>();
+    static new(keyexpr: IntoKeyExpr, parameter: Map<string, string>): Promise<Selector>;
+    static new(selector: IntoSelector): Promise<Selector>;
+    static async new(selector: IntoSelector | IntoKeyExpr, parameters?: Map<string, string>): Promise<Selector> {
+        // TODO implement 
+        throw "Unimplemented";
+        // If selector intoKeyExpr, take parameters if available. 
+
+        // Attempt IntoSelector (intoKeyExpr might be lossy)
+        // if not, do IntoKeyExpr, then IntoSelector (KeyExpr MUST IntoSelector)
+        // append parameters regardless of existing ones.
+
     }
 }
+
 
 export class Query {
     selector: Selector
@@ -255,8 +301,7 @@ export class Query {
 export class Reply { }
 
 export class Session {
-    // FinalizationRegistry is how we tell JS that we want the 
-    // 
+    // A FinalizationRegistry object lets you request a callback when a value is garbage-collected.
     static registry = new FinalizationRegistry(([ptr, task_ptr]: [number, number]) => (new Session(ptr, task_ptr)).close())
     private __ptr: number = 0
     //@ts-ignore
@@ -291,16 +336,18 @@ export class Session {
 
         return new Session(ptr, __task_ptr)
     }
+
     async close() {
-        // TODO:
-        // Session.registry.unregister(this)
-        throw "Unimplemented"
+        // TODO: Is this correct ? 
+        // zw_session_close(this.__ptr, this.__task_ptr)
+        Session.registry.unregister(this)
     }
 
-    async put(keyexpr: number, value: string): Promise<number> {
-        const Zenoh: Module = await zenoh();
+    // TODO make value intovalue 
+    async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
+        const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
-        const ret = await Zenoh.api._zw_put(this.__ptr, keyexpr, value, value.length);
+        const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, val, val.length);
 
         if (ret < 0) {
             throw "An error occured while putting"
@@ -328,19 +375,21 @@ export class Session {
         return ret;
     }
 
-    async sub(keyexpr: string, callback: () => void): Promise<number> {
+    // TODO implement get
+    async get(query: Query, callback: () => void): Promise<number> {
+
+        throw "Unimplemented"
         const Zenoh: Module = await zenoh();
+        // const pke = await this.declare_ke(keyexpr);
+        // const callback_ptr: number = Zenoh.registerJSCallback(callback);
+        // const ret = await Zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
 
-        const pke = await this.declare_ke(keyexpr);
-
-        const callback_ptr: number = Zenoh.registerJSCallback(callback);
-        const ret = await Zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
-
-        if (ret < 0) {
-            throw "An error occured while putting"
-        }
-        return ret
+        // if (ret < 0) {
+        //     throw "An error occured while getting"
+        // }
+        // return ret
     }
+
 
     async do_function_callback(): Promise<number> {
         console.log("Before Call TS");
@@ -355,17 +404,49 @@ export class Session {
         return 10
     }
 
-    // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
-    // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
-    // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
-    // 	const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
-    // 	console.log(Zenoh)
-    // 	console.log(key)
-    // 	if (typeof (handler) === "function") {
-    // 		throw "Unimplemented"
-    // 	} else {
-    // 		throw "Unimplemented"
-    // 	}
-    // }
+    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
+    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
+    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
+
+        // 1. select keyexpr object
+        // 2. search for Symbol `intoKeyExpr` inside the keyexpr object
+        // 3. call() the function found for the intoKeyExpr inside the keyexpr object 
+        // keyexpr[intoKeyExpr]()
+        const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+
+        if (typeof (handler) === "function") {
+            throw "Unimplemented"
+        } else {
+            throw "Unimplemented"
+        }
+
+        // TODO - Continue from here 
+        // Implement Callback to Handler / Reciever Abstraction 
+        // const callback_ptr: number = Zenoh.registerJSCallback(callback);
+
+        // const pke = await this.declare_ke(keyexpr);
+
+
+        // const ret = await Zenoh.api._zw_sub(this.__ptr, key, callback_ptr);
+
+        // if (ret < 0) {
+        //     throw "An error occured while putting"
+        // }
+        // return ret
+    }
+
+    async subscribe(keyexpr: string, callback: () => void): Promise<number> {
+        const Zenoh: Module = await zenoh();
+
+        const pke = await this.declare_ke(keyexpr);
+
+        const callback_ptr: number = Zenoh.registerJSCallback(callback);
+        const ret = await Zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
+
+        if (ret < 0) {
+            throw "An error occured while putting"
+        }
+        return ret
+    }
 
 }

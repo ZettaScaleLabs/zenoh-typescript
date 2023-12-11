@@ -25,9 +25,8 @@
 #include <unistd.h>
 
 extern void call_js_callback(int, uint8_t *, int);
-extern void remove_js_callback(void*);
+extern void remove_js_callback(void *);
 extern void test_call_js_callback();
-
 
 EMSCRIPTEN_KEEPALIVE
 void test_sleep(int ms) { sleep(ms); }
@@ -64,6 +63,20 @@ void *zw_open_session(z_owned_config_t *config)
     return NULL;
   }
   return session;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void *zw_session_close(z_owned_config_t *config)
+{
+  z_owned_session_t *session = (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
+  // *session = z_open(z_move(*config));
+  // if (!z_check(*session))
+  // {
+  //   printf("Unable to open session!\n");
+  //   z_free(session);
+  //   return NULL;
+  // }
+  // return session;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -109,6 +122,35 @@ void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
 }
 
 EMSCRIPTEN_KEEPALIVE
+void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
+{
+  return z_drop(ke);
+}
+
+// int8_t z_get(
+//  z_session_t zs,
+//  z_keyexpr_t keyexpr,
+//  const char *parameters,
+//  z_owned_closure_reply_t *callback,
+//  const z_get_options_t *options
+// );
+
+// TODO expose this in Typescript
+EMSCRIPTEN_KEEPALIVE
+int zw_get(z_owned_session_t *s, z_owned_keyexpr_t *ke, const char *parameters, int js_callback)
+{
+  z_put_options_t options = z_put_options_default();
+  options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
+
+  z_owned_closure_sample_t callback =
+      z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
+
+  int8_t get = z_get(s, ke, parameters, z_move(callback), options);
+
+  return get;
+}
+
+EMSCRIPTEN_KEEPALIVE
 int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, char *value, int len)
 {
   z_put_options_t options = z_put_options_default();
@@ -127,9 +169,9 @@ void spin(z_owned_session_t *s)
 EMSCRIPTEN_KEEPALIVE
 void close_session(z_owned_session_t *s) { z_close(z_move(*s)); }
 
+EMSCRIPTEN_KEEPALIVE
 void wrapping_sub_callback(const z_sample_t *sample, void *ctx)
 {
-
   int id = (int)ctx;
   char *data = NULL;
   data = (char *)z_malloc((sample->payload.len + 1) * sizeof(char));
@@ -162,6 +204,7 @@ void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
 EMSCRIPTEN_KEEPALIVE
 void z_wasm_free(void *ptr) { z_free(ptr); }
 
+EMSCRIPTEN_KEEPALIVE
 void *call_js_function(void *js_callback_id)
 {
   int js_callback = (int)js_callback_id;
