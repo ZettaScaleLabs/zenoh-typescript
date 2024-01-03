@@ -20,22 +20,23 @@ async function main() {
     // Test push
     const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.0.105:7447"))
 
-    // const keyexpr = await session.declare_ke("demo/ts/test");
+    const keyexpr = await session.declare_ke("demo/ts/test");
 
-    // executeAsync(async function () {
-    //     var c = 0;
-    //     while (true) {
-    //         var pub_res = await session.put(keyexpr, `Hello for WASM! [${c}]`);
-    //         console.log("result", c, " of pub on zenoh: ", pub_res);
-    //         await sleep(1000);
-    //         c++;
-    //     }
-    // });
-
-    const result = await session.sub("demo/ts/test_server/", (...args: any) => {
-        console.log("Hello, here are your args: ", args)
-
+    executeAsync(async function () {
+        var c = 0;
+        while (true) {
+            
+            
+            var pub_res = await session.put(keyexpr, `Hello for WASM! [${c}]`);
+            console.log("result", c, " of pub on zenoh: ", pub_res);
+            await sleep(1000);
+            c++;
+        }
     });
+
+    // const result = await session.sub("demo/ts/test_server/", (...args: any) => {
+    //     console.log("Hello, here are your args: ", args)
+    // });
 
     // session.do_function_callback();
 
@@ -55,9 +56,8 @@ async function main() {
     // 	res.send("Hello world")
     // })
     // app.listen(3000)
-
-
 }
+
 main().then(() => console.log("Done")).catch(e => {
     console.log(e)
     throw e

@@ -343,8 +343,9 @@ export class Session {
         Session.registry.unregister(this)
     }
 
-    // TODO make value intovalue 
+    // Keyexpr can either be something that can be converted into a keyexpr or a pointer to a Keyexpr
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
+
         const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
         const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, val, val.length);
@@ -356,7 +357,7 @@ export class Session {
     }
 
     // Returns a pointer to the key expression in Zenoh Memory 
-    async declare_ke(keyexpr: string): Promise<number> {
+    async declare_ke(keyexpr: string): Promise<KeyExpr> {
         console.log("JS declare_ke ", keyexpr);
 
         const Zenoh: Module = await zenoh();
@@ -365,29 +366,27 @@ export class Session {
 
         const ret = await Zenoh.api._zw_declare_ke(this.__ptr, pke);
 
-        // const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
-        // const payload = val.payload;
-        // const ret = Zenoh._zw_put(this.__ptr, key, payload.byteOffset, payload.length);
-
         if (ret < 0) {
             throw "An error occured while Declaring Key Expr"
         }
-        return ret;
+
+        const key_expr = new KeyExpr(ret);
+        return key_expr;
     }
 
-    // TODO implement get
-    async get(query: Query, callback: () => void): Promise<number> {
+    // TODO Implement get
+    async get(into_selector: IntoSelector, query: Query, callback: () => void): Promise<number> {
 
-        throw "Unimplemented"
-        const Zenoh: Module = await zenoh();
-        // const pke = await this.declare_ke(keyexpr);
-        // const callback_ptr: number = Zenoh.registerJSCallback(callback);
-        // const ret = await Zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
+        const [Zenoh, selector] = await Promise.all([zenoh(), into_selector[intoSelector]()]);
 
-        // if (ret < 0) {
-        //     throw "An error occured while getting"
-        // }
-        // return ret
+        const pke = selector.key_expr.__ptr;
+        const callback_ptr: number = Zenoh.registerJSCallback(callback);
+        const ret = await Zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
+
+        if (ret < 0) {
+            throw "An error occured while getting"
+        }
+        return ret
     }
 
 
@@ -412,7 +411,7 @@ export class Session {
         // 2. search for Symbol `intoKeyExpr` inside the keyexpr object
         // 3. call() the function found for the intoKeyExpr inside the keyexpr object 
         // keyexpr[intoKeyExpr]()
-        const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+        // const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
         if (typeof (handler) === "function") {
             throw "Unimplemented"

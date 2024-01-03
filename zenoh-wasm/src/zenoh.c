@@ -15,8 +15,8 @@
 #include "zenoh-pico.h"
 #include "zenoh-pico/api/types.h"
 #include "zenoh-pico/system/platform.h"
+#include "zenoh-pico/api/macros.h"
 #include <emscripten/emscripten.h>
-
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -27,6 +27,21 @@
 extern void call_js_callback(int, uint8_t *, int);
 extern void remove_js_callback(void *);
 extern void test_call_js_callback();
+
+EMSCRIPTEN_KEEPALIVE
+void wrapping_sub_callback(const z_sample_t *sample, void *ctx)
+{
+  int id = (int)ctx;
+  char *data = NULL;
+  data = (char *)z_malloc((sample->payload.len + 1) * sizeof(char));
+  memcpy(data, sample->payload.start, sample->payload.len);
+  data[sample->payload.len] = '\0';
+  printf("[wrapping_sub_callback] [%p] Data: %s\n", data, data);
+  call_js_callback(id, data, sample->payload.len);
+  // If call_js_callback proxy to JS becomes async then the free has to be done
+  // in call_js_callback
+  z_free(data);
+}
 
 EMSCRIPTEN_KEEPALIVE
 void test_sleep(int ms) { sleep(ms); }
@@ -124,7 +139,7 @@ void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
 EMSCRIPTEN_KEEPALIVE
 void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
 {
-  return z_drop(ke);
+  return z_drop(keyexpr);
 }
 
 // int8_t z_get(
@@ -137,15 +152,19 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
 
 // TODO expose this in Typescript
 EMSCRIPTEN_KEEPALIVE
-int zw_get(z_owned_session_t *s, z_owned_keyexpr_t *ke, const char *parameters, int js_callback)
+int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
+           z_owned_keyexpr_t *ke,
+           // z_session_t *s,
+           //  z_keyexpr_t *ke,
+           const char *parameters,
+           int js_callback)
 {
-  z_put_options_t options = z_put_options_default();
-  options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
+  z_get_options_t options = z_get_options_default();
 
   z_owned_closure_sample_t callback =
       z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
 
-  int8_t get = z_get(s, ke, parameters, z_move(callback), options);
+  int8_t get = z_get(z_loan(*s), z_loan(*ke), parameters, z_move(callback), &options);
 
   return get;
 }
@@ -168,21 +187,6 @@ void spin(z_owned_session_t *s)
 
 EMSCRIPTEN_KEEPALIVE
 void close_session(z_owned_session_t *s) { z_close(z_move(*s)); }
-
-EMSCRIPTEN_KEEPALIVE
-void wrapping_sub_callback(const z_sample_t *sample, void *ctx)
-{
-  int id = (int)ctx;
-  char *data = NULL;
-  data = (char *)z_malloc((sample->payload.len + 1) * sizeof(char));
-  memcpy(data, sample->payload.start, sample->payload.len);
-  data[sample->payload.len] = '\0';
-  printf("[wrapping_sub_callback] [%p] Data: %s\n", data, data);
-  call_js_callback(id, data, sample->payload.len);
-  // If call_js_callback proxy to JS becomes async then the free has to be done
-  // in call_js_callback
-  z_free(data);
-}
 
 EMSCRIPTEN_KEEPALIVE
 void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
