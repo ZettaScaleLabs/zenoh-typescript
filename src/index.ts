@@ -114,6 +114,15 @@ export class Value {
     }
 
     [intoValue](): Promise<Value> { return Promise.resolve(this) }
+
+    empty(): Value {
+        return new Value(new Uint8Array());
+    }
+
+    new(payload: Uint8Array): Value {
+        return new Value(payload);
+    }
+
 }
 
 export class KeyExpr implements IntoSelector {

@@ -25,14 +25,24 @@ async function main() {
     executeAsync(async function () {
         var c = 0;
         while (true) {
-            
-            
-            var pub_res = await session.put(keyexpr, `Hello for WASM! [${c}]`);
+
+            var enc = new TextEncoder(); // always utf-8
+            let uint8arr = enc.encode(`Hello for WASM! [${c}]`);
+            let value = new zenoh.Value(uint8arr);
+
+            var pub_res = await session.put(keyexpr, value);
             console.log("result", c, " of pub on zenoh: ", pub_res);
             await sleep(1000);
             c++;
         }
     });
+
+    // TODO TEST
+
+    // for Sub use:
+    // var enc = new TextDecoder("utf-8"); // Obviously use different 
+    // 
+    // let decoded_message: string = enc.decode(arr);
 
     // const result = await session.sub("demo/ts/test_server/", (...args: any) => {
     //     console.log("Hello, here are your args: ", args)
@@ -45,12 +55,12 @@ async function main() {
     //         throw "potat"
     //     }
     // }
-    
+
     // console.log("Opened session")
     // const sub = await session.declare_subscriber("hi", {
     // 	async onEvent(sample) { console.log("hi") },
     // });
-    
+
     // app.get("/declare", async (req, res) => {
     // 	await session.put("hi", "there");
     // 	res.send("Hello world")
