@@ -1,6 +1,6 @@
 {
   "name": "zenoh",
-  "license":"SEE LICENSE IN 'LICENSE'",
+  "license": "SEE LICENSE IN 'LICENSE'",
   "type": "module",
   "exports": {
     "require": "./cjs/index.js",
@@ -18,7 +18,8 @@
   "dependencies": {
     "cpx": "^1.5.0",
     "request": "^2.79.0",
-    "text-encoding": "^0.7.0"
+    "text-encoding": "^0.7.0",
+    "tslog": "^4.9.2"
   },
   "devDependencies": {
     "@types/node": "20.9.1",
@@ -30,23 +31,21 @@
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
-    "//   DEV   //": "DEV",
-    "//build:wasm:cjs": "npm run build:wasm && npm run build:cjs",
-    "//build:wasm:esm": "npm run build:wasm && npm run build:esm",
-    "//build:ts": "npm run build:esm",
-    "//  CLEAN   //": "",
+    "//  FULL BUILD   //": "",
+    "clean_build_package": "npm run clean && npm install && npm run build:wasm ",
+    "//  CLEAN        //": "",
     "clean": "rm -rf dist esm cjs && rm -rf node_modules",
-    "//  BUILD   //": "",
-    "build": "npm run build:wasm && npm run build:ts && npm run build:copy_zenoh_js && npm run build:copy_wasm",
-    "build:wasm": "bash zenoh-wasm/build.sh",
-    "build:ts": "npm run build:esm",
-    "//build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
+    "//  BUILD        //": "",
+    "build:wasm": "bash zenoh-wasm/build.sh && npm run build:ts",
+    "build:ts": "npm run build:esm && npm run build:copy_artifacts",
+    "build:copy_artifacts": "npm run build:copy_zenoh_js && npm run build:copy_wasm",
     "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json",
     "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"esm/wasm\" && cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"cjs/wasm\"",
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"./cjs\" && cpx -v \"src/**/*.wasm\" \"./esm\"",
+    "// TODO THINGS ": "",
+    "//build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
     "//   PACKAGE   //": "",
     "webpack": "webpack",
-    "example": "cd examples && npm run start",
-    "clean_build_package": "npm run clean && npm install && npm run build "
+    "example": "cd examples && npm run start"
   }
 }

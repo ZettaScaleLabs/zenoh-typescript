@@ -14,28 +14,54 @@
 
 import * as zenoh from "../../../esm"
 
+// import { Logger } from "tslog";
+//
+// import tslog from 'tslog'
+//
+
 const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 async function main() {
 
-    // Test push
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.0.105:7447"))
 
+    // const logger = new Logger({ name: "myLogger" });
+    // logger.silly("I am a silly log.");
+    // logger.trace("I am a trace log.");
+    // logger.debug("I am a debug log.");
+    // logger.info("I am an info log.");
+    // logger.warn("I am a warn log with a json object:", { foo: "bar" });
+    // logger.error("I am an error log.");
+    // logger.fatal(new Error("I am a pretty Error with a stacktrace."));
+    //
+    // console.log(tslog)
+    //
+
+
+    // Test push
+    console.log("main");
+    console.log("Before Zenoh");
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
+    console.log("After Zenoh");
     const keyexpr = await session.declare_ke("demo/ts/test");
+    console.log("TEST");
 
     executeAsync(async function () {
         var c = 0;
+
         while (true) {
+            console.log("Inside While");
 
             var enc = new TextEncoder(); // always utf-8
             let uint8arr = enc.encode(`Hello for WASM! [${c}]`);
             let value = new zenoh.Value(uint8arr);
-
+            console.log("Before put ");
             var pub_res = await session.put(keyexpr, value);
+
             console.log("result", c, " of pub on zenoh: ", pub_res);
             await sleep(1000);
             c++;
         }
     });
+    console.log("After Async");
 
     // TODO TEST
 

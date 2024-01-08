@@ -86,7 +86,7 @@ RUST_LOG=DEBUG zenohd -l ws/0.0.0.0:7447
 ```
 cargo run --release --example z_sub -- -k demo/ts/**
 ```
-  
+
 
 [zenoh]: https://github.com/eclipse-zenoh/zenoh
 

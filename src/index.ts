@@ -12,7 +12,11 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
+
 import Module from "./wasm/zenoh-wasm.js"
+
+// import { Logger, ILogObj } from "tslog";
+// const log: Logger<ILogObj> = new Logger();
 
 interface Module {
     stringToUTF8OnStack(x: string): any,
@@ -23,6 +27,13 @@ interface Module {
     api: any
 }
 let module2: Module;
+
+
+export const intoSelector = Symbol("intoSelector")
+
+export interface IntoSelector {
+    [intoSelector]: () => Promise<Selector>
+}
 
 export const intoKeyExpr = Symbol("intoKeyExpr")
 /**
@@ -61,7 +72,8 @@ export async function zenoh(): Promise<Module> {
                 _zw_make_ke: module2.cwrap("zw_make_ke", "number", ["number"], { async: true }),
                 _zw_delete_ke: module2.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
                 //
-                _zw_put: module2.cwrap("zw_put", "number", ["number", "number", "string", "number"], { async: true }),
+                //                               return    [int,       int,      number,   int]
+                _zw_put: module2.cwrap("zw_put", "number", ["number", "number", "number", "number"], { async: true }),
                 _zw_sub: module2.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
 
                 _test_call_js_callback: module2.cwrap("test_call_js_callback", "number", [], { async: true }),
@@ -221,16 +233,6 @@ export class Sample {
     }
 }
 
-// TODO Expose: 
-// Query: Has selector, and has a reply method that allows you to respond to query
-// Queryable: Can be Queried, will recieve queries, and sends back replies, 
-
-export const intoSelector = Symbol("intoSelector")
-
-export interface IntoSelector {
-    [intoSelector]: () => Promise<Selector>
-}
-
 declare global {
     // interface for KeyExpr?params to selector
     interface String extends IntoSelector { }
@@ -354,11 +356,16 @@ export class Session {
 
     // Keyexpr can either be something that can be converted into a keyexpr or a pointer to a Keyexpr
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
+        // TODO Fix Logging
+        // log.silly("I am a silly log.");
+        // log.trace("Start Put");
 
         const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
+        console.log("Inside Put");
         const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, val, val.length);
 
+        console.log("Value of return ", ret);
         if (ret < 0) {
             throw "An error occured while putting"
         }
