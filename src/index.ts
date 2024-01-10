@@ -324,7 +324,7 @@ export class Session {
         Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
     }
 
-    static async open(config: Promise<Config> | Config) {
+    static async open(config: Promise<Config> | Config) : Promise<Session> {
         const cfg = await config;
         const Zenoh: Module = await zenoh();
         console.log("Zenoh object", Zenoh);
