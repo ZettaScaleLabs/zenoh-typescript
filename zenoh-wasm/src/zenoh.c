@@ -170,11 +170,31 @@ int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
 }
 
 EMSCRIPTEN_KEEPALIVE
-int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, char *value, int len)
+int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, const uint8_t *value, int len)
 {
-  printf("Insider - Woop");
+  printf("------ Put ------\n");
+  const uint8_t *buffer = malloc(len);
+  printf("Pointer Loc : %p \n");
+  printf("Val at Ptr  : %p \n");
+
   z_put_options_t options = z_put_options_default();
   options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
+
+  // uint8_t hello[] = {104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100};
+  // z_zint_t length = sizeof(hello) / sizeof(hello[0]);
+  // return z_put(z_loan(*s), z_loan(*ke), (const uint8_t *)hello, length, &options);
+  // value
+  // len
+
+  printf("Here is the message:n\n");
+  printf("TEST %02X TEST ", *value);
+  
+  // for (int i = 0; i < n; i++)
+  // {
+  //   printf("%02X", buffer[i]);
+  // }
+
+  printf("\n------ END Put ------\n");
   return z_put(z_loan(*s), z_loan(*ke), (const uint8_t *)value, len, &options);
 }
 

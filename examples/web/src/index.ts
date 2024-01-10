@@ -51,7 +51,7 @@ async function main() {
             console.log("Inside While");
 
             var enc = new TextEncoder(); // always utf-8
-            let uint8arr = enc.encode(`Hello for WASM! [${c}]`);
+            let uint8arr = enc.encode(`ABCD [${c}]`);
             let value = new zenoh.Value(uint8arr);
             console.log("Before put ");
             var pub_res = await session.put(keyexpr, value);

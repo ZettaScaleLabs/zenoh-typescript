@@ -359,10 +359,14 @@ export class Session {
         // TODO Fix Logging
         // log.silly("I am a silly log.");
         // log.trace("Start Put");
+        
+        // const pke = Zenoh.stringToUTF8OnStack(keyexpr);
 
         const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
         console.log("Inside Put");
+        console.log(val);
+
         const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, val, val.length);
 
         console.log("Value of return ", ret);
