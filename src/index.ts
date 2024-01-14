@@ -398,20 +398,17 @@ export class Session {
 
         const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
-        console.log("Inside Put");
-        console.log("   JS side", val, val.length);
         // let numBytes: number = val.length() * val.payload.BYTES_PER_ELEMENT;
         let dataPtr = await Zenoh.api._z_malloc(val.length);
         // const dataOnHeap = new Uint8Array(Module.HEAPU8.buffer, dataPtr, numBytes);
-        Zenoh.stringToUTF8OnStack
-        // Module['HEAP8'];
-
+        
+        console.log("   JS side", val, val.length);
         // let ptr_1 = await Zenoh.api._z_malloc("24");
         // console.log("   JS side allocate", dataPtr);
         // let res = Zenoh.api.HEAPF64.set(new Float64Array([1,2,3]), ptr_1/8);
         // console.log("   JS side res",  res);
         // Module
-        let myTypedArray = new Uint8Array([8, 6, 4, 2]);
+        let myTypedArray = new Uint8Array([1,2,3,4]);
         Zenoh.writeArrayToMemory(myTypedArray, dataPtr);
 
         console.log("   JS TEST CALL",);

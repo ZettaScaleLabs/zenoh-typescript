@@ -143,18 +143,21 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
 }
 
 EMSCRIPTEN_KEEPALIVE
-void test_call(int pointer, int length)
+void test_call(char * pointer, int length)
 {
-  printf("      C test_call Ptr %p  \n", pointer);
-  printf("      C test_call Ptr %d \n", pointer);
+
+  // char arr[5] = {'a','b','c','d','e'};
+  printf("      C test_call Ptr     %p  \n", pointer);
+  printf("      C test_call Ptr num %d \n", pointer);
   printf("      C test_call Len %d  \n", length);
 
-  int days[length];
-  *days = (int) pointer;
+  char (*arr)[length];
+  arr = pointer;
   //
   int loop;
   for (loop = 0; loop < length; loop++)
-    printf("------------------------------ C loop: %d : %d \n", loop,days[loop]);
+    printf("------------------------------ C loop: %d : %d \n", loop, *arr[loop]);
+
 }
 
 // TODO expose this in Typescript
