@@ -12,7 +12,6 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
-
 import Module from "./wasm/zenoh-wasm.js"
 
 // import { Logger, ILogObj } from "tslog";
@@ -23,12 +22,13 @@ interface Module {
     _zw_default_config(clocator: any): any,
     onRuntimeInitialized(): Promise<any>,
     registerJSCallback(callback: any): number,
+    _test_call(ptr: number, length: number): number,
+    writeArrayToMemory(array: Uint8Array, buffer: number): any, // TODO: Returns None ? 
     cwrap(...arg: any): any,
     api: any
 }
-let module2: Module;
-
-
+let mod_instance: Module;
+// mod_instance.
 export const intoSelector = Symbol("intoSelector")
 
 export interface IntoSelector {
@@ -60,34 +60,38 @@ export interface IntoValue {
 }
 
 export async function zenoh(): Promise<Module> {
-    if (!module2) {
-        module2 = await Module();
-        module2.onRuntimeInitialized = async () => {
+    if (!mod_instance) {
+        mod_instance = await Module();
+        mod_instance.onRuntimeInitialized = async () => {
             const api = {
                 // Format :  module2.cwrap("c_func_name", return, func_args)
-                _zw_open_session: module2.cwrap("zw_open_session", "number", ["number"], { async: true }),
-                _zw_start_tasks: module2.cwrap("zw_start_tasks", "number", ["number"], { async: true }),
+                _zw_open_session: mod_instance.cwrap("zw_open_session", "number", ["number"], { async: true }),
+                _zw_start_tasks: mod_instance.cwrap("zw_start_tasks", "number", ["number"], { async: true }),
                 // KeyExpr
-                _zw_declare_ke: module2.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
-                _zw_make_ke: module2.cwrap("zw_make_ke", "number", ["number"], { async: true }),
-                _zw_delete_ke: module2.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
+                _zw_declare_ke: mod_instance.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
+                _zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
+                _zw_delete_ke: mod_instance.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
                 //
                 //                               return    [int,       int,      number,   int]
-                _zw_put: module2.cwrap("zw_put", "number", ["number", "number", "number", "number"], { async: true }),
-                _zw_sub: module2.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
+                _zw_put: mod_instance.cwrap("zw_put", "number", ["number", "number", "number", "number"], { async: true }),
+                _zw_sub: mod_instance.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
 
-                _test_call_js_callback: module2.cwrap("test_call_js_callback", "number", [], { async: true }),
-                _register_rm_callback: module2.cwrap("register_rm_callback", "void", ["number"], { async: true }),
+                _test_call_js_callback: mod_instance.cwrap("test_call_js_callback", "number", [], { async: true }),
+                _register_rm_callback: mod_instance.cwrap("register_rm_callback", "void", ["number"], { async: true }),
+                // To allocate memory
+                _z_malloc: mod_instance.cwrap("z_malloc", "number", ["number"], { async: true }),
                 // _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // TODO: add and expose zw_make_selector
 
+                HEAPF64: mod_instance.cwrap("HEAPF64", "HEAPF64", []),
+
             };
-            module2.api = api;
+            mod_instance.api = api;
 
         };
-        await module2.onRuntimeInitialized()
+        await mod_instance.onRuntimeInitialized()
     }
-    return module2
+    return mod_instance
 }
 
 /**
@@ -116,9 +120,19 @@ export class Config {
 // TODO : Add encoding prop later when we need it
 // Default to empty string
 export class Value {
+
     payload: Uint8Array
+
     constructor(payload: Uint8Array) {
         this.payload = payload
+    }
+
+    arr(): number {
+        return this.payload.length;
+    }
+
+    bytes_per_element(): number {
+        return this.payload.BYTES_PER_ELEMENT;
     }
 
     length(): number {
@@ -299,7 +313,6 @@ export class Selector {
     }
 }
 
-
 export class Query {
     selector: Selector
     async reply(sample: Sample): Promise<void> { }
@@ -324,7 +337,7 @@ export class Session {
         Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
     }
 
-    static async open(config: Promise<Config> | Config) : Promise<Session> {
+    static async open(config: Promise<Config> | Config): Promise<Session> {
         const cfg = await config;
         const Zenoh: Module = await zenoh();
         console.log("Zenoh object", Zenoh);
@@ -354,20 +367,73 @@ export class Session {
         Session.registry.unregister(this)
     }
 
+
+
+    //     var openFile = function (e) {
+    //     const fileReader = new FileReader();
+    //     fileReader.onload = (event) => {
+    //         const uint8Arr = new Uint8Array(event.target.result);
+    //         passToWasm(uint8Arr);
+    //     };
+    //     fileReader.readAsArrayBuffer(e.target.files[0]);
+    // };
+
+    // function passToWasm(uint8ArrData) {
+    //     // copying the uint8ArrData to the heap
+    //     const numBytes = uint8ArrData.length * uint8ArrData.BYTES_PER_ELEMENT;
+    //     const dataPtr = Module._malloc(numBytes);
+    //     const dataOnHeap = new Uint8Array(Module.HEAPU8.buffer, dataPtr, numBytes);
+    //     dataOnHeap.set(uint8ArrData);
+    //     // calling the Wasm function
+    //     const res = Module._image_input(dataOnHeap.byteOffset, uint8ArrData.length);
+    // }
+
+
     // Keyexpr can either be something that can be converted into a keyexpr or a pointer to a Keyexpr
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
         // TODO Fix Logging
         // log.silly("I am a silly log.");
         // log.trace("Start Put");
-        
-        // const pke = Zenoh.stringToUTF8OnStack(keyexpr);
 
-        const [Zenoh, key, val] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
+
+        const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
         console.log("Inside Put");
-        console.log(val);
+        console.log("   JS side", val, val.length);
+        // let numBytes: number = val.length() * val.payload.BYTES_PER_ELEMENT;
+        let dataPtr = await Zenoh.api._z_malloc(val.length);
+        // const dataOnHeap = new Uint8Array(Module.HEAPU8.buffer, dataPtr, numBytes);
+        Zenoh.stringToUTF8OnStack
+        // Module['HEAP8'];
+
+        // let ptr_1 = await Zenoh.api._z_malloc("24");
+        // console.log("   JS side allocate", dataPtr);
+        // let res = Zenoh.api.HEAPF64.set(new Float64Array([1,2,3]), ptr_1/8);
+        // console.log("   JS side res",  res);
+        // Module
+        let myTypedArray = new Uint8Array([8, 6, 4, 2]);
+        Zenoh.writeArrayToMemory(myTypedArray, dataPtr);
+
+        console.log("   JS TEST CALL",);
+        console.log("   JS PTR ", dataPtr);
+        console.log("   JS LEN ", myTypedArray.length);
+
+        // Zenoh._test_call(100);
+        // Zenoh._test_call(600);
+        Zenoh._test_call(dataPtr, myTypedArray.length);
+
+        console.log("   JS TEST CALL",);
+        // let myTypedArray = new Uint8Array([8,6,4,2]);
+        // var buf = Module._malloc(myTypedArray.length*myTypedArray.BYTES_PER_ELEMENT);
+
+        // Module.HEAPU8.set(myTypedArray, buf);
+        // Module.ccall('my_function', 'number', ['number'], [buf]);
+        // Module._free(buf);
 
         const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, val, val.length);
+
+        // Module.HEAPF64.set(new Float64Array([1,2,3]), offset/8);
+
 
         console.log("Value of return ", ret);
         if (ret < 0) {

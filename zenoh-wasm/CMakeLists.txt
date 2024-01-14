@@ -50,7 +50,8 @@ set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 --extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s TEXTDECODER=0 \
 -s ENVIRONMENT=web,worker \
--s EXPORTED_RUNTIME_METHODS=[\"registerJSCallback\",\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
+-s EXPORTED_RUNTIME_METHODS=[\"writeArrayToMemory\",\"_malloc\",\"HEAPU8\",\"HEAPU64\",\"getValue\",\"setValue\",\"registerJSCallback\",\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
+-s EXPORTED_FUNCTIONS=_test_call \
 -s PTHREAD_POOL_SIZE=16 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
 -s ALLOW_TABLE_GROWTH \

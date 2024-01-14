@@ -142,13 +142,20 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
   return z_drop(keyexpr);
 }
 
-// int8_t z_get(
-//  z_session_t zs,
-//  z_keyexpr_t keyexpr,
-//  const char *parameters,
-//  z_owned_closure_reply_t *callback,
-//  const z_get_options_t *options
-// );
+EMSCRIPTEN_KEEPALIVE
+void test_call(int pointer, int length)
+{
+  printf("      C test_call Ptr %p  \n", pointer);
+  printf("      C test_call Ptr %d \n", pointer);
+  printf("      C test_call Len %d  \n", length);
+
+  int days[length];
+  *days = (int) pointer;
+  //
+  int loop;
+  for (loop = 0; loop < length; loop++)
+    printf("------------------------------ C loop: %d : %d \n", loop,days[loop]);
+}
 
 // TODO expose this in Typescript
 EMSCRIPTEN_KEEPALIVE
@@ -174,8 +181,10 @@ int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, const uint8_t *value, in
 {
   printf("------ Put ------\n");
   const uint8_t *buffer = malloc(len);
-  printf("Pointer Loc : %p \n");
-  printf("Val at Ptr  : %p \n");
+  printf("    C Pointer Loc : %p \n", value);
+  printf("    C Val Num at Ptr  : %d \n", value);
+  printf("    C Val Let at Ptr  : %s \n", value);
+  printf("    C len at Ptr  : %d \n", len);
 
   z_put_options_t options = z_put_options_default();
   options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
@@ -183,12 +192,10 @@ int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, const uint8_t *value, in
   // uint8_t hello[] = {104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100};
   // z_zint_t length = sizeof(hello) / sizeof(hello[0]);
   // return z_put(z_loan(*s), z_loan(*ke), (const uint8_t *)hello, length, &options);
-  // value
-  // len
 
   printf("Here is the message:n\n");
   printf("TEST %02X TEST ", *value);
-  
+
   // for (int i = 0; i < n; i++)
   // {
   //   printf("%02X", buffer[i]);
