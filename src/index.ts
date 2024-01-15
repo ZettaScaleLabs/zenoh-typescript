@@ -373,21 +373,13 @@ export class Session {
         // log.trace("Start Put");
 
         const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
-
-        // TEST
-        // let dataPtr = await Zenoh.api._z_malloc(val.length);
-        // Module
-        // let myTypedArray = new Uint8Array([55,2,3,4]);
-        // Zenoh.writeArrayToMemory(myTypedArray, dataPtr);
-        // TEST
-        // console.log("   JS PTR ", dataPtr);
-        // console.log("   JS LEN ", myTypedArray.length);
-        console.log("   JS side", val, val.length());
-        let dataPtr = await Zenoh.api._z_malloc(val.length);
+        // Need to write the bytes to WASM Memory first, 
+        // Then call _zw_put with pointer and length
+        // Writing the bytes as a [u8] of length 
+        let dataPtr = await Zenoh.api._z_malloc(val.length());
         Zenoh.writeArrayToMemory(val.payload, dataPtr);
-
         const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, dataPtr, val.length());
-        
+
         console.log("Value of return ", ret);
         if (ret < 0) {
             throw "An error occured while putting"

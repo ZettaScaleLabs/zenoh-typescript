@@ -182,17 +182,12 @@ int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
 }
 
 EMSCRIPTEN_KEEPALIVE
-// int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, uint8_t *value, int len)
 int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, char *value, int len)
 {
-  printf("------ Put ------\n");
   z_put_options_t options = z_put_options_default();
   options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
-  
   return z_put(z_loan(*s), z_loan(*ke), value, len, &options);
 }
-
-
 
 EMSCRIPTEN_KEEPALIVE
 void spin(z_owned_session_t *s)

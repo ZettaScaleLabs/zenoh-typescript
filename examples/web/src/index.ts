@@ -31,10 +31,7 @@ async function main() {
     // logger.warn("I am a warn log with a json object:", { foo: "bar" });
     // logger.error("I am an error log.");
     // logger.fatal(new Error("I am a pretty Error with a stacktrace."));
-    //
     // console.log(tslog)
-    //
-
 
     // Test push
     console.log("main");
@@ -48,7 +45,7 @@ async function main() {
     executeAsync(async function () {
         var c = 0;
 
-        while (c<10000) {
+        while (c < 100) {
             console.log("Inside While");
 
             let enc: TextEncoder = new TextEncoder(); // always utf-8
@@ -61,7 +58,7 @@ async function main() {
             var pub_res = await session.put(keyexpr, value);
 
             console.log("result", c, " of pub on zenoh: ", pub_res);
-            await sleep(1);
+            // await sleep(1);
             c++;
         }
     });
