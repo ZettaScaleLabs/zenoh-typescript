@@ -142,6 +142,8 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
   return z_drop(keyexpr);
 }
 
+
+// TODO: REMOVE
 EMSCRIPTEN_KEEPALIVE
 void test_call(char *pointer, int length)
 {

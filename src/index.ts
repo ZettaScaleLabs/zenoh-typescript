@@ -339,15 +339,12 @@ export class Session {
     static async open(config: Promise<Config> | Config): Promise<Session> {
         const cfg = await config;
         const Zenoh: Module = await zenoh();
-        console.log("Zenoh object", Zenoh);
-        console.log("Zenoh.api object", Zenoh.api);
 
         if (!cfg.check()) {
             throw "Invalid config passed: it may have been already consumed by opening another session."
         }
 
         const ptr = await Zenoh.api._zw_open_session(cfg.__ptr);
-        console.log("Open Session ? ", ptr);
 
         cfg.__ptr = 0;
         if (ptr === 0) {
@@ -380,7 +377,6 @@ export class Session {
         Zenoh.writeArrayToMemory(val.payload, dataPtr);
         const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, dataPtr, val.length());
 
-        console.log("Value of return ", ret);
         if (ret < 0) {
             throw "An error occured while putting"
         }
