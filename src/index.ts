@@ -64,15 +64,14 @@ export async function zenoh(): Promise<Module> {
         mod_instance = await Module();
         mod_instance.onRuntimeInitialized = async () => {
             const api = {
-                // Format :  module2.cwrap("c_func_name", return, func_args)
                 _zw_open_session: mod_instance.cwrap("zw_open_session", "number", ["number"], { async: true }),
                 _zw_start_tasks: mod_instance.cwrap("zw_start_tasks", "number", ["number"], { async: true }),
-                // KeyExpr
                 _zw_declare_ke: mod_instance.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
                 _zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
                 _zw_delete_ke: mod_instance.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
                 //
-                //                               return    [int,       int,      number,   int]
+                //                                    return    [int,       int,      number,   int    ]
+                //                                    return    [Session  , KeyExpr,  val_ptr,  len    ]
                 _zw_put: mod_instance.cwrap("zw_put", "number", ["number", "number", "number", "number"], { async: true }),
                 _zw_sub: mod_instance.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
 
@@ -367,71 +366,28 @@ export class Session {
         Session.registry.unregister(this)
     }
 
-
-
-    //     var openFile = function (e) {
-    //     const fileReader = new FileReader();
-    //     fileReader.onload = (event) => {
-    //         const uint8Arr = new Uint8Array(event.target.result);
-    //         passToWasm(uint8Arr);
-    //     };
-    //     fileReader.readAsArrayBuffer(e.target.files[0]);
-    // };
-
-    // function passToWasm(uint8ArrData) {
-    //     // copying the uint8ArrData to the heap
-    //     const numBytes = uint8ArrData.length * uint8ArrData.BYTES_PER_ELEMENT;
-    //     const dataPtr = Module._malloc(numBytes);
-    //     const dataOnHeap = new Uint8Array(Module.HEAPU8.buffer, dataPtr, numBytes);
-    //     dataOnHeap.set(uint8ArrData);
-    //     // calling the Wasm function
-    //     const res = Module._image_input(dataOnHeap.byteOffset, uint8ArrData.length);
-    // }
-
-
     // Keyexpr can either be something that can be converted into a keyexpr or a pointer to a Keyexpr
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
         // TODO Fix Logging
         // log.silly("I am a silly log.");
         // log.trace("Start Put");
 
-
         const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
-        // let numBytes: number = val.length() * val.payload.BYTES_PER_ELEMENT;
-        let dataPtr = await Zenoh.api._z_malloc(val.length);
-        // const dataOnHeap = new Uint8Array(Module.HEAPU8.buffer, dataPtr, numBytes);
-        
-        console.log("   JS side", val, val.length);
-        // let ptr_1 = await Zenoh.api._z_malloc("24");
-        // console.log("   JS side allocate", dataPtr);
-        // let res = Zenoh.api.HEAPF64.set(new Float64Array([1,2,3]), ptr_1/8);
-        // console.log("   JS side res",  res);
+        // TEST
+        // let dataPtr = await Zenoh.api._z_malloc(val.length);
         // Module
-        let myTypedArray = new Uint8Array([1,2,3,4]);
-        Zenoh.writeArrayToMemory(myTypedArray, dataPtr);
+        // let myTypedArray = new Uint8Array([55,2,3,4]);
+        // Zenoh.writeArrayToMemory(myTypedArray, dataPtr);
+        // TEST
+        // console.log("   JS PTR ", dataPtr);
+        // console.log("   JS LEN ", myTypedArray.length);
+        console.log("   JS side", val, val.length());
+        let dataPtr = await Zenoh.api._z_malloc(val.length);
+        Zenoh.writeArrayToMemory(val.payload, dataPtr);
 
-        console.log("   JS TEST CALL",);
-        console.log("   JS PTR ", dataPtr);
-        console.log("   JS LEN ", myTypedArray.length);
-
-        // Zenoh._test_call(100);
-        // Zenoh._test_call(600);
-        Zenoh._test_call(dataPtr, myTypedArray.length);
-
-        console.log("   JS TEST CALL",);
-        // let myTypedArray = new Uint8Array([8,6,4,2]);
-        // var buf = Module._malloc(myTypedArray.length*myTypedArray.BYTES_PER_ELEMENT);
-
-        // Module.HEAPU8.set(myTypedArray, buf);
-        // Module.ccall('my_function', 'number', ['number'], [buf]);
-        // Module._free(buf);
-
-        const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, val, val.length);
-
-        // Module.HEAPF64.set(new Float64Array([1,2,3]), offset/8);
-
-
+        const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, dataPtr, val.length());
+        
         console.log("Value of return ", ret);
         if (ret < 0) {
             throw "An error occured while putting"

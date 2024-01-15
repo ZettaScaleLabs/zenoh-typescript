@@ -143,21 +143,23 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
 }
 
 EMSCRIPTEN_KEEPALIVE
-void test_call(char * pointer, int length)
+void test_call(char *pointer, int length)
 {
+  printf("------ test_call ------\n");
+  // printf("      C test_call Ptr     %p  \n", pointer);
+  // printf("      C test_call Ptr num %d \n", pointer);
+  // printf("      C test_call Len %d  \n", length);
 
-  // char arr[5] = {'a','b','c','d','e'};
-  printf("      C test_call Ptr     %p  \n", pointer);
-  printf("      C test_call Ptr num %d \n", pointer);
-  printf("      C test_call Len %d  \n", length);
+  int length2 = sizeof(length) / sizeof(char);
 
-  char (*arr)[length];
-  arr = pointer;
-  //
   int loop;
-  for (loop = 0; loop < length; loop++)
-    printf("------------------------------ C loop: %d : %d \n", loop, *arr[loop]);
+  for (loop = 0; loop < length2; loop++)
+  {
+    printf("C loop: %d : %d \n", loop, pointer[loop]);
+  }
+  printf("------ END test_call ------\n");
 
+  return;
 }
 
 // TODO expose this in Typescript
@@ -180,33 +182,17 @@ int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
 }
 
 EMSCRIPTEN_KEEPALIVE
-int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, const uint8_t *value, int len)
+// int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, uint8_t *value, int len)
+int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, char *value, int len)
 {
   printf("------ Put ------\n");
-  const uint8_t *buffer = malloc(len);
-  printf("    C Pointer Loc : %p \n", value);
-  printf("    C Val Num at Ptr  : %d \n", value);
-  printf("    C Val Let at Ptr  : %s \n", value);
-  printf("    C len at Ptr  : %d \n", len);
-
   z_put_options_t options = z_put_options_default();
   options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
-
-  // uint8_t hello[] = {104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100};
-  // z_zint_t length = sizeof(hello) / sizeof(hello[0]);
-  // return z_put(z_loan(*s), z_loan(*ke), (const uint8_t *)hello, length, &options);
-
-  printf("Here is the message:n\n");
-  printf("TEST %02X TEST ", *value);
-
-  // for (int i = 0; i < n; i++)
-  // {
-  //   printf("%02X", buffer[i]);
-  // }
-
-  printf("\n------ END Put ------\n");
-  return z_put(z_loan(*s), z_loan(*ke), (const uint8_t *)value, len, &options);
+  
+  return z_put(z_loan(*s), z_loan(*ke), value, len, &options);
 }
+
+
 
 EMSCRIPTEN_KEEPALIVE
 void spin(z_owned_session_t *s)

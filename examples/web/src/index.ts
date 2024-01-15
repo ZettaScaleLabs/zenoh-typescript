@@ -39,8 +39,8 @@ async function main() {
     // Test push
     console.log("main");
     console.log("Before Zenoh");
-    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.148:7447"))
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
+    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.148:7447"))
     console.log("After Zenoh");
     const keyexpr = await session.declare_ke("demo/ts/test");
     console.log("TEST");
@@ -48,17 +48,20 @@ async function main() {
     executeAsync(async function () {
         var c = 0;
 
-        while (true) {
+        while (c<10000) {
             console.log("Inside While");
 
             let enc: TextEncoder = new TextEncoder(); // always utf-8
+            // let uint8arr: Uint8Array = enc.encode("ABC");
             let uint8arr: Uint8Array = enc.encode(`ABCD${c}`);
+            console.log(uint8arr);
+
             let value: zenoh.Value = new zenoh.Value(uint8arr);
             console.log("Before put ");
             var pub_res = await session.put(keyexpr, value);
 
             console.log("result", c, " of pub on zenoh: ", pub_res);
-            await sleep(1000);
+            await sleep(1);
             c++;
         }
     });
