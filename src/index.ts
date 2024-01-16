@@ -17,6 +17,7 @@ import Module from "./wasm/zenoh-wasm.js"
 // import { Logger, ILogObj } from "tslog";
 // const log: Logger<ILogObj> = new Logger();
 
+// TODO : Clean up Any's with proper types
 interface Module {
     stringToUTF8OnStack(x: string): any,
     _zw_default_config(clocator: any): any,
@@ -27,8 +28,9 @@ interface Module {
     cwrap(...arg: any): any,
     api: any
 }
+
 let mod_instance: Module;
-// mod_instance.
+
 export const intoSelector = Symbol("intoSelector")
 
 export interface IntoSelector {
@@ -40,7 +42,7 @@ export const intoKeyExpr = Symbol("intoKeyExpr")
  * Something that may be turned into a Key Expression.
  * 
  * Notable default implementers:
- * - string
+ * - String
  * - KeyExpr
  */
 export interface IntoKeyExpr {
@@ -48,6 +50,8 @@ export interface IntoKeyExpr {
 }
 
 export const intoValue = Symbol("intoValue")
+
+
 /**
  * Something that may be turned into a Value.
  * 
@@ -81,8 +85,6 @@ export async function zenoh(): Promise<Module> {
                 _z_malloc: mod_instance.cwrap("z_malloc", "number", ["number"], { async: true }),
                 // _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // TODO: add and expose zw_make_selector
-
-                HEAPF64: mod_instance.cwrap("HEAPF64", "HEAPF64", []),
 
             };
             mod_instance.api = api;
@@ -214,6 +216,7 @@ Object.defineProperty(Function.prototype, "onClose", function (this: Function) {
 //     interface Uint8Array extends IntoValue { }
 // }
 
+
 export class Subscriber<Receiver> {
     __sub_ptr: number
     receiver: Receiver
@@ -230,6 +233,18 @@ export interface Handler<Event, Receiver> {
     receiver?: Receiver
 }
 
+/**
+ * Something that may be turned into a Handler.
+ * 
+ * Notable default implementers: 
+ *  -   None
+ */
+export const intoHandler = Symbol("intoHandler")
+
+export interface IntoHandler<Event, Receiver> {
+    [intoHandler]: () => Promise<Handler<Event, Receiver>>
+}
+
 // TODO : Something that has been sent through Put or delete
 // Samples Are publication events
 export class Sample {
@@ -244,6 +259,9 @@ export class Sample {
         this.value = value
         this.kind = kind
     }
+
+    // static new(): Promise<Sample>;
+
 }
 
 declare global {
@@ -430,15 +448,56 @@ export class Session {
         return 10
     }
 
-    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
+    // 
+    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
+    // 
     async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
-    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: Handler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
+    // 
+    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
 
         // 1. select keyexpr object
         // 2. search for Symbol `intoKeyExpr` inside the keyexpr object
         // 3. call() the function found for the intoKeyExpr inside the keyexpr object 
         // keyexpr[intoKeyExpr]()
-        // const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+
+        const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+
+        let onEvent: (event: Sample) => Promise<void>;
+        let onClose: () => Promise<void>;
+        let receiver: Receiver | void;
+
+        if (intoHandler in handler) {
+            const h = await handler[intoHandler]();
+            onEvent = h.onEvent;
+            // ??  check if h.onClose is nullish, 
+            // if it is nullish (null | undefined) return second operand
+            // else return first operand
+            onClose = h.onClose ?? (async () => { });
+            receiver = h.receiver;
+        } else {
+            onEvent = <((sample: Sample) => Promise<void>)>(handler);
+            onClose = <(() => Promise<void>)>(async () => { });
+            receiver = (() => { })();
+        }
+
+        // TODO : Continue from here 
+        // let sample_call_back = (
+        //     // number is function pointer
+        //     c_drop_fn: number
+        //     // number is function pointer
+        //     c_drop_ctx: number
+        //     // number is function pointer
+        //     c_sample_params: number
+        // ) ();
+
+        const on_event_ptr: number = Zenoh.registerJSCallback(onEvent);
+        const on_close_ptr: number = Zenoh.registerJSCallback(onClose);
+
+        // TODO : Remove console.logs() - Put here to appease the TS compiler for unused symbols
+        console.log(key);
+        console.log(receiver);
+        console.log(on_event_ptr);
+        console.log(on_close_ptr);
 
         if (typeof (handler) === "function") {
             throw "Unimplemented"
@@ -446,12 +505,10 @@ export class Session {
             throw "Unimplemented"
         }
 
-        // TODO - Continue from here 
         // Implement Callback to Handler / Reciever Abstraction 
         // const callback_ptr: number = Zenoh.registerJSCallback(callback);
 
         // const pke = await this.declare_ke(keyexpr);
-
 
         // const ret = await Zenoh.api._zw_sub(this.__ptr, key, callback_ptr);
 

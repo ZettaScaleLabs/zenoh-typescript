@@ -22,17 +22,6 @@ import * as zenoh from "../../../esm"
 const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 async function main() {
 
-
-    // const logger = new Logger({ name: "myLogger" });
-    // logger.silly("I am a silly log.");
-    // logger.trace("I am a trace log.");
-    // logger.debug("I am a debug log.");
-    // logger.info("I am an info log.");
-    // logger.warn("I am a warn log with a json object:", { foo: "bar" });
-    // logger.error("I am an error log.");
-    // logger.fatal(new Error("I am a pretty Error with a stacktrace."));
-    // console.log(tslog)
-
     // Test push
     console.log("main");
     const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
@@ -42,13 +31,13 @@ async function main() {
     console.log("Before Async");
     executeAsync(async function () {
         var c = 0;
-        while (c < 100) {
+        while (c < 10000) {
             let enc: TextEncoder = new TextEncoder(); // always utf-8
-            let uint8arr: Uint8Array = enc.encode(`ABCD${c}`);
+            let uint8arr: Uint8Array = enc.encode(`ABCDEFG${c}`);
             let value: zenoh.Value = new zenoh.Value(uint8arr);
             console.log("Put With Value ", uint8arr);
             var pub_res = await session.put(keyexpr, value);
-            await sleep(100);
+            await sleep(10);
             c++;
         }
     });
@@ -60,6 +49,10 @@ async function main() {
     // var enc = new TextDecoder("utf-8"); // Obviously use different 
     // 
     // let decoded_message: string = enc.decode(arr);
+
+    let myhandler : Handler<Event, Receiver> = {
+
+    };
 
     // const result = await session.sub("demo/ts/test_server/", (...args: any) => {
     //     console.log("Hello, here are your args: ", args)

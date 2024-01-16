@@ -137,6 +137,17 @@ void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
 }
 
 EMSCRIPTEN_KEEPALIVE
+void *zw_subscriber(const z_owned_session_t *s, const z_owned_keyexpr_t *keyexpr)
+{
+    
+
+}
+
+
+
+
+
+EMSCRIPTEN_KEEPALIVE
 void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
 {
   return z_drop(keyexpr);

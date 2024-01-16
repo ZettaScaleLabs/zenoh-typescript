@@ -46,11 +46,12 @@ set(WASM_BUILD_FLAGS " \
 -D Z_MULTI_THREAD=1")
 
 # func-wrapper Adds a JS-Callback to be passed to C to be used. 
+# TODO more functions exposed via Exported_functions
 set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 --extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s TEXTDECODER=0 \
 -s ENVIRONMENT=web,worker \
--s EXPORTED_RUNTIME_METHODS=[\"writeArrayToMemory\",\"_malloc\",\"HEAPU8\",\"HEAPU64\",\"getValue\",\"setValue\",\"registerJSCallback\",\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
+-s EXPORTED_RUNTIME_METHODS=[\"writeArrayToMemory\",\"getValue\",\"setValue\",\"registerJSCallback\",\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
 -s EXPORTED_FUNCTIONS=_test_call \
 -s PTHREAD_POOL_SIZE=16 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
