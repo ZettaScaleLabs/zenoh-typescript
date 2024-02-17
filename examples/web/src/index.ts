@@ -23,15 +23,17 @@ const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 async function main() {
 
     // Test push
-    console.log("main");
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
-    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.148:7447"))
+    console.log("Start Openning Zenoh Session");
+    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
+    
     const keyexpr = await session.declare_ke("demo/ts/test");
+    
+    console.log("Begin Put Values");
 
-    console.log("Before Async");
     executeAsync(async function () {
         var c = 0;
-        while (c < 10000) {
+        while (c < 10) {
             let enc: TextEncoder = new TextEncoder(); // always utf-8
             let uint8arr: Uint8Array = enc.encode(`ABCDEFG${c}`);
             let value: zenoh.Value = new zenoh.Value(uint8arr);
@@ -41,18 +43,24 @@ async function main() {
             c++;
         }
     });
+    console.log("Begin Sub Values");
 
+    // 
+    console.log("BEGIN DEV Tests ");
 
-    // TODO TEST
+    await zenoh.DEV.call_functions_CPP_style();
+    await zenoh.DEV.call_CPP_function_with_TS_Callback();
+
+    console.log("END DEV Tests ");
 
     // for Sub use:
     // var enc = new TextDecoder("utf-8"); // Obviously use different 
     // 
     // let decoded_message: string = enc.decode(arr);
 
-    let myhandler : Handler<Event, Receiver> = {
+    // let myhandler : Handler<Event, Receiver> = {
 
-    };
+    // };
 
     // const result = await session.sub("demo/ts/test_server/", (...args: any) => {
     //     console.log("Hello, here are your args: ", args)

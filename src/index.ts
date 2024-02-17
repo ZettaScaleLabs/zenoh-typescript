@@ -13,6 +13,7 @@
 //
 
 import Module from "./wasm/zenoh-wasm.js"
+// TODO PROPER LOGGING
 
 // import { Logger, ILogObj } from "tslog";
 // const log: Logger<ILogObj> = new Logger();
@@ -20,12 +21,24 @@ import Module from "./wasm/zenoh-wasm.js"
 // TODO : Clean up Any's with proper types
 interface Module {
     stringToUTF8OnStack(x: string): any,
-    _zw_default_config(clocator: any): any,
     onRuntimeInitialized(): Promise<any>,
+    // TODO Delete ?
     registerJSCallback(callback: any): number,
-    _test_call(ptr: number, length: number): number,
+    _zw_default_config(clocator: any): any,
+
     writeArrayToMemory(array: Uint8Array, buffer: number): any, // TODO: Returns None ? 
-    cwrap(...arg: any): any,
+    // Working Callbacks
+    cwrap(ident: string, returnType: string, argTypes: string[], opts: any): any,
+    cwrap(ident: string, returnType: string, argTypes: string[]): any,
+
+    // Add Function, Accepts any function and needs a function Signature, More info Belows
+    addFunction(func: (...arg: any) => any, sig: string): any,
+
+    // Async Callbacks with Emscripten Automagically
+    callback_test(...arg: any): any,
+    callback_test_async(...arg: any): any,
+    pass_arr_cpp(...arg: any): any,
+
     api: any
 }
 
@@ -83,6 +96,7 @@ export async function zenoh(): Promise<Module> {
                 _register_rm_callback: mod_instance.cwrap("register_rm_callback", "void", ["number"], { async: true }),
                 // To allocate memory
                 _z_malloc: mod_instance.cwrap("z_malloc", "number", ["number"], { async: true }),
+                malloc: mod_instance.cwrap("malloc", "number", ["number"]),
                 // _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // TODO: add and expose zw_make_selector
 
@@ -480,16 +494,6 @@ export class Session {
             receiver = (() => { })();
         }
 
-        // TODO : Continue from here 
-        // let sample_call_back = (
-        //     // number is function pointer
-        //     c_drop_fn: number
-        //     // number is function pointer
-        //     c_drop_ctx: number
-        //     // number is function pointer
-        //     c_sample_params: number
-        // ) ();
-
         const on_event_ptr: number = Zenoh.registerJSCallback(onEvent);
         const on_close_ptr: number = Zenoh.registerJSCallback(onClose);
 
@@ -531,5 +535,61 @@ export class Session {
         }
         return ret
     }
-
 }
+
+
+function ts_callback(num: number): number {
+    console.log("    TS CALLBACK: ", num);
+    return 10 + num;
+}
+
+async function async_ts_callback(num: number): Promise<number> {
+    console.log("    ASYNC TS CALLBACK: ", num);
+    return 25 + num;
+}
+
+export class DEV {
+
+    static async call_functions_CPP_style(): Promise<number> {
+        console.log("Start : C++ method of Calling Functions");
+
+        const Zenoh: Module = await zenoh();
+
+        const arr = new Uint8Array([65, 66, 67, 68]);
+        var dataPtr = Zenoh.api.malloc(arr.length);
+        Zenoh.writeArrayToMemory(arr, dataPtr);
+
+        console.log("Zenoh.pass_arr_cpp();");
+        let ret_val = await Zenoh.pass_arr_cpp(arr);
+        console.log("ret_val: ", ret_val);
+
+        console.log("=====================================");
+        return 10;
+    }
+
+    static async call_CPP_function_with_TS_Callback() {
+
+        console.log("Start : C++ method of passing Callbacks to CPP code from TypeScript");
+
+        const Zenoh: Module = await zenoh();
+
+        console.log("Sync Callback");
+        let ret_val = Zenoh.callback_test(ts_callback);
+        console.log("Return Value: ", ret_val);
+
+        // CALLBACK ASYNC        
+        console.log("Async Callback");
+        let ret_val_async_1 = await Zenoh.callback_test_async(async_ts_callback);
+        console.log("Return Value: ", ret_val_async_1);
+
+        // CALLBACK ASYNC with promise
+        console.log("Async Callback");
+        let ret_val_async = await Zenoh.callback_test_async(async_ts_callback);
+        console.log("Return Value: ", ret_val_async);
+        console.log("=====================================");
+
+    }
+}
+
+
+

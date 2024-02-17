@@ -51,8 +51,8 @@ set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 --extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s TEXTDECODER=0 \
 -s ENVIRONMENT=web,worker \
--s EXPORTED_RUNTIME_METHODS=[\"writeArrayToMemory\",\"getValue\",\"setValue\",\"registerJSCallback\",\"onRuntimeInitialized\",\"cwrap\",\"UTF8ToString\",\"stringToUTF8OnStack\"] \
--s EXPORTED_FUNCTIONS=_test_call \
+-s EXPORTED_RUNTIME_METHODS=['writeArrayToMemory','getValue','setValue','registerJSCallback','onRuntimeInitialized','cwrap','UTF8ToString','stringToUTF8OnStack'] \
+-s EXPORTED_FUNCTIONS=['_malloc'] \
 -s PTHREAD_POOL_SIZE=16 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
 -s ALLOW_TABLE_GROWTH \
@@ -66,7 +66,8 @@ set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 -s EXPORT_NAME=zenohWasm \
 -s ALLOW_TABLE_GROWTH \
 -pthread \
--fPIC ")
+-fPIC \
+--bind")
 
 # Cannot Export Types for C files
 # Need to figure out how to emit types for C files
@@ -77,7 +78,7 @@ set(WASM_LINK_FLAGS "--js-library=${CMAKE_SOURCE_DIR}/func-wrapper.js \
 # set_source_files_properties(src/zenoh.c PROPERTIES COMPILE_FLAGS ${TYPE_GENERATION_FLAG})
 
 
-add_executable(zenoh-wasm src/zenoh.c)
+add_executable(zenoh-wasm src/zenoh.cpp)
 set_target_properties(zenoh-wasm PROPERTIES LINK_FLAGS ${WASM_LINK_FLAGS} )
 set_target_properties (zenoh-wasm PROPERTIES COMPILE_FLAGS ${WASM_BUILD_FLAGS})
 target_link_libraries(zenoh-wasm zenohpico)

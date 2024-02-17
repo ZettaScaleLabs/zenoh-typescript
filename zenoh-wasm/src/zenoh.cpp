@@ -17,31 +17,41 @@
 #include "zenoh-pico/system/platform.h"
 #include "zenoh-pico/api/macros.h"
 #include <emscripten/emscripten.h>
+#include <emscripten/val.h>
+#include <emscripten/bind.h>
+#include <cstdlib>
+#include <thread>
+#include <chrono>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <iostream>
 
-extern void call_js_callback(int, uint8_t *, int);
+// extern void call_js_callback(int, uint8_t *, int);
 extern void remove_js_callback(void *);
-extern void test_call_js_callback();
+// extern void test_call_js_callback();
 
-EMSCRIPTEN_KEEPALIVE
-void wrapping_sub_callback(const z_sample_t *sample, void *ctx)
-{
-  int id = (int)ctx;
-  char *data = NULL;
-  data = (char *)z_malloc((sample->payload.len + 1) * sizeof(char));
-  memcpy(data, sample->payload.start, sample->payload.len);
-  data[sample->payload.len] = '\0';
-  printf("[wrapping_sub_callback] [%p] Data: %s\n", data, data);
-  call_js_callback(id, data, sample->payload.len);
+// EMSCRIPTEN_KEEPALIVE
+// void wrapping_sub_callback(const z_sample_t *sample, void *ctx)
+// {
+  // int id = (int)ctx;
+  // char *data = NULL;
+  // data = (char *)z_malloc((sample->payload.len + 1) * sizeof(char));
+  // memcpy(data, sample->payload.start, sample->payload.len);
+  // data[sample->payload.len] = '\0';
+  // printf("[wrapping_sub_callback] [%p] Data: %s\n", data, data);
+  // call_js_callback(id, data, sample->payload.len);
   // If call_js_callback proxy to JS becomes async then the free has to be done
   // in call_js_callback
-  z_free(data);
-}
+  // z_free(data);
+// }
+
+extern "C"
+{
+
 
 EMSCRIPTEN_KEEPALIVE
 void test_sleep(int ms) { sleep(ms); }
@@ -139,13 +149,8 @@ void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
 EMSCRIPTEN_KEEPALIVE
 void *zw_subscriber(const z_owned_session_t *s, const z_owned_keyexpr_t *keyexpr)
 {
-    
-
+  
 }
-
-
-
-
 
 EMSCRIPTEN_KEEPALIVE
 void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
@@ -155,51 +160,54 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr)
 
 
 // TODO: REMOVE
-EMSCRIPTEN_KEEPALIVE
-void test_call(char *pointer, int length)
-{
-  printf("------ test_call ------\n");
-  // printf("      C test_call Ptr     %p  \n", pointer);
-  // printf("      C test_call Ptr num %d \n", pointer);
-  // printf("      C test_call Len %d  \n", length);
+// EMSCRIPTEN_KEEPALIVE
+// void test_call(char *pointer, int length)
+// {
+//   printf("------ test_call ------\n");
+//   // printf("      C test_call Ptr     %p  \n", pointer);
+//   // printf("      C test_call Ptr num %d \n", pointer);
+//   // printf("      C test_call Len %d  \n", length);
 
-  int length2 = sizeof(length) / sizeof(char);
+//   int length2 = sizeof(length) / sizeof(char);
 
-  int loop;
-  for (loop = 0; loop < length2; loop++)
-  {
-    printf("C loop: %d : %d \n", loop, pointer[loop]);
-  }
-  printf("------ END test_call ------\n");
+//   int loop;
+//   for (loop = 0; loop < length2; loop++)
+//   {
+//     printf("C loop: %d : %d \n", loop, pointer[loop]);
+//   }
+//   printf("------ END test_call ------\n");
 
-  return;
-}
+//   return;
+// }
 
-// TODO expose this in Typescript
-EMSCRIPTEN_KEEPALIVE
-int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
-           z_owned_keyexpr_t *ke,
-           // z_session_t *s,
-           //  z_keyexpr_t *ke,
-           const char *parameters,
-           int js_callback)
-{
-  z_get_options_t options = z_get_options_default();
+// TODO Complete
+// EMSCRIPTEN_KEEPALIVE
+// int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
+//            z_owned_keyexpr_t *ke,
+//            // z_session_t *s,
+//            //  z_keyexpr_t *ke,
+//            const char *parameters,
+//            int js_callback)
+// {
+//   z_get_options_t options = z_get_options_default();
 
-  z_owned_closure_sample_t callback =
-      z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
+//   z_owned_closure_sample_t callback =
+//       z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
 
-  int8_t get = z_get(z_loan(*s), z_loan(*ke), parameters, z_move(callback), &options);
+//   int8_t get = z_get(z_loan(*s), z_loan(*ke), parameters, z_move(callback), &options);
 
-  return get;
-}
+//   return get;
+// }
 
 EMSCRIPTEN_KEEPALIVE
 int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, char *value, int len)
 {
   z_put_options_t options = z_put_options_default();
   options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
-  return z_put(z_loan(*s), z_loan(*ke), value, len, &options);
+  // TODO FIX
+  // return z_put(z_loan(*s), z_loan(*ke), value, len, &options);
+  return 10;
+
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -213,44 +221,81 @@ void spin(z_owned_session_t *s)
 EMSCRIPTEN_KEEPALIVE
 void close_session(z_owned_session_t *s) { z_close(z_move(*s)); }
 
-EMSCRIPTEN_KEEPALIVE
-void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
-{
-  z_owned_subscriber_t *sub =
-      (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
-  z_owned_closure_sample_t callback =
-      z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
-  // printf("JS callback is at: %p\n",js_callback);
-  *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke), z_move(callback), NULL);
-  if (!z_check(*sub))
-  {
-    printf("Unable to declare subscriber.\n");
-    exit(-1);
-  }
-  return sub;
-}
+// TODO
+// TODO
+// TODO
+// TODO
+// TODO
+// EMSCRIPTEN_KEEPALIVE
+// void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
+// {
+//   z_owned_subscriber_t *sub =
+//       (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
+//   // TODO
+//   // z_owned_closure_sample_t callback =
+//   //     z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
+//   *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke), z_move(callback), NULL);
+//   if (!z_check(*sub))
+//   {
+//     printf("Unable to declare subscriber.\n");
+//     exit(-1);
+//   }
+//   return sub;
+// }
+// TODO
+// TODO
+// TODO
+// TODO
+// TODO
+
 
 EMSCRIPTEN_KEEPALIVE
 void z_wasm_free(void *ptr) { z_free(ptr); }
 
-EMSCRIPTEN_KEEPALIVE
-void *call_js_function(void *js_callback_id)
-{
-  int js_callback = (int)js_callback_id;
-  z_sleep_ms(2500);
-  printf("JS callback ID is: %d\n", js_callback);
-  call_js_callback(js_callback, "Hello from C", 12);
-}
 
-EMSCRIPTEN_KEEPALIVE void
-call_js_function_on_another_thread(int js_callback_id)
-{
 
-  pthread_t cb_thr;
-  pthread_create(&cb_thr, 0, &call_js_function, (void *)js_callback_id);
-}
+  // C++ Way of Calling Callbacks
 
-EMSCRIPTEN_KEEPALIVE void *test_callback_js(int js_callback_id)
-{
-  test_call_js_callback();
+  // cb : Async Function from JS
+  // cb : is a js object, ripe for any and all JS fuckery
+  int callback_test_async(emscripten::val cb)
+  {
+    printf("------ callback_test_async ------\n");
+   
+    int ret = cb(5).await().as<int>();
+
+    return ret;
+  }
+
+  int callback_test(emscripten::val cb)
+  {
+    printf("------ callback_test ------\n");
+
+    int ret = cb(5).as<int>();
+
+    printf("   ret val: %d \n", ret);
+    
+    return ret;
+  }
+
+  int pass_arr_cpp(std::string js_arr)
+  {
+
+    printf("------ pass_arr_cpp ------\n");
+    for (unsigned char item : js_arr)
+    {
+      std::cout << item << std::endl;
+    }
+    return 10;
+  }
+
+  // Macro to Expose Functions
+  EMSCRIPTEN_BINDINGS(my_module)
+  {
+    emscripten::function("callback_test", &callback_test);
+    emscripten::function("callback_test_async", &callback_test_async);
+    emscripten::function("pass_arr_cpp", &pass_arr_cpp);
+  }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 }
