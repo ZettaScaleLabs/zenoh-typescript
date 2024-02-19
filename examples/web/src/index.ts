@@ -46,21 +46,15 @@ async function main() {
     console.log("Begin Sub Values");
 
     // 
-    console.log("BEGIN DEV Tests ");
+    // console.log("BEGIN DEV Tests ");
+    // await zenoh.DEV.call_functions_CPP_style();
+    // await zenoh.DEV.call_CPP_function_with_TS_Callback();
 
-    await zenoh.DEV.call_functions_CPP_style();
-    await zenoh.DEV.call_CPP_function_with_TS_Callback();
-
-    console.log("END DEV Tests ");
+    // console.log("END DEV Tests ");
 
     // for Sub use:
     // var enc = new TextDecoder("utf-8"); // Obviously use different 
-    // 
     // let decoded_message: string = enc.decode(arr);
-
-    // let myhandler : Handler<Event, Receiver> = {
-
-    // };
 
     // const result = await session.sub("demo/ts/test_server/", (...args: any) => {
     //     console.log("Hello, here are your args: ", args)

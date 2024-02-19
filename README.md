@@ -86,9 +86,11 @@ RUST_LOG=DEBUG zenohd -l ws/0.0.0.0:7447
   Then starting an instance of a zenoh subscriber locally
 
 ```
-cargo run --release --example z_sub -- -k demo/ts/**
+RUST_LOG=DEBUG z_sub -- -k demo/ts/**
 ```
 
+<!-- cargo run --release --example z_sub -- -k demo/ts/** -->
+<!-- -k demo/rcv_from_ts/* -->
 
 [zenoh]: https://github.com/eclipse-zenoh/zenoh
 

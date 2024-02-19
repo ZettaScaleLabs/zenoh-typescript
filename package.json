@@ -32,19 +32,25 @@
   },
   "scripts": {
     "//  FULL BUILD   //": "",
-    "clean_build_package": "npm run clean && npm install && npm run build:wasm ",
+    "clean_build_package_docker": "npm run clean && npm install && npm run build:wasm ",
     "//  CLEAN        //": "",
     "clean": "rm -rf dist esm cjs && rm -rf node_modules",
+    "clean:wasm:local": "rm -rf ./src/wasm",
+
     "//  BUILD        //": "",
     "build:wasm": "bash zenoh-wasm/build.sh && npm run build:ts",
     "build:ts": "npm run build:esm && npm run build:copy_artifacts",
-    "build:copy_artifacts": "npm run build:copy_zenoh_js && npm run build:copy_wasm",
     "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json",
+
+    "//  COPY ARTIFACTS //": "",
+   
+    "build:copy_artifacts": "npm run build:copy_zenoh_js && npm run build:copy_wasm",
     "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"esm/wasm\" && cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"cjs/wasm\"",
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"./cjs\" && cpx -v \"src/**/*.wasm\" \"./esm\"",
+
     "// TODO THINGS ": "",
     "//build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
-    "//   PACKAGE   //": "",
+    "//   PACKAGE       //": "",
     "webpack": "webpack",
     "example": "cd examples && npm run start"
   }

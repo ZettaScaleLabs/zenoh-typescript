@@ -39,6 +39,8 @@ interface Module {
     callback_test_async(...arg: any): any,
     pass_arr_cpp(...arg: any): any,
 
+    // NEO API TODO Fix TYPES
+    neo_zw_put(...arg: any): any,
     api: any
 }
 
@@ -230,7 +232,6 @@ Object.defineProperty(Function.prototype, "onClose", function (this: Function) {
 //     interface Uint8Array extends IntoValue { }
 // }
 
-
 export class Subscriber<Receiver> {
     __sub_ptr: number
     receiver: Receiver
@@ -273,9 +274,7 @@ export class Sample {
         this.value = value
         this.kind = kind
     }
-
     // static new(): Promise<Sample>;
-
 }
 
 declare global {
@@ -405,9 +404,23 @@ export class Session {
         // Need to write the bytes to WASM Memory first, 
         // Then call _zw_put with pointer and length
         // Writing the bytes as a [u8] of length 
-        let dataPtr = await Zenoh.api._z_malloc(val.length());
-        Zenoh.writeArrayToMemory(val.payload, dataPtr);
-        const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, dataPtr, val.length());
+        // let dataPtr = await Zenoh.api._z_malloc(val.length());
+        // Zenoh.writeArrayToMemory(val.payload, dataPtr);
+        // const arr = new Uint8Array([65, 66, 67, 68]);
+        // const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, dataPtr, val.length());
+        // const Zenoh: Module = await zenoh();
+
+        console.log("ZenohZenohZenohZenoh");
+        console.log("ZenohZenohZenohZenoh");
+        console.log("ZenohZenohZenohZenoh");
+        console.log("ZenohZenohZenohZenoh");
+        console.log(Zenoh);
+
+        console.log("Sync Callback");
+        let ret_val = Zenoh.callback_test(ts_callback);
+        console.log("Return Value: ", ret_val);
+        
+        const ret = Zenoh.neo_zw_put(this.__ptr, key.__ptr, val.payload);
 
         if (ret < 0) {
             throw "An error occured while putting"
@@ -556,8 +569,8 @@ export class DEV {
         const Zenoh: Module = await zenoh();
 
         const arr = new Uint8Array([65, 66, 67, 68]);
-        var dataPtr = Zenoh.api.malloc(arr.length);
-        Zenoh.writeArrayToMemory(arr, dataPtr);
+        // var dataPtr = Zenoh.api.malloc(arr.length);
+        // Zenoh.writeArrayToMemory(arr, dataPtr);
 
         console.log("Zenoh.pass_arr_cpp();");
         let ret_val = await Zenoh.pass_arr_cpp(arr);

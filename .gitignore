@@ -7,3 +7,5 @@ examples/node/src/index.js
 examples/web/src/index.js
 cjs/
 esm/
+src/wasm/
+zenoh-wasm/build.emscripten/
