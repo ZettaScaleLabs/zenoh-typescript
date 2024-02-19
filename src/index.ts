@@ -14,6 +14,7 @@
 
 import Module from "./wasm/zenoh-wasm.js"
 // TODO PROPER LOGGING
+// TODO Fix Logging
 
 // import { Logger, ILogObj } from "tslog";
 // const log: Logger<ILogObj> = new Logger();
@@ -40,7 +41,9 @@ interface Module {
     pass_arr_cpp(...arg: any): any,
 
     // NEO API TODO Fix TYPES
-    neo_zw_put(...arg: any): any,
+    zw_put(...arg: any): any,
+    zw_open_session(...arg: any): any,
+    zw_start_tasks(...arg: any): any,
     api: any
 }
 
@@ -83,15 +86,11 @@ export async function zenoh(): Promise<Module> {
         mod_instance = await Module();
         mod_instance.onRuntimeInitialized = async () => {
             const api = {
-                _zw_open_session: mod_instance.cwrap("zw_open_session", "number", ["number"], { async: true }),
-                _zw_start_tasks: mod_instance.cwrap("zw_start_tasks", "number", ["number"], { async: true }),
+
                 _zw_declare_ke: mod_instance.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
                 _zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
                 _zw_delete_ke: mod_instance.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
-                //
-                //                                    return    [int,       int,      number,   int    ]
-                //                                    return    [Session  , KeyExpr,  val_ptr,  len    ]
-                _zw_put: mod_instance.cwrap("zw_put", "number", ["number", "number", "number", "number"], { async: true }),
+
                 _zw_sub: mod_instance.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
 
                 _test_call_js_callback: mod_instance.cwrap("test_call_js_callback", "number", [], { async: true }),
@@ -121,9 +120,10 @@ export class Config {
     }
     static async new(locator: string): Promise<Config> {
         const Zenoh = await zenoh();
-
+        // TODO : Is this horrible ?
         const clocator = Zenoh.stringToUTF8OnStack(locator);
         const ptr = Zenoh._zw_default_config(clocator);
+
         if (ptr === 0) {
             throw "Failed to construct zenoh.Config";
         }
@@ -375,7 +375,7 @@ export class Session {
             throw "Invalid config passed: it may have been already consumed by opening another session."
         }
 
-        const ptr = await Zenoh.api._zw_open_session(cfg.__ptr);
+        const ptr = await Zenoh.zw_open_session(cfg.__ptr);
 
         cfg.__ptr = 0;
         if (ptr === 0) {
@@ -383,7 +383,7 @@ export class Session {
         }
 
         // Keep track of tasks pointer such that we can destroy it when Session is destroyed
-        const __task_ptr = await Zenoh.api._zw_start_tasks(ptr);
+        const __task_ptr = await Zenoh.zw_start_tasks(ptr);
 
         return new Session(ptr, __task_ptr)
     }
@@ -396,34 +396,10 @@ export class Session {
 
     // Keyexpr can either be something that can be converted into a keyexpr or a pointer to a Keyexpr
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
-        // TODO Fix Logging
-        // log.silly("I am a silly log.");
-        // log.trace("Start Put");
-
         const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
-        // Need to write the bytes to WASM Memory first, 
-        // Then call _zw_put with pointer and length
-        // Writing the bytes as a [u8] of length 
-        // let dataPtr = await Zenoh.api._z_malloc(val.length());
-        // Zenoh.writeArrayToMemory(val.payload, dataPtr);
-        // const arr = new Uint8Array([65, 66, 67, 68]);
-        // const ret = await Zenoh.api._zw_put(this.__ptr, key.__ptr, dataPtr, val.length());
-        // const Zenoh: Module = await zenoh();
-
-        console.log("ZenohZenohZenohZenoh");
-        console.log("ZenohZenohZenohZenoh");
-        console.log("ZenohZenohZenohZenoh");
-        console.log("ZenohZenohZenohZenoh");
-        console.log(Zenoh);
-
-        console.log("Sync Callback");
-        let ret_val = Zenoh.callback_test(ts_callback);
-        console.log("Return Value: ", ret_val);
-        
-        const ret = Zenoh.neo_zw_put(this.__ptr, key.__ptr, val.payload);
-
+        const ret = await Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
         if (ret < 0) {
-            throw "An error occured while putting"
+            throw `Error ${ret} while putting`
         }
         return ret
     }

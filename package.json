@@ -32,7 +32,7 @@
   },
   "scripts": {
     "//  FULL BUILD   //": "",
-    "clean_build_package_docker": "npm run clean && npm install && npm run build:wasm ",
+    "clean_build_package": "npm run clean && npm install && npm run build:wasm ",
     "//  CLEAN        //": "",
     "clean": "rm -rf dist esm cjs && rm -rf node_modules",
     "clean:wasm:local": "rm -rf ./src/wasm",

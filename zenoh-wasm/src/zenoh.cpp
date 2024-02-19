@@ -56,22 +56,12 @@ void *zw_default_config(const char *locator) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-void *zw_open_session(z_owned_config_t *config) {
-  z_owned_session_t *session =
-      (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
-  *session = z_open(z_move(*config));
-  if (!z_check(*session)) {
-    printf("Unable to open session!\n");
-    z_free(session);
-    return NULL;
-  }
-  return session;
-}
-
-EMSCRIPTEN_KEEPALIVE
 void *zw_session_close(z_owned_config_t *config) {
   z_owned_session_t *session =
       (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
+
+  // TODO:CLOSE SESSION
+
   // *session = z_open(z_move(*config));
   // if (!z_check(*session))
   // {
@@ -82,27 +72,6 @@ void *zw_session_close(z_owned_config_t *config) {
   // return session;
 }
 
-EMSCRIPTEN_KEEPALIVE
-int zw_start_tasks(z_owned_session_t *s) {
-  if (zp_start_read_task(z_loan(*s), NULL) < 0 ||
-      zp_start_lease_task(z_loan(*s), NULL) < 0) {
-    printf("Unable to start read and lease tasks");
-    return -1;
-  }
-  return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE
-z_owned_keyexpr_t *zw_make_ke(const char *keyexpr) {
-  z_owned_keyexpr_t *ke = NULL;
-  z_owned_keyexpr_t oke = z_keyexpr_new(keyexpr);
-  if (z_check(oke)) {
-    ke = (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
-    _z_keyexpr_set_owns_suffix(oke._value, true);
-    *ke = oke;
-  }
-  return ke;
-}
 
 EMSCRIPTEN_KEEPALIVE
 void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr) {
@@ -146,14 +115,6 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr) { return z_drop(keyexpr); }
 //   return get;
 // }
 
-EMSCRIPTEN_KEEPALIVE
-int zw_put(z_owned_session_t *s, z_owned_keyexpr_t *ke, char *value, int len) {
-  z_put_options_t options = z_put_options_default();
-  options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
-  // TODO FIX
-  // return z_put(z_loan(*s), z_loan(*ke), value, len, &options);
-  return 10;
-}
 
 EMSCRIPTEN_KEEPALIVE
 void spin(z_owned_session_t *s) {
@@ -201,33 +162,61 @@ void z_wasm_free(void *ptr) { z_free(ptr); }
 // ██  ██ ██ ██      ██    ██
 // ██   ████ ███████  ██████
 
-// Horrible
-// int zw_put(z_owned_session_t *s, 
-//            z_owned_keyexpr_t *ke, 
-//            char *value, 
-//            int len) {}
-int neo_zw_put(emscripten::val session,
-               emscripten::val key_expr, std::string value) {
-
-  printf("------ neo_zw_put ------\n");
-  for (unsigned char item : value) {
-    std::cout << item << std::endl;
-  }
-
-  int len = value.length();
+int zw_put(int session_ptr, int key_expr_ptr,
+               std::string value_str) {
 
   z_put_options_t options = z_put_options_default();
   options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
 
-    // z_owned_session_t *s, 
-    //            z_owned_keyexpr_t *ke,
-    // std::cout << session.typeof() << std::endl;
-    // std::cout << key_expr.typeof() << std::endl;
-    std::cout << value << std::endl;
+  // BAD Horrible
+  z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
+  z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
 
-  // TODO FIX
-  // return z_put(z_loan(session), z_loan(key_expr), value, len, &options);
-  return 10 ;
+  // Static cast is supposed to safer ?
+  const uint8_t *value = (const uint8_t *)value_str.data();
+
+  return z_put(z_loan(*s), z_loan(*ke), value, value_str.length(), &options);
+}
+
+// returns z_owned_session_t *
+int zw_open_session(int config_ptr) {
+  z_owned_config_t *config = reinterpret_cast<z_owned_config_t *>(config_ptr);
+  z_owned_session_t *session =
+      (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
+  *session = z_open(z_move(*config));
+  if (!z_check(*session)) {
+    printf("Unable to open session!\n");
+    z_free(session);
+    return NULL;
+  }
+
+  return (int) session;
+}
+
+
+int zw_start_tasks(int session_ptr) {
+  z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
+  if (zp_start_read_task(z_loan(*s), NULL) < 0 ||
+      zp_start_lease_task(z_loan(*s), NULL) < 0) {
+    printf("Unable to start read and lease tasks");
+    return -1;
+  }
+  return 0;
+}
+
+// returns z_owned_keyexpr_t
+// int zw_make_ke(const char *keyexpr) {
+int zw_make_ke(std::string keyexpr_str) {
+  const char *keyexpr = (const char *)keyexpr_str.data();
+
+  z_owned_keyexpr_t *ke = NULL;
+  z_owned_keyexpr_t oke = z_keyexpr_new(keyexpr);
+  if (z_check(oke)) {
+    ke = (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
+    _z_keyexpr_set_owns_suffix(oke._value, true);
+    *ke = oke;
+  }
+  return (int) ke;
 }
 
 // ██████  ███████ ██    ██
@@ -271,7 +260,10 @@ EMSCRIPTEN_BINDINGS(my_module) {
   emscripten::function("callback_test", &callback_test);
   emscripten::function("callback_test_async", &callback_test_async);
   emscripten::function("pass_arr_cpp", &pass_arr_cpp);
-  emscripten::function("neo_zw_put", &neo_zw_put);
+  emscripten::function("zw_put", &zw_put);
+  emscripten::function("zw_open_session", &zw_open_session);
+  emscripten::function("zw_start_tasks", &zw_start_tasks);
+  emscripten::function("zw_make_ke", &zw_make_ke);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }

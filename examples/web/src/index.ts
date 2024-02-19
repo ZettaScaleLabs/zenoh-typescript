@@ -27,15 +27,15 @@ async function main() {
     // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
     const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
     
-    const keyexpr = await session.declare_ke("demo/ts/test");
-    
+    const keyexpr = await session.declare_ke("demo/rcv_from_ts");
+
     console.log("Begin Put Values");
 
     executeAsync(async function () {
         var c = 0;
-        while (c < 10) {
+        while (c < 5) {
             let enc: TextEncoder = new TextEncoder(); // always utf-8
-            let uint8arr: Uint8Array = enc.encode(`ABCDEFG${c}`);
+            let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
             let value: zenoh.Value = new zenoh.Value(uint8arr);
             console.log("Put With Value ", uint8arr);
             var pub_res = await session.put(keyexpr, value);
