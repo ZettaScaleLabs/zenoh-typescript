@@ -24,10 +24,10 @@ async function main() {
 
     // Test push
     console.log("Start Openning Zenoh Session");
-    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
+    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
     
-    const keyexpr = await session.declare_ke("demo/rcv_from_ts");
+    const keyexpr = await session.declare_ke("demo/ts/rcv");
 
     console.log("Begin Put Values");
 
@@ -39,10 +39,12 @@ async function main() {
             let value: zenoh.Value = new zenoh.Value(uint8arr);
             console.log("Put With Value ", uint8arr);
             var pub_res = await session.put(keyexpr, value);
+            session.close_session
             await sleep(10);
             c++;
         }
     });
+
     console.log("Begin Sub Values");
 
     // 

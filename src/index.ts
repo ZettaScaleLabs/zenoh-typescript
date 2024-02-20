@@ -44,6 +44,7 @@ interface Module {
     zw_put(...arg: any): any,
     zw_open_session(...arg: any): any,
     zw_start_tasks(...arg: any): any,
+    zw_close_session(...arg: any): any,
     api: any
 }
 
@@ -390,7 +391,8 @@ export class Session {
 
     async close() {
         // TODO: Is this correct ? 
-        // zw_session_close(this.__ptr, this.__task_ptr)
+        const Zenoh: Module = await zenoh();
+        Zenoh.zw_close_session(this.__ptr)
         Session.registry.unregister(this)
     }
 
@@ -410,7 +412,7 @@ export class Session {
 
         const Zenoh: Module = await zenoh();
 
-        const pke = Zenoh.stringToUTF8OnStack(keyexpr);
+        // const pke = Zenoh.stringToUTF8OnStack(keyexpr);
 
         const ret = await Zenoh.api._zw_declare_ke(this.__ptr, pke);
 

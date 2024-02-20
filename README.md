@@ -78,7 +78,7 @@ npm install && npm run develop
   This can be done by building the zenoh daemon `zenohd` from [zenoh], and running the command.
 
 ```
-RUST_LOG=DEBUG zenohd -l ws/0.0.0.0:7447
+RUST_LOG=DEBUG ./zenohd -l ws/0.0.0.0:7447
 ```
   
 <!-- RUST_LOG=DEBUG cargo run zenohd -l ws/0.0.0.0:7447 -->
@@ -86,8 +86,9 @@ RUST_LOG=DEBUG zenohd -l ws/0.0.0.0:7447
   Then starting an instance of a zenoh subscriber locally
 
 ```
-RUST_LOG=DEBUG z_sub -- -k demo/ts/**
+RUST_LOG=DEBUG z_sub -k demo/ts/rcv
 ```
+
 
 <!-- cargo run --release --example z_sub -- -k demo/ts/** -->
 <!-- -k demo/rcv_from_ts/* -->
