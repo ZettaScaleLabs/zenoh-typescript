@@ -45,6 +45,7 @@ interface Module {
     zw_open_session(...arg: any): any,
     zw_start_tasks(...arg: any): any,
     zw_close_session(...arg: any): any,
+    zw_declare_ke(...arg: any): any,
     api: any
 }
 
@@ -88,7 +89,6 @@ export async function zenoh(): Promise<Module> {
         mod_instance.onRuntimeInitialized = async () => {
             const api = {
 
-                _zw_declare_ke: mod_instance.cwrap("zw_declare_ke", "number", ["number", "number"], { async: true }),
                 _zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
                 _zw_delete_ke: mod_instance.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
 
@@ -379,6 +379,7 @@ export class Session {
         const ptr = await Zenoh.zw_open_session(cfg.__ptr);
 
         cfg.__ptr = 0;
+
         if (ptr === 0) {
             throw "Failed to open zenoh.Session";
         }
@@ -392,7 +393,7 @@ export class Session {
     async close() {
         // TODO: Is this correct ? 
         const Zenoh: Module = await zenoh();
-        Zenoh.zw_close_session(this.__ptr)
+        await Zenoh.zw_close_session(this.__ptr)
         Session.registry.unregister(this)
     }
 
@@ -400,6 +401,7 @@ export class Session {
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
         const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
         const ret = await Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
+
         if (ret < 0) {
             throw `Error ${ret} while putting`
         }
@@ -408,13 +410,10 @@ export class Session {
 
     // Returns a pointer to the key expression in Zenoh Memory 
     async declare_ke(keyexpr: string): Promise<KeyExpr> {
-        console.log("JS declare_ke ", keyexpr);
-
+        
         const Zenoh: Module = await zenoh();
-
-        // const pke = Zenoh.stringToUTF8OnStack(keyexpr);
-
-        const ret = await Zenoh.api._zw_declare_ke(this.__ptr, pke);
+        
+        const ret = await Zenoh.zw_declare_ke(this.__ptr, keyexpr);
 
         if (ret < 0) {
             throw "An error occured while Declaring Key Expr"
@@ -527,7 +526,6 @@ export class Session {
         return ret
     }
 }
-
 
 function ts_callback(num: number): number {
     console.log("    TS CALLBACK: ", num);

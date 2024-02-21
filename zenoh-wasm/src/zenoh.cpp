@@ -69,9 +69,9 @@ extern "C"
     // return session;
   }
 
-  EMSCRIPTEN_KEEPALIVE
-  void *zw_subscriber(const z_owned_session_t *s,
-                      const z_owned_keyexpr_t *keyexpr) {}
+  // EMSCRIPTEN_KEEPALIVE
+  // void *zw_subscriber(const z_owned_session_t *s,
+  //                     const z_owned_keyexpr_t *keyexpr) {}
 
   EMSCRIPTEN_KEEPALIVE
   void zw_delete_ke(z_owned_keyexpr_t *keyexpr) { return z_drop(keyexpr); }
@@ -169,20 +169,32 @@ extern "C"
 
 
   // void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
-  int zw_declare_ke(int session_ptr, const char *keyexpr)
+  int zw_declare_ke(int session_ptr, std::string keyexpr_str)
   {
+    std::cout << "C - zw_declare_ke NEW!" << std::endl;
+    std::cout << "session_ptr: " << session_ptr << std::endl;
+    std::cout << "keyexpr_str: " << keyexpr_str << std::endl;
+
     z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
-    		Continue From Here
+
     z_owned_keyexpr_t *ke =
         (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
+
+    const char *keyexpr = (const char *)keyexpr_str.data();
+
     z_keyexpr_t key = z_keyexpr(keyexpr);
+
     *ke = z_declare_keyexpr(z_loan(*s), key);
+
     if (!z_check(*ke))
     {
       printf("Unable to declare key expression!\n");
       exit(-1);
     }
-    return ke;
+    std::cout << "ke: " << ke << std::endl;
+    std::cout << "=========" << std::endl;
+
+    return (int) ke;
   }
 
   int zw_put(int session_ptr, int key_expr_ptr,
@@ -201,7 +213,6 @@ extern "C"
 
     return z_put(z_loan(*s), z_loan(*ke), value, value_str.length(), &options);
   }
-
 
   // returns z_owned_keyexpr_t
   // int zw_make_ke(const char *keyexpr) {
@@ -228,7 +239,6 @@ extern "C"
   }
 
   int zw_version() { return Z_PROTO_VERSION; }
-
 
   // ██████  ███████ ██    ██
   // ██   ██ ██      ██    ██
@@ -270,7 +280,6 @@ extern "C"
     return 10;
   }
 
-
   // Macro to Expose Functions
   EMSCRIPTEN_BINDINGS(my_module)
   {
@@ -284,8 +293,6 @@ extern "C"
     emscripten::function("zw_close_session", &zw_close_session);
     emscripten::function("zw_version", &zw_version);
     emscripten::function("zw_declare_ke", &zw_declare_ke);
-    
-
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }

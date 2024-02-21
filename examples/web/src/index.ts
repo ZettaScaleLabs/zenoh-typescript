@@ -24,25 +24,24 @@ async function main() {
 
     // Test push
     console.log("Start Openning Zenoh Session");
+    // 
     const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
     // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
-    
+
     const keyexpr = await session.declare_ke("demo/ts/rcv");
 
-    console.log("Begin Put Values");
-
+    console.log("Pre Put values !");
     executeAsync(async function () {
         var c = 0;
-        while (c < 5) {
+        while (c < 50) {
             let enc: TextEncoder = new TextEncoder(); // always utf-8
             let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
             let value: zenoh.Value = new zenoh.Value(uint8arr);
-            console.log("Put With Value ", uint8arr);
             var pub_res = await session.put(keyexpr, value);
-            session.close_session
-            await sleep(10);
+            await sleep(500);
             c++;
         }
+        console.log("Finish Put Values");
     });
 
     console.log("Begin Sub Values");
@@ -80,6 +79,13 @@ async function main() {
     // 	res.send("Hello world")
     // })
     // app.listen(3000)
+    var count = 0;
+    while (true) {
+        var seconds = 10;
+        await sleep(1000 * seconds);
+        console.log("Main Loop ? ", count)
+        count = count+1;
+    }
 }
 
 main().then(() => console.log("Done")).catch(e => {

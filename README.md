@@ -86,7 +86,7 @@ RUST_LOG=DEBUG ./zenohd -l ws/0.0.0.0:7447
   Then starting an instance of a zenoh subscriber locally
 
 ```
-RUST_LOG=DEBUG z_sub -k demo/ts/rcv
+RUST_LOG=DEBUG ./z_sub -k demo/ts/rcv
 ```
 
 
