@@ -46,6 +46,8 @@ interface Module {
     zw_start_tasks(...arg: any): any,
     zw_close_session(...arg: any): any,
     zw_declare_ke(...arg: any): any,
+    zw_make_ke(...arg: any): any,
+    // zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
     api: any
 }
 
@@ -89,7 +91,7 @@ export async function zenoh(): Promise<Module> {
         mod_instance.onRuntimeInitialized = async () => {
             const api = {
 
-                _zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
+                // _zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
                 _zw_delete_ke: mod_instance.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
 
                 _zw_sub: mod_instance.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
@@ -111,6 +113,12 @@ export async function zenoh(): Promise<Module> {
     return mod_instance
 }
 
+//  ██████  ██████  ███    ██ ███████ ██  ██████  
+// ██      ██    ██ ████   ██ ██      ██ ██       
+// ██      ██    ██ ██ ██  ██ █████   ██ ██   ███ 
+// ██      ██    ██ ██  ██ ██ ██      ██ ██    ██ 
+//  ██████  ██████  ██   ████ ██      ██  ██████  
+                           
 /**
  * The configuration for a Zenoh Session.
  */
@@ -134,6 +142,13 @@ export class Config {
         return !!this.__ptr
     }
 }
+
+
+// ██    ██  █████  ██      ██    ██ ███████ 
+// ██    ██ ██   ██ ██      ██    ██ ██      
+// ██    ██ ███████ ██      ██    ██ █████   
+//  ██  ██  ██   ██ ██      ██    ██ ██      
+//   ████   ██   ██ ███████  ██████  ███████ 
 
 // TODO : Add encoding prop later when we need it
 // Default to empty string
@@ -169,6 +184,12 @@ export class Value {
 
 }
 
+// ██   ██ ███████ ██    ██     ███████ ██   ██ ██████  ██████  
+// ██  ██  ██       ██  ██      ██       ██ ██  ██   ██ ██   ██ 
+// █████   █████     ████       █████     ███   ██████  ██████  
+// ██  ██  ██         ██        ██       ██ ██  ██      ██   ██ 
+// ██   ██ ███████    ██        ███████ ██   ██ ██      ██   ██ 
+
 export class KeyExpr implements IntoSelector {
     __ptr: number
 
@@ -192,9 +213,8 @@ export class KeyExpr implements IntoSelector {
     static async new(keyexpr: string): Promise<KeyExpr> {
 
         const Zenoh = await zenoh();
-        const ckeyexpr = Zenoh.stringToUTF8OnStack(keyexpr);
 
-        const ptr = Zenoh.api._zw_make_ke(ckeyexpr);
+        const ptr = await Zenoh.zw_make_ke(keyexpr);
         if (ptr === 0) {
             throw "Failed to construct zenoh.KeyExpr"
         }
@@ -205,7 +225,6 @@ export class KeyExpr implements IntoSelector {
 
 // Mutate global Types String, Uint8Array to implement interfaces:
 // IntoKeyExpr, IntoValue,
-
 Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
     return KeyExpr.new(this)
 })
@@ -232,6 +251,12 @@ Object.defineProperty(Function.prototype, "onClose", function (this: Function) {
 //     interface String extends IntoKeyExpr, IntoValue { }
 //     interface Uint8Array extends IntoValue { }
 // }
+
+// ███████ ██    ██ ██████          ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  
+// ██      ██    ██ ██   ██        ██      ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ 
+// ███████ ██    ██ ██████        ██       ███████ ███████ ██ ██  ██ ██   ██ ██      █████   ██████  
+//      ██ ██    ██ ██   ██      ██        ██   ██ ██   ██ ██  ██ ██ ██   ██ ██      ██      ██   ██ 
+// ███████  ██████  ██████      ██         ██   ██ ██   ██ ██   ████ ██████  ███████ ███████ ██   ██ 
 
 export class Subscriber<Receiver> {
     __sub_ptr: number
@@ -284,6 +309,13 @@ declare global {
     // interface for [KeyExpr, params] to selector
     // interface [String, Map<String, String>] extends IntoSelector {  } // this doesn't work, will need an overload :(
 }
+
+
+// ███████ ███████ ██      ███████  ██████ ████████  ██████  ██████  
+// ██      ██      ██      ██      ██         ██    ██    ██ ██   ██ 
+// ███████ █████   ██      █████   ██         ██    ██    ██ ██████  
+//      ██ ██      ██      ██      ██         ██    ██    ██ ██   ██ 
+// ███████ ███████ ███████ ███████  ██████    ██     ██████  ██   ██ 
 
 // TODO: Internals of selector need to be handled in Zenoh rather than JS
 // TODO: TEST
@@ -354,6 +386,13 @@ export class Query {
 }
 
 export class Reply { }
+
+
+// ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
+// ██      ██      ██      ██      ██ ██    ██ ████   ██ 
+// ███████ █████   ███████ ███████ ██ ██    ██ ██ ██  ██ 
+//      ██ ██           ██      ██ ██ ██    ██ ██  ██ ██ 
+// ███████ ███████ ███████ ███████ ██  ██████  ██   ████ 
 
 export class Session {
     // A FinalizationRegistry object lets you request a callback when a value is garbage-collected.
@@ -526,6 +565,14 @@ export class Session {
         return ret
     }
 }
+
+// ██████  ███████ ██    ██ 
+// ██   ██ ██      ██    ██ 
+// ██   ██ █████   ██    ██ 
+// ██   ██ ██       ██  ██  
+// ██████  ███████   ████   
+                         
+// TODO  Delete everything below this point                          
 
 function ts_callback(num: number): number {
     console.log("    TS CALLBACK: ", num);

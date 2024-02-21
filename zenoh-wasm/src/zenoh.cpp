@@ -35,21 +35,21 @@ extern void remove_js_callback(void *);
 extern "C"
 {
 
-  EMSCRIPTEN_KEEPALIVE
-  void *zw_default_config(const char *locator)
-  {
-    if (locator == NULL)
-    {
-      return NULL;
-    }
+  // EMSCRIPTEN_KEEPALIVE
+  // void *zw_default_config(const char *locator)
+  // {
+  //   if (locator == NULL)
+  //   {
+  //     return NULL;
+  //   }
 
-    z_owned_config_t *config =
-        (z_owned_config_t *)z_malloc(sizeof(z_owned_config_t));
-    *config = z_config_default();
-    zp_config_insert(z_loan(*config), Z_CONFIG_CONNECT_KEY,
-                     z_string_make(locator));
-    return (void *)config;
-  }
+  //   z_owned_config_t *config =
+  //       (z_owned_config_t *)z_malloc(sizeof(z_owned_config_t));
+  //   *config = z_config_default();
+  //   zp_config_insert(z_loan(*config), Z_CONFIG_CONNECT_KEY,
+  //                    z_string_make(locator));
+  //   return (void *)config;
+  // }
 
   EMSCRIPTEN_KEEPALIVE
   void *zw_session_close(z_owned_config_t *config)
@@ -129,14 +129,27 @@ extern "C"
   // TODO
   // TODO
 
-  EMSCRIPTEN_KEEPALIVE
-  void z_wasm_free(void *ptr) { z_free(ptr); }
-
   // ███    ██ ███████  ██████
   // ████   ██ ██      ██    ██
   // ██ ██  ██ █████   ██    ██
   // ██  ██ ██ ██      ██    ██
   // ██   ████ ███████  ██████
+
+  EMSCRIPTEN_KEEPALIVE
+  void *zw_default_config(const char *locator)
+  {
+    if (locator == NULL)
+    {
+      return NULL;
+    }
+
+    z_owned_config_t *config =
+        (z_owned_config_t *)z_malloc(sizeof(z_owned_config_t));
+    *config = z_config_default();
+    zp_config_insert(z_loan(*config), Z_CONFIG_CONNECT_KEY,
+                     z_string_make(locator));
+    return (void *)config;
+  }
 
   // returns z_owned_session_t *
   int zw_open_session(int config_ptr)
@@ -171,9 +184,10 @@ extern "C"
   // void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
   int zw_declare_ke(int session_ptr, std::string keyexpr_str)
   {
-    std::cout << "C - zw_declare_ke NEW!" << std::endl;
-    std::cout << "session_ptr: " << session_ptr << std::endl;
-    std::cout << "keyexpr_str: " << keyexpr_str << std::endl;
+    // TODO CLEANUP
+    // std::cout << "C - zw_declare_ke NEW!" << std::endl;
+    // std::cout << "session_ptr: " << session_ptr << std::endl;
+    // std::cout << "keyexpr_str: " << keyexpr_str << std::endl;
 
     z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
 
@@ -191,8 +205,10 @@ extern "C"
       printf("Unable to declare key expression!\n");
       exit(-1);
     }
-    std::cout << "ke: " << ke << std::endl;
-    std::cout << "=========" << std::endl;
+
+    // TODO Cleanup
+    // std::cout << "ke: " << ke << std::endl;
+    // std::cout << "=========" << std::endl;
 
     return (int) ke;
   }
