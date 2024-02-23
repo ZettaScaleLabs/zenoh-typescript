@@ -542,27 +542,32 @@ export class Session {
         // return ret
     }
     
-    async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
-        const Zenoh: Module = await zenoh();
+    async neo_sub(keyexpr: IntoKeyExpr): Promise<number> {
+    // async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
+        // const Zenoh: Module = await zenoh();
+        console.log("INSIDE neo_sub ");
 
-        const pke = await this.declare_ke(keyexpr);
+        const [Zenoh, key_expr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-        // (
-        //     int session_ptr,
-        //     int ke_ptr,
-        //     emscripten::val ts_cb
-        //     )
+        const pke = key_expr.__ptr;
+
+        console.log("INSIDE before Function invok ");
 
         async function neo_sub_async_ts_callback(num: number): Promise<number> {
             console.log("    neo_sub_async_ts_callback: ", num);
             return 25 + num;
         }
 
-        const ret = await Zenoh.api.neo_zw_sub(this.__ptr, pke, neo_sub_async_ts_callback);
+        console.log("INSIDE neo_zw_sub ");
+
+        const ret = await Zenoh.neo_zw_sub(this.__ptr, pke, neo_sub_async_ts_callback);
 
         if (ret < 0) {
             throw "An error occured while putting"
         }
+
+        console.log("INSIDE neo_sub END");
+
         return ret
     }
 }

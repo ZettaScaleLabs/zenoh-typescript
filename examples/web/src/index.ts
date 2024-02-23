@@ -37,26 +37,28 @@ async function main() {
     const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
     const keyexpr2 = await session.declare_ke("demo/send/to/ts");
 
-    console.log("Pre Put values !");
-    executeAsync(async function () {
-        console.log("Inside Execute Async Function !");
+    // console.log("Pre Put values !");
+    // executeAsync(async function () {
+    //     console.log("Inside Execute Async Function !");
        
-        var c = 0;
-        while (c < 50) {
-            let enc: TextEncoder = new TextEncoder(); // always utf-8
-            let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
-            let value: zenoh.Value = new zenoh.Value(uint8arr);
-            var pub_res = await session.put(keyexpr1, value);
+    //     var c = 0;
+    //     while (c < 50) {
+    //         let enc: TextEncoder = new TextEncoder(); // always utf-8
+    //         let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
+    //         let value: zenoh.Value = new zenoh.Value(uint8arr);
+    //         var pub_res = await session.put(keyexpr1, value);
 
-            await sleep(500);
-            c++;
-        }
-        console.log("Finish Put Values");
-    });
+    //         await sleep(500);
+    //         c++;
+    //     }
+    //     console.log("Finish Put Values");
+    // });
 
+    console.log("Start Sub !");
 
+    var pub_res = await session.neo_sub(keyexpr2);
+    console.log("End Sub Values");
     
-    console.log("Begin Sub Values");
 
     // 
     // console.log("BEGIN DEV Tests ");

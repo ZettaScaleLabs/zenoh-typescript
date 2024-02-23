@@ -264,11 +264,13 @@ extern "C"
   {
     // TODO: Do i need to call free here ? to clean up the ts_db
     // z_free(ts_cb ?? );
+    std::cout << "    C - remove_js_callback!" << std::endl;
+    
   }
 
   void wrapping_sub_callback(const z_sample_t *sample, void *ts_cb_ptr)
   {
-    std::cout << "INSIDE ts_cb_ptr" << std::endl;
+    std::cout << "    INSIDE wrapping_sub_callback - ts_cb_ptr" << std::endl;
 
     emscripten::val *ts_cb = reinterpret_cast<emscripten::val *>(ts_cb_ptr);
 
@@ -291,9 +293,10 @@ extern "C"
       emscripten::val ts_cb)
   {
 
-    std::cout << "C - neo_zw_sub!" << std::endl;
-    std::cout << "session_ptr: " << session_ptr << std::endl;
-    std::cout << "ke_ptr: " << ke_ptr << std::endl;
+    std::cout << "    C - neo_zw_sub!" << std::endl;
+    std::cout << "    session_ptr: " << session_ptr << std::endl;
+    std::cout << "    ke_ptr: " << ke_ptr << std::endl;
+    std::cout << "     ptr: "<< std::this_thread::get_id() << std::endl;
 
     z_owned_session_t *session = reinterpret_cast<z_owned_session_t *>(session_ptr);
     z_owned_keyexpr_t *keyexpr = reinterpret_cast<z_owned_keyexpr_t *>(ke_ptr);
@@ -303,16 +306,20 @@ extern "C"
     emscripten::val *ts_cb_local_ptr = (emscripten::val *)z_malloc(sizeof(emscripten::val));
 
     // clone ts_cb ? ? ?
-    memcpy(ts_cb_local_ptr, &ts_cb, sizeof(emscripten::val));
+    // CONTINUE FROM HERE 
+    std::cout << "     Before MOve: " << std::endl;
+    *ts_cb_local_ptr = ts_cb;
+    // *ts_cb_local_ptr = std::move(ts_cb);
+    std::cout << "     After MOve: " << std::endl;
 
     z_owned_closure_sample_t callback =
         z_closure(wrapping_sub_callback, remove_js_callback, (void *)ts_cb_local_ptr);
 
     // void z_closure_sample_call(const z_owned_closure_sample_t *closure, const z_sample_t *sample);
-
-    //
     z_owned_subscriber_t sub =
         z_declare_subscriber(z_session_loan(session), z_loan(*keyexpr), z_closure_sample_move(&callback), NULL);
+    // z_sleep(10);
+
     // TODO:Change
     return 10;
   }
