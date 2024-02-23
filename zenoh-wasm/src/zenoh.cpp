@@ -12,15 +12,18 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
+// Zenoh
 #include "zenoh-pico.h"
 #include "zenoh-pico/api/macros.h"
 #include "zenoh-pico/api/types.h"
 #include "zenoh-pico/system/platform.h"
-#include <chrono>
-#include <cstdlib>
+// Emscripten
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/val.h>
+// General C / C++
+#include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <stddef.h>
 #include <stdint.h>
@@ -29,8 +32,6 @@
 #include <string.h>
 #include <thread>
 #include <unistd.h>
-
-extern void remove_js_callback(void *);
 
 extern "C"
 {
@@ -69,10 +70,6 @@ extern "C"
     // return session;
   }
 
-  // EMSCRIPTEN_KEEPALIVE
-  // void *zw_subscriber(const z_owned_session_t *s,
-  //                     const z_owned_keyexpr_t *keyexpr) {}
-
   EMSCRIPTEN_KEEPALIVE
   void zw_delete_ke(z_owned_keyexpr_t *keyexpr) { return z_drop(keyexpr); }
 
@@ -95,24 +92,6 @@ extern "C"
   // }
 
   // TODO
-  // EMSCRIPTEN_KEEPALIVE
-  // void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
-  // {
-  //   z_owned_subscriber_t *sub =
-  //       (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
-  //   // TODO
-  //   // z_owned_closure_sample_t callback =
-  //   //     z_closure(wrapping_sub_callback, remove_js_callback, (void
-  //   *)js_callback); *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke),
-  //   z_move(callback), NULL); if (!z_check(*sub))
-  //   {
-  //     printf("Unable to declare subscriber.\n");
-  //     exit(-1);
-  //   }
-  //   return sub;
-  // }
-
-  // TODO
   // TODO
   // TODO
   // TODO
@@ -125,8 +104,10 @@ extern "C"
   // ██   ████ ███████  ██████
 
   EMSCRIPTEN_KEEPALIVE
-  void *zw_default_config(const char *locator)
+  int zw_default_config(std::string locator_str)
   {
+    const char *locator = (const char *)locator_str.data();
+
     if (locator == NULL)
     {
       return NULL;
@@ -137,7 +118,7 @@ extern "C"
     *config = z_config_default();
     zp_config_insert(z_loan(*config), Z_CONFIG_CONNECT_KEY,
                      z_string_make(locator));
-    return (void *)config;
+    return (int)config;
   }
 
   // returns z_owned_session_t *
@@ -169,7 +150,6 @@ extern "C"
     return 0;
   }
 
-
   // void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
   int zw_declare_ke(int session_ptr, std::string keyexpr_str)
   {
@@ -198,10 +178,11 @@ extern "C"
     // TODO Cleanup
     // std::cout << "ke: " << ke << std::endl;
     // std::cout << "=========" << std::endl;
-    return (int) ke;
+    return (int)ke;
   }
 
-  int zw_put(int session_ptr, int key_expr_ptr,
+  int zw_put(int session_ptr,
+             int key_expr_ptr,
              std::string value_str)
   {
     // TODO: cleanup
@@ -248,6 +229,100 @@ extern "C"
     z_close(z_move(*s));
   }
 
+  //////////////////////////////////
+  //////////////////////////////////
+  //////////////////////////////////
+  //////////////////////////////////
+  //////////////////////////////////
+  // EMSCRIPTEN_KEEPALIVE
+  // zw_sub
+
+  // void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
+  // {
+
+  //   z_owned_subscriber_t *sub =
+  //       (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
+
+  //   z_owned_closure_sample_t callback =
+  //       z_closure(wrapping_sub_callback, remove_js_callback, (void *)js_callback);
+
+  //   *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke),
+  //                               z_move(callback), NULL);
+
+  //   if (!z_check(*sub))
+  //   {
+  //     printf("Unable to declare subscriber.\n");
+  //     exit(-1);
+  //   }
+  //   return sub;
+  // }
+
+  //////////////////////////////////
+  //////////////////////////////////
+  //////////////////////////////////
+  void remove_js_callback(void *ts_cb)
+  {
+    // TODO: Do i need to call free here ? to clean up the ts_db
+    // z_free(ts_cb ?? );
+  }
+
+  void wrapping_sub_callback(const z_sample_t *sample, void *ts_cb_ptr)
+  {
+    std::cout << "INSIDE ts_cb_ptr" << std::endl;
+
+    emscripten::val *ts_cb = reinterpret_cast<emscripten::val *>(ts_cb_ptr);
+
+    (*ts_cb)(100).await().as<void>();
+    // (*ts_cb)(*sample).await().as<void>();
+
+    // If call_js_callback proxy to JS becomes async then the free has to be done
+    // in call_js_callback
+    // TODO
+    // z_free(data);
+  }
+
+
+  // expects an Async Callback for now
+  // TODO: Sync
+  int neo_zw_sub(
+      int session_ptr,
+      int ke_ptr,
+      // std::string ke_ptr,
+      emscripten::val ts_cb)
+  {
+
+    std::cout << "C - neo_zw_sub!" << std::endl;
+    std::cout << "session_ptr: " << session_ptr << std::endl;
+    std::cout << "ke_ptr: " << ke_ptr << std::endl;
+
+    z_owned_session_t *session = reinterpret_cast<z_owned_session_t *>(session_ptr);
+    z_owned_keyexpr_t *keyexpr = reinterpret_cast<z_owned_keyexpr_t *>(ke_ptr);
+
+    // allocating locally a emscripten::val
+    // So that ts_cb does not get dropped at end of function
+    emscripten::val *ts_cb_local_ptr = (emscripten::val *)z_malloc(sizeof(emscripten::val));
+
+    // clone ts_cb ? ? ?
+    memcpy(ts_cb_local_ptr, &ts_cb, sizeof(emscripten::val));
+
+    z_owned_closure_sample_t callback =
+        z_closure(wrapping_sub_callback, remove_js_callback, (void *)ts_cb_local_ptr);
+
+    // void z_closure_sample_call(const z_owned_closure_sample_t *closure, const z_sample_t *sample);
+
+    //
+    z_owned_subscriber_t sub =
+        z_declare_subscriber(z_session_loan(session), z_loan(*keyexpr), z_closure_sample_move(&callback), NULL);
+    // TODO:Change
+    return 10;
+  }
+
+  //////////////////////////////////
+  //////////////////////////////////
+  //////////////////////////////////
+  //////////////////////////////////
+  //////////////////////////////////
+
   int zw_version() { return Z_PROTO_VERSION; }
 
   // ██████  ███████ ██    ██
@@ -293,9 +368,8 @@ extern "C"
   // Macro to Expose Functions
   EMSCRIPTEN_BINDINGS(my_module)
   {
-    emscripten::function("callback_test", &callback_test);
-    emscripten::function("callback_test_async", &callback_test_async);
-    emscripten::function("pass_arr_cpp", &pass_arr_cpp);
+    emscripten::function("zw_default_config", &zw_default_config);
+
     emscripten::function("zw_put", &zw_put);
     emscripten::function("zw_open_session", &zw_open_session);
     emscripten::function("zw_start_tasks", &zw_start_tasks);
@@ -303,6 +377,14 @@ extern "C"
     emscripten::function("zw_close_session", &zw_close_session);
     emscripten::function("zw_version", &zw_version);
     emscripten::function("zw_declare_ke", &zw_declare_ke);
+    // 
+    emscripten::function("neo_zw_sub", &neo_zw_sub);
+    // DEV
+    emscripten::function("callback_test", &callback_test);
+    emscripten::function("callback_test_async", &callback_test_async);
+    emscripten::function("pass_arr_cpp", &pass_arr_cpp);
+    // emscripten::function("zw_default_config", &zw_default_config);
+    //
   }
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-}
+};

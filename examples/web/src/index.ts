@@ -24,14 +24,18 @@ async function main() {
 
     // Test push
     console.log("Start Openning Zenoh Session");
-    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7448"))
     // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.36:7447"))
+    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.36:7447"))
+
+    console.log("Start Openning Zenoh Session 2");
     
     // TODO: Very broken
     // const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
 
-    const keyexpr = await session.declare_ke("demo/ts/rcv");
+    // const keyexpr = await session.declare_ke("demo/ts/rcv");
+    const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
+    const keyexpr2 = await session.declare_ke("demo/send/to/ts");
 
     console.log("Pre Put values !");
     executeAsync(async function () {
@@ -39,15 +43,10 @@ async function main() {
        
         var c = 0;
         while (c < 50) {
-            console.log("1 !");
             let enc: TextEncoder = new TextEncoder(); // always utf-8
-            console.log("2 !");
             let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
-            console.log("3 !");
             let value: zenoh.Value = new zenoh.Value(uint8arr);
-            console.log("4 !");
-            var pub_res = await session.put(keyexpr, value);
-            console.log("5 !");
+            var pub_res = await session.put(keyexpr1, value);
 
             await sleep(500);
             c++;
@@ -55,6 +54,8 @@ async function main() {
         console.log("Finish Put Values");
     });
 
+
+    
     console.log("Begin Sub Values");
 
     // 

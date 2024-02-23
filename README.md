@@ -78,10 +78,12 @@ npm install && npm run develop
   This can be done by building the zenoh daemon `zenohd` from [zenoh], and running the command.
 
 ```
-RUST_LOG=DEBUG ./zenohd -l ws/0.0.0.0:7447
+RUST_LOG=DEBUG ./zenohd -l tcp/[::]:7447 -l ws/[::]:10000
 ```
   
-<!-- RUST_LOG=DEBUG cargo run zenohd -l ws/0.0.0.0:7447 -->
+<!-- 
+RUST_LOG=DEBUG cargo run zenohd -- -l tcp/[::]:7447 -l ws/[::]:10000
+-->
 
   Then starting an instance of a zenoh subscriber locally
 

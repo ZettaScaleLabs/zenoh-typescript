@@ -25,7 +25,7 @@ interface Module {
     onRuntimeInitialized(): Promise<any>,
     // TODO Delete ?
     registerJSCallback(callback: any): number,
-    _zw_default_config(clocator: any): any,
+    
 
     writeArrayToMemory(array: Uint8Array, buffer: number): any, // TODO: Returns None ? 
     // Working Callbacks
@@ -41,12 +41,15 @@ interface Module {
     pass_arr_cpp(...arg: any): any,
 
     // NEO API TODO Fix TYPES
+    neo_zw_sub(...arg: any): any,
+    // 
     zw_put(...arg: any): any,
     zw_open_session(...arg: any): any,
     zw_start_tasks(...arg: any): any,
     zw_close_session(...arg: any): any,
     zw_declare_ke(...arg: any): any,
     zw_make_ke(...arg: any): any,
+    zw_default_config(clocator: any): any,
     // zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
     api: any
 }
@@ -130,8 +133,8 @@ export class Config {
     static async new(locator: string): Promise<Config> {
         const Zenoh = await zenoh();
         // TODO : Is this horrible ?
-        const clocator = Zenoh.stringToUTF8OnStack(locator);
-        const ptr = Zenoh._zw_default_config(clocator);
+        // const clocator = Zenoh.stringToUTF8OnStack(locator);
+        const ptr = Zenoh.zw_default_config(locator);
 
         if (ptr === 0) {
             throw "Failed to construct zenoh.Config";
@@ -479,20 +482,6 @@ export class Session {
         return ret
     }
 
-
-    async do_function_callback(): Promise<number> {
-        console.log("Before Call TS");
-        const Zenoh: Module = await zenoh();
-
-        await Zenoh.api._test_call_js_callback();
-        console.log("After Call TS");
-        return 10
-    }
-
-    async register_function_callback_do_function_callback(callback: (someArg: number) => number): Promise<number> {
-        return 10
-    }
-
     // 
     async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
     // 
@@ -552,14 +541,24 @@ export class Session {
         // }
         // return ret
     }
-
-    async subscribe(keyexpr: string, callback: () => void): Promise<number> {
+    
+    async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
         const Zenoh: Module = await zenoh();
 
         const pke = await this.declare_ke(keyexpr);
 
-        const callback_ptr: number = Zenoh.registerJSCallback(callback);
-        const ret = await Zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
+        // (
+        //     int session_ptr,
+        //     int ke_ptr,
+        //     emscripten::val ts_cb
+        //     )
+
+        async function neo_sub_async_ts_callback(num: number): Promise<number> {
+            console.log("    neo_sub_async_ts_callback: ", num);
+            return 25 + num;
+        }
+
+        const ret = await Zenoh.api.neo_zw_sub(this.__ptr, pke, neo_sub_async_ts_callback);
 
         if (ret < 0) {
             throw "An error occured while putting"
