@@ -42,7 +42,7 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
     While in active development, running the command
 
   ```bash
-    npm clean_build_package
+    npm run clean_build_package
   ```
 
   Will run the build pipeline of 
