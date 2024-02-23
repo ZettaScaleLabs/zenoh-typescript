@@ -438,9 +438,11 @@ export class Session {
 
     // Keyexpr can either be something that can be converted into a keyexpr or a pointer to a Keyexpr
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
-        const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
-        const ret = await Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
 
+        const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
+
+        const ret = await Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
+        
         if (ret < 0) {
             throw `Error ${ret} while putting`
         }

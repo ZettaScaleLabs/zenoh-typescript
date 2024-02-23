@@ -94,18 +94,6 @@ extern "C"
   //   return get;
   // }
 
-  EMSCRIPTEN_KEEPALIVE
-  void spin(z_owned_session_t *s)
-  {
-    zp_read(z_loan(*s), NULL);
-    zp_send_keep_alive(z_loan(*s), NULL);
-    // zp_send_join(z_loan(*s), NULL);
-  }
-
-  // TODO
-  // TODO
-  // TODO
-  // TODO
   // TODO
   // EMSCRIPTEN_KEEPALIVE
   // void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
@@ -123,6 +111,7 @@ extern "C"
   //   }
   //   return sub;
   // }
+
   // TODO
   // TODO
   // TODO
@@ -209,23 +198,28 @@ extern "C"
     // TODO Cleanup
     // std::cout << "ke: " << ke << std::endl;
     // std::cout << "=========" << std::endl;
-
     return (int) ke;
   }
 
   int zw_put(int session_ptr, int key_expr_ptr,
              std::string value_str)
   {
+    // TODO: cleanup
+    // std::cout << "session_ptr"  << session_ptr << std::endl;
+    // std::cout << "key_expr_ptr" << key_expr_ptr << std::endl;
+    // std::cout << "value_str"    << value_str << std::endl;
 
     z_put_options_t options = z_put_options_default();
     options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
 
-    // BAD Horrible
     z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
     z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
 
     // Static cast is supposed to safer ?
     const uint8_t *value = (const uint8_t *)value_str.data();
+
+    // TODO: Cleanup
+    // std::cout << "return value"    << value_str << std::endl;
 
     return z_put(z_loan(*s), z_loan(*ke), value, value_str.length(), &options);
   }

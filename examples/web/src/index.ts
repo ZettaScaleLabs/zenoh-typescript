@@ -24,20 +24,31 @@ async function main() {
 
     // Test push
     console.log("Start Openning Zenoh Session");
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
+    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.21.42:7447"))
     // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.36:7447"))
+    
+    // TODO: Very broken
+    // const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
 
-    const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
-    // const keyexpr = await session.declare_ke("demo/ts/rcv");
+    const keyexpr = await session.declare_ke("demo/ts/rcv");
 
     console.log("Pre Put values !");
     executeAsync(async function () {
+        console.log("Inside Execute Async Function !");
+       
         var c = 0;
         while (c < 50) {
+            console.log("1 !");
             let enc: TextEncoder = new TextEncoder(); // always utf-8
+            console.log("2 !");
             let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
+            console.log("3 !");
             let value: zenoh.Value = new zenoh.Value(uint8arr);
+            console.log("4 !");
             var pub_res = await session.put(keyexpr, value);
+            console.log("5 !");
+
             await sleep(500);
             c++;
         }
