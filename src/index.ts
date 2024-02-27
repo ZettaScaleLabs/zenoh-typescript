@@ -35,10 +35,7 @@ interface Module {
     // Add Function, Accepts any function and needs a function Signature, More info Belows
     addFunction(func: (...arg: any) => any, sig: string): any,
 
-    // Async Callbacks with Emscripten Automagically
-    callback_test(...arg: any): any,
-    callback_test_async(...arg: any): any,
-    pass_arr_cpp(...arg: any): any,
+
 
     // NEO API TODO Fix TYPES
     neo_zw_sub(...arg: any): any,
@@ -52,6 +49,14 @@ interface Module {
     zw_default_config(clocator: any): any,
     // zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
     api: any
+    // DEV
+    // DEV
+    // DEV
+    // Async Callbacks with Emscripten Automagically
+    callback_test(...arg: any): any,
+    callback_test_async(...arg: any): any,
+    pass_arr_cpp(...arg: any): any,
+    callback_test_typed(...arg: any): any,
 }
 
 let mod_instance: Module;
@@ -618,6 +623,11 @@ export class DEV {
         console.log("Sync Callback");
         let ret_val = Zenoh.callback_test(ts_callback);
         console.log("Return Value: ", ret_val);
+
+        console.log("Async Callback Typed");
+        let ret_val_typed = await Zenoh.callback_test_typed(ts_callback);
+        console.log("Return Value: ", ret_val_typed);
+
 
         // CALLBACK ASYNC        
         console.log("Async Callback");

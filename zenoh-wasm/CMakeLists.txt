@@ -52,7 +52,7 @@ set(WASM_LINK_FLAGS "--extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s ENVIRONMENT=web,worker \
 -s EXPORTED_RUNTIME_METHODS=['writeArrayToMemory','getValue','setValue','registerJSCallback','onRuntimeInitialized','cwrap','UTF8ToString','stringToUTF8OnStack'] \
 -s EXPORTED_FUNCTIONS=['_malloc'] \
--s PTHREAD_POOL_SIZE=16 \
+-s PTHREAD_POOL_SIZE=1 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
 -s ALLOW_TABLE_GROWTH \
 -s RESERVED_FUNCTION_POINTERS=100 \

@@ -12,6 +12,9 @@
 #   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 #
 
+# Check if emcmake is on path
+
+
 rm -rf build
 rm -rf build.emscripten
 mkdir build

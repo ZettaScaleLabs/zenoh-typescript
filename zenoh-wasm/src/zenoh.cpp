@@ -36,6 +36,8 @@
 extern "C"
 {
 
+  EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
   // EMSCRIPTEN_KEEPALIVE
   // void *zw_default_config(const char *locator)
   // {
@@ -59,7 +61,6 @@ extern "C"
         (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
 
     // TODO:CLOSE SESSION
-
     // *session = z_open(z_move(*config));
     // if (!z_check(*session))
     // {
@@ -68,6 +69,7 @@ extern "C"
     //   return NULL;
     // }
     // return session;
+
   }
 
   EMSCRIPTEN_KEEPALIVE
@@ -287,16 +289,22 @@ extern "C"
   // expects an Async Callback for now
   // TODO: Sync
   int neo_zw_sub(
+      // exists inside WASM instance
       int session_ptr,
+      // exists inside WASM instance
       int ke_ptr,
-      // std::string ke_ptr,
-      emscripten::val ts_cb)
+      // exists where ?
+      emscripten::val ts_cb // This is a value
+      )
   {
 
     std::cout << "    C - neo_zw_sub!" << std::endl;
     std::cout << "    session_ptr: " << session_ptr << std::endl;
     std::cout << "    ke_ptr: " << ke_ptr << std::endl;
-    std::cout << "     ptr: "<< std::this_thread::get_id() << std::endl;
+    // Get pointer to ts_cb_ptr
+    std::cout << "    ts_cb ptr: " << &ts_cb << std::endl;
+    
+    std::cout << "    ptr: "<< std::this_thread::get_id() << std::endl;
 
     z_owned_session_t *session = reinterpret_cast<z_owned_session_t *>(session_ptr);
     z_owned_keyexpr_t *keyexpr = reinterpret_cast<z_owned_keyexpr_t *>(ke_ptr);
@@ -307,10 +315,10 @@ extern "C"
 
     // clone ts_cb ? ? ?
     // CONTINUE FROM HERE 
-    std::cout << "     Before MOve: " << std::endl;
-    *ts_cb_local_ptr = ts_cb;
-    // *ts_cb_local_ptr = std::move(ts_cb);
-    std::cout << "     After MOve: " << std::endl;
+    std::cout << "    Before Move: " << std::endl;
+    // *ts_cb_local_ptr = ts_cb;
+    *ts_cb_local_ptr = std::move(ts_cb);
+    std::cout << "    After Move: " << std::endl;
 
     z_owned_closure_sample_t callback =
         z_closure(wrapping_sub_callback, remove_js_callback, (void *)ts_cb_local_ptr);
@@ -361,6 +369,17 @@ extern "C"
     return ret;
   }
 
+    int callback_test_typed(CallbackType cb)
+  {
+    printf("------ callback_test ------\n");
+
+    int ret = cb(5).as<int>();
+
+    printf("   ret val: %d \n", ret);
+
+    return ret;
+  }
+
   int pass_arr_cpp(std::string js_arr)
   {
 
@@ -375,8 +394,12 @@ extern "C"
   // Macro to Expose Functions
   EMSCRIPTEN_BINDINGS(my_module)
   {
-    emscripten::function("zw_default_config", &zw_default_config);
+    // Types
+    // TODO SAMPLE ? 
+    emscripten::register_type<CallbackType>("(num: number) => number");
+    // async function async_ts_callback(num: number): Promise<number> {
 
+    emscripten::function("zw_default_config", &zw_default_config);
     emscripten::function("zw_put", &zw_put);
     emscripten::function("zw_open_session", &zw_open_session);
     emscripten::function("zw_start_tasks", &zw_start_tasks);
@@ -384,10 +407,13 @@ extern "C"
     emscripten::function("zw_close_session", &zw_close_session);
     emscripten::function("zw_version", &zw_version);
     emscripten::function("zw_declare_ke", &zw_declare_ke);
+
     // 
     emscripten::function("neo_zw_sub", &neo_zw_sub);
+
     // DEV
     emscripten::function("callback_test", &callback_test);
+    emscripten::function("callback_test_typed", &callback_test_typed);
     emscripten::function("callback_test_async", &callback_test_async);
     emscripten::function("pass_arr_cpp", &pass_arr_cpp);
     // emscripten::function("zw_default_config", &zw_default_config);
