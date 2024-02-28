@@ -24,35 +24,35 @@ async function main() {
 
     // Test push
     console.log("Start Openning Zenoh Session");
-    let conn_string =  "ws/192.168.1.26:10000";
+    // let conn_string = "ws/192.168.21.42:10000";
+    // let conn_string = "ws/192.168.1.176:10000";
+    // let conn_string = "ws/192.168.1.36:10000";
+    let conn_string = "ws/192.168.1.27:10000";
     console.log("Connecting to ",conn_string) 
-
-    // const session = await zenoh.Session.open(zenoh.Cnfig.new("ws/192.168.21.42:7448"))
-    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.176:7447"))
-    // const session = await zenoh.Session.open(zenoh.Config.new("ws/192.168.1.36:7447"))
+    
     const session = await zenoh.Session.open(zenoh.Config.new(conn_string))
     
-
     console.log("Start Openning Zenoh Session 2");
     
     // TODO: Very broken
     // const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
 
     // const keyexpr = await session.declare_ke("demo/ts/rcv");
-    const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
+    // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
     const keyexpr2 = await session.declare_ke("demo/send/to/ts");
 
+    // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
     // console.log("Pre Put values !");
     // executeAsync(async function () {
     //     console.log("Inside Execute Async Function !");
-
-    // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
     //     var c = 0;
     //     while (c < 50) {
     //         let enc: TextEncoder = new TextEncoder(); // always utf-8
     //         let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
     //         let value: zenoh.Value = new zenoh.Value(uint8arr);
     //         var pub_res = await session.put(keyexpr1, value);
+    //         console.log("Pub ", c);
+            
     //         await sleep(500);
     //         c++;
     //     }
@@ -61,16 +61,16 @@ async function main() {
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
-    // console.log("Start Sub !");
-    // var pub_res = await session.neo_sub(keyexpr2);
-    // console.log("End Sub Values");
+    console.log("Start Sub !");
+    var sub_res = await session.neo_sub(keyexpr2);
+    console.log("End Sub Values");
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
-    console.log("BEGIN DEV Tests ");
+    // console.log("BEGIN DEV Tests ");
     // await zenoh.DEV.call_functions_CPP_style();
-    await zenoh.DEV.call_CPP_function_with_TS_Callback();
-    console.log("END DEV Tests ");
+    // await zenoh.DEV.call_CPP_function_with_TS_Callback();
+    // console.log("END DEV Tests ");
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
 
     // for Sub use:

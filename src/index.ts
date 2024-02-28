@@ -47,6 +47,7 @@ interface Module {
     zw_declare_ke(...arg: any): any,
     zw_make_ke(...arg: any): any,
     zw_default_config(clocator: any): any,
+    neo_poll_read_func(...arg: any): any,
     // zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
     api: any
     // DEV
@@ -556,22 +557,46 @@ export class Session {
 
         const pke = key_expr.__ptr;
 
-        console.log("INSIDE before Function invok ");
+        // while (1) {
+        //     zp_read(z_session_loan(&s), NULL);
+        //     zp_send_keep_alive(z_session_loan(&s), NULL);
+        //     zp_send_join(z_session_loan(&s), NULL);
+        // }
+        
+        function executeAsync(func: any) {
+            setTimeout(func, 0);
+        }
+
+        
+        // TODO How do i stop this async Function ? 
+        // Cleanup
+        const session_ptr = this.__ptr;
+        executeAsync(async function () {
+            console.log("Inside Execute Async Function !");
+
+            while (1) {
+                Zenoh.neo_poll_read_func(session_ptr);
+            }
+            console.log("Finish Put Values");
+        });
+
+
+        // console.log("INSIDE before Function invok ");
 
         async function neo_sub_async_ts_callback(num: number): Promise<number> {
             console.log("    neo_sub_async_ts_callback: ", num);
             return 25 + num;
         }
 
-        console.log("INSIDE neo_zw_sub ");
+        // console.log("INSIDE neo_zw_sub ");
 
         const ret = await Zenoh.neo_zw_sub(this.__ptr, pke, neo_sub_async_ts_callback);
-
+        console.log("ret")
         if (ret < 0) {
             throw "An error occured while putting"
         }
 
-        console.log("INSIDE neo_sub END");
+        // console.log("INSIDE neo_sub END");
 
         return ret
     }

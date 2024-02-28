@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/node": "20.9.1",
     "cpx": "^1.5.0",
+    "esbuild": "0.20.1",
     "exports-loader": "^4.0.0",
     "ts-loader": "^9.5.0",
     "ts-node": "10.9.1",
@@ -36,18 +37,14 @@
     "//  CLEAN        //": "",
     "clean": "rm -rf dist esm cjs && rm -rf node_modules",
     "clean:wasm:local": "rm -rf ./src/wasm",
-
     "//  BUILD        //": "",
     "build:wasm": "bash zenoh-wasm/build.sh && npm run build:ts",
     "build:ts": "npm run build:esm && npm run build:copy_artifacts",
     "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json",
-
     "//  COPY ARTIFACTS //": "",
-   
     "build:copy_artifacts": "npm run build:copy_zenoh_js && npm run build:copy_wasm",
     "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"esm/wasm\" && cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"cjs/wasm\"",
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"./cjs\" && cpx -v \"src/**/*.wasm\" \"./esm\"",
-
     "// TODO THINGS ": "",
     "//build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
     "//   PACKAGE       //": "",

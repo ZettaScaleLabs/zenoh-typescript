@@ -30,12 +30,13 @@ set(BUILD_TOOLS OFF CACHE BOOL "Disables build tools" FORCE)
 add_subdirectory(${CMAKE_SOURCE_DIR}/zenoh-pico)
 include_directories(${CMAKE_SOURCE_DIR}/zenoh-pico/include)
 target_compile_definitions(zenohpico PUBLIC Z_LINK_WS=1 Z_LINK_TCP=0 Z_LINK_UDP_MULTICAST=0 Z_LINK_UDP_UNICAST=0 Z_SCOUTING_UDP=0 Z_MULTI_THREAD=1)
-target_compile_options(zenohpico PUBLIC -fPIC -pthread)
+target_compile_options(zenohpico PUBLIC -fPIC)
+# target_compile_options(zenohpico PUBLIC -fPIC -pthread)
+# -fPIC : When used as a Library, the code is not  linked to an address
 
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
 
 set(WASM_BUILD_FLAGS " \
--pthread \
 -fPIC \
 -D ZENOH_EMSCRIPTEN=1 \
 -D Z_LINK_WS=1 \
@@ -43,7 +44,10 @@ set(WASM_BUILD_FLAGS " \
 -D Z_LINK_UDP_MULTICAST=0 \
 -D Z_LINK_UDP_UNICAST=0 \
 -D Z_SCOUTING_UDP=0 \
--D Z_MULTI_THREAD=1")
+-D Z_MULTI_THREAD=0")
+
+# -pthread \
+# -D Z_MULTI_THREAD=1")
 
 # func-wrapper Adds a JS-Callback to be passed to C to be used. 
 # TODO more functions exposed via Exported_functions
@@ -52,7 +56,6 @@ set(WASM_LINK_FLAGS "--extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s ENVIRONMENT=web,worker \
 -s EXPORTED_RUNTIME_METHODS=['writeArrayToMemory','getValue','setValue','registerJSCallback','onRuntimeInitialized','cwrap','UTF8ToString','stringToUTF8OnStack'] \
 -s EXPORTED_FUNCTIONS=['_malloc'] \
--s PTHREAD_POOL_SIZE=1 \
 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
 -s ALLOW_TABLE_GROWTH \
 -s RESERVED_FUNCTION_POINTERS=100 \
@@ -64,9 +67,11 @@ set(WASM_LINK_FLAGS "--extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s EXPORT_ALL=1 \
 -s EXPORT_NAME=zenohWasm \
 -s ALLOW_TABLE_GROWTH \
--pthread \
 -fPIC \
 --bind")
+
+# -s PTHREAD_POOL_SIZE=1 \
+# -pthread \
 
 # Cannot Export Types for C files
 # Need to figure out how to emit types for C files
