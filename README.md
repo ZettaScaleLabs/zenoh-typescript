@@ -85,10 +85,16 @@ RUST_LOG=DEBUG ./zenohd -l tcp/[::]:7447 -l ws/[::]:10000
 RUST_LOG=DEBUG cargo run zenohd -- -l tcp/[::]:7447 -l ws/[::]:10000
 -->
 
-  Then starting an instance of a zenoh subscriber locally
+Then starting an instance of a zenoh subscriber locally
 
 ```
-RUST_LOG=DEBUG ./z_sub -k demo/ts/rcv
+RUST_LOG=DEBUG ./z_sub -k demo/recv/from/ts
+```
+
+Then starting an instance of a zenoh Publisher locally
+
+```
+RUST_LOG=DEBUG ./z_pub -k demo/send/to/ts
 ```
 
 

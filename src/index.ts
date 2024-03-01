@@ -573,10 +573,13 @@ export class Session {
         const session_ptr = this.__ptr;
         executeAsync(async function () {
             console.log("Inside Execute Async Function !");
-
             while (1) {
+                console.log("Inside While loop !");
                 Zenoh.neo_poll_read_func(session_ptr);
+                console.log("Inside While loop !");
+
             }
+
             console.log("Finish Put Values");
         });
 

@@ -27,7 +27,9 @@ async function main() {
     // let conn_string = "ws/192.168.21.42:10000";
     // let conn_string = "ws/192.168.1.176:10000";
     // let conn_string = "ws/192.168.1.36:10000";
-    let conn_string = "ws/192.168.1.27:10000";
+    let conn_string = "ws/192.168.1.30:10000";
+    // let conn_string = "ws/192.168.1.27:10000";
+    
     console.log("Connecting to ",conn_string) 
     
     const session = await zenoh.Session.open(zenoh.Config.new(conn_string))

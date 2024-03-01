@@ -286,14 +286,23 @@ void wrapping_sub_callback(const z_sample_t *sample, void *ts_cb_ptr) {
 //      ██ ██    ██ ██   ██
 // ███████  ██████  ██████
 
-void neo_poll_read_func(
-    int session_ptr ) {
+void neo_poll_read_func(int session_ptr) {
+  std::cout << "    neo_poll_read_func" << std::endl;
 
+  //
   z_owned_session_t *session =
       reinterpret_cast<z_owned_session_t *>(session_ptr);
+  //
+  std::cout << "    neo_poll_read_func zp_read" << std::endl;
   zp_read(z_session_loan(session), NULL);
+  //
+  std::cout << "    neo_poll_read_func zp_send_keep_alive" << std::endl;
   zp_send_keep_alive(z_session_loan(session), NULL);
+  //
+  std::cout << "    neo_poll_read_func zp_send_join" << std::endl;
   zp_send_join(z_session_loan(session), NULL);
+  std::cout << "    neo_poll_read_func FINISH" << std::endl;
+
 }
 
 void data_handler(const z_sample_t *sample, void *arg) {
@@ -444,7 +453,7 @@ EMSCRIPTEN_BINDINGS(my_module) {
   emscripten::function("callback_test_typed", &callback_test_typed);
   emscripten::function("callback_test_async", &callback_test_async);
   emscripten::function("pass_arr_cpp", &pass_arr_cpp);
-  
+
   // emscripten::function("zw_default_config", &zw_default_config);
   //
 }
