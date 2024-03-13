@@ -18,9 +18,11 @@
 #include "zenoh-pico/api/types.h"
 #include "zenoh-pico/system/platform.h"
 // Emscripten
+#include <emscripten.h>
 #include <emscripten/bind.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/val.h>
+#include <emscripten/proxying.h>
 // General C / C++
 #include <chrono>
 #include <cstdlib>
@@ -32,6 +34,7 @@
 #include <string.h>
 #include <thread>
 #include <unistd.h>
+#include <pthread.h>
 
 extern "C" {
 
@@ -428,6 +431,45 @@ int pass_arr_cpp(std::string js_arr) {
   return 10;
 }
 
+pthread_t main_thread;
+pthread_t worker;
+em_proxying_queue* proxy_queue = NULL;
+int i = 0;
+
+void run_job(void* arg) {
+  // printf("------ thread %d: RUN JOB ------\n", pthread_self());
+  emscripten::val* cb = (emscripten::val*) arg;
+  (*cb)(i);
+  i++;
+}
+
+static void* worker_main(void *arg) {
+  while(true) {
+    // printf("------ thread %d: PROXY JOB ------\n", pthread_self());
+    emscripten_proxy_sync(proxy_queue, main_thread, run_job, arg);
+    sleep(1);
+  }
+}
+
+void main_loop() {
+  // printf("------ thread %d: main_loop ------\n", pthread_self());
+  emscripten_proxy_execute_queue(proxy_queue);
+}
+
+int run_on_event(emscripten::val arg) {
+  // printf("------ thread %d: run_on_event ------\n", pthread_self());
+  main_thread = pthread_self();
+
+  emscripten::val *cb = (emscripten::val *)z_malloc(sizeof(emscripten::val));
+  (*cb) = emscripten::val(arg);
+
+  pthread_create(&worker, NULL, worker_main, (void*)cb);
+
+  proxy_queue = em_proxying_queue_create();
+  emscripten_set_main_loop(main_loop, 100, false);
+  return 0;
+}
+
 // Macro to Expose Functions
 EMSCRIPTEN_BINDINGS(my_module) {
   // Types
@@ -453,6 +495,7 @@ EMSCRIPTEN_BINDINGS(my_module) {
   emscripten::function("callback_test_typed", &callback_test_typed);
   emscripten::function("callback_test_async", &callback_test_async);
   emscripten::function("pass_arr_cpp", &pass_arr_cpp);
+  emscripten::function("run_on_event", &run_on_event);
 
   // emscripten::function("zw_default_config", &zw_default_config);
   //

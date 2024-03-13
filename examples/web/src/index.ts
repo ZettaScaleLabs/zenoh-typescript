@@ -23,25 +23,25 @@ const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 async function main() {
 
     // Test push
-    console.log("Start Openning Zenoh Session");
+    // console.log("Start Openning Zenoh Session");
     // let conn_string = "ws/192.168.21.42:10000";
     // let conn_string = "ws/192.168.1.176:10000";
     // let conn_string = "ws/192.168.1.36:10000";
-    let conn_string = "ws/192.168.1.30:10000";
+    // let conn_string = "ws/192.168.1.30:10000";
     // let conn_string = "ws/192.168.1.27:10000";
     
-    console.log("Connecting to ",conn_string) 
+    // console.log("Connecting to ",conn_string) 
     
-    const session = await zenoh.Session.open(zenoh.Config.new(conn_string))
+    // const session = await zenoh.Session.open(zenoh.Config.new(conn_string))
     
-    console.log("Start Openning Zenoh Session 2");
+    // console.log("Start Openning Zenoh Session 2");
     
     // TODO: Very broken
     // const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
 
     // const keyexpr = await session.declare_ke("demo/ts/rcv");
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
-    const keyexpr2 = await session.declare_ke("demo/send/to/ts");
+    // const keyexpr2 = await session.declare_ke("demo/send/to/ts");
 
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
     // console.log("Pre Put values !");
@@ -63,9 +63,9 @@ async function main() {
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
-    console.log("Start Sub !");
-    var sub_res = await session.neo_sub(keyexpr2);
-    console.log("End Sub Values");
+    // console.log("Start Sub !");
+    // var sub_res = await session.neo_sub(keyexpr2);
+    // console.log("End Sub Values");
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
@@ -101,6 +101,10 @@ async function main() {
     // 	res.send("Hello world")
     // })
     // app.listen(3000)
+
+    console.log("run_on_event");
+    let ret_val = await zenoh.DEV.run_on_event(function(num: number) {console.log("    TS CALLBACK received: " + num)});
+
     var count = 0;
     while (true) {
         var seconds = 10;

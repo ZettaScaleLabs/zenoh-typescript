@@ -58,6 +58,7 @@ interface Module {
     callback_test_async(...arg: any): any,
     pass_arr_cpp(...arg: any): any,
     callback_test_typed(...arg: any): any,
+    run_on_event(...arg: any): any,
 }
 
 let mod_instance: Module;
@@ -668,6 +669,11 @@ export class DEV {
         console.log("Return Value: ", ret_val_async);
         console.log("=====================================");
 
+    }
+
+    static async run_on_event(ts_callback: any) {
+        const Zenoh: Module = await zenoh();
+        await Zenoh.run_on_event(ts_callback);
     }
 }
 
