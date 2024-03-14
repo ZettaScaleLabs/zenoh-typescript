@@ -506,10 +506,10 @@ export class Session {
 
     // }
 
-    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: number) => number): Promise<Subscriber<void>> {
+    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: String) => void): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-        const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, handler);
+        const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, (keyexpr: number) => { handler(Zenoh.UTF8ToString(keyexpr)) });
 
         if (ret < 0) {
             throw `Error ${ret} while declaring Subscriber`

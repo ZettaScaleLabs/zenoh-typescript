@@ -21,8 +21,6 @@ import * as zenoh from "../../../esm"
 
 const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 async function main() {
-    const Zenoh = await zenoh.zenoh();
-
     // Test push
     console.log("zenoh.Session.open");
     // let conn_string = "ws/192.168.21.42:10000";
@@ -66,9 +64,8 @@ async function main() {
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     console.log("session.declare_subscriber");
     
-    var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: number) => {
-        console.log(">> [Subscriber] Received PUT ('" + Zenoh.UTF8ToString(keyexpr) + "': '')");
-        return 0;
+    var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String) => {
+        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '')");
     });
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
