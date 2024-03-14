@@ -72,7 +72,10 @@ async function main() {
     }
     
 
-    var sub_res = await session.declare_subscriber(keyexpr2, ts_callback );
+    var sub_res = await session.declare_subscriber(keyexpr2, (num: number) => {
+        console.log("    TS CALLBACK: ", num);
+        return 10 + num;
+    });
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 

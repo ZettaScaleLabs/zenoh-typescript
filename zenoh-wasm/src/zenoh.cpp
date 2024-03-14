@@ -129,9 +129,6 @@ int zw_open_session(int config_ptr) {
   main_thread = pthread_self();
   proxy_queue = em_proxying_queue_create();
 
-  std::cout << "zw_open_session: " << main_thread << std::endl;
-
-
   z_owned_config_t *config = reinterpret_cast<z_owned_config_t *>(config_ptr);
   z_owned_session_t *session =
       (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
@@ -259,26 +256,12 @@ void data_handler(const z_sample_t *sample, void *arg) {
 }
 
 int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_cb) {
-
-  // pthread_t this_thread;
-  // this_thread = pthread_self();
-  std::cout << "zw_declare_subscriber: " << pthread_self() << std::endl;
   z_subscriber_options_t options = z_subscriber_options_t();
 
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
 
-  std::cout << "Before creating now emscripten val : "  << std::endl;
-  // emscripten::val *ts_cb_ptr = (emscripten::val *)z_malloc(sizeof(emscripten::val));
-  // std::cout << "AFTER creating now emscripten val : "  << std::endl;
-  int out = (ts_cb)(100).as<int>();
-  std::cout << "out: " << out << std::endl;
   emscripten::val *ts_cb_ptr = new emscripten::val(std::move(ts_cb));
-
-  // emscripten::val(ts_cb);
-  // (*ts_cb_ptr) = emscripten::val(ts_cb);
-  std::cout << "AFTER NEW creating now emscripten val : "  << std::endl;
-
   
   z_owned_closure_sample_t *callback =
       (z_owned_closure_sample_t *)z_malloc(sizeof(z_owned_closure_sample_t));
