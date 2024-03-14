@@ -64,7 +64,15 @@ async function main() {
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     console.log("session.declare_subscriber");
-    var sub_res = await session.declare_subscriber(keyexpr2, () => { console.log("    TS CALLBACK") });
+
+
+    function ts_callback(num: number): number {
+        console.log("    TS CALLBACK: ", num);
+        return 10 + num;
+    }
+    
+
+    var sub_res = await session.declare_subscriber(keyexpr2, ts_callback );
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 

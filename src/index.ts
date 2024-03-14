@@ -419,7 +419,7 @@ export class Session {
     }
 
     static async open(config: Promise<Config> | Config): Promise<Session> {
-        const cfg = await config;
+        const cfg : Config = await config;
         const Zenoh: Module = await zenoh();
 
         if (!cfg.check()) {
@@ -505,10 +505,12 @@ export class Session {
 
     // }
 
-    async declare_subscriber(keyexpr: IntoKeyExpr, handler: () => void): Promise<Subscriber<void>> {
+    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (num: number) => number): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
+        console.log(" CALL declare_subscriber");
         const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, handler);
+        console.log(" AFTER declare_subscriber");
 
         if (ret < 0) {
             throw `Error ${ret} while declaring Subscriber`
@@ -525,12 +527,7 @@ export class Session {
 
         const pke = key_expr.__ptr;
 
-        // while (1) {
-        //     zp_read(z_session_loan(&s), NULL);
-        //     zp_send_keep_alive(z_session_loan(&s), NULL);
-        //     zp_send_join(z_session_loan(&s), NULL);
-        // }
-        
+       
         function executeAsync(func: any) {
             setTimeout(func, 0);
         }
