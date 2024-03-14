@@ -437,7 +437,7 @@ em_proxying_queue* proxy_queue = NULL;
 int i = 0;
 
 void run_job(void* arg) {
-  // printf("------ thread %d: RUN JOB ------\n", pthread_self());
+  // printf("------ thread %lu: RUN JOB ------\n", pthread_self());
   emscripten::val* cb = (emscripten::val*) arg;
   (*cb)(i);
   i++;
@@ -445,19 +445,19 @@ void run_job(void* arg) {
 
 static void* worker_main(void *arg) {
   while(true) {
-    // printf("------ thread %d: PROXY JOB ------\n", pthread_self());
+    // printf("------ thread %lu: PROXY JOB ------\n", pthread_self());
     emscripten_proxy_sync(proxy_queue, main_thread, run_job, arg);
     sleep(1);
   }
 }
 
 void main_loop() {
-  // printf("------ thread %d: main_loop ------\n", pthread_self());
+  // printf("------ thread %lu: main_loop ------\n", pthread_self());
   emscripten_proxy_execute_queue(proxy_queue);
 }
 
 int run_on_event(emscripten::val arg) {
-  // printf("------ thread %d: run_on_event ------\n", pthread_self());
+  // printf("------ thread %lu: run_on_event ------\n", pthread_self());
   main_thread = pthread_self();
 
   emscripten::val *cb = (emscripten::val *)z_malloc(sizeof(emscripten::val));
