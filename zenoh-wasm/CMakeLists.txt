@@ -70,7 +70,7 @@ set(WASM_LINK_FLAGS "--extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
 -s ALLOW_TABLE_GROWTH \
 -fPIC \
 -pthread \
--s PTHREAD_POOL_SIZE=1 \
+-s PTHREAD_POOL_SIZE=5 \
 --bind")
 
 # -s PTHREAD_POOL_SIZE=1 \

@@ -45,6 +45,7 @@ interface Module {
     zw_start_tasks(...arg: any): any,
     zw_close_session(...arg: any): any,
     zw_declare_ke(...arg: any): any,
+    zw_declare_subscriber(...arg: any): any,
     zw_make_ke(...arg: any): any,
     zw_default_config(clocator: any): any,
     neo_poll_read_func(...arg: any): any,
@@ -489,64 +490,30 @@ export class Session {
         return ret
     }
 
-    // 
-    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
-    // 
-    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
-    // 
-    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
 
-        // 1. select keyexpr object
-        // 2. search for Symbol `intoKeyExpr` inside the keyexpr object
-        // 3. call() the function found for the intoKeyExpr inside the keyexpr object 
-        // keyexpr[intoKeyExpr]()
+    // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
+    // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
+    // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
+    //     const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-        const [Zenoh, key] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+    //     const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, handler);
 
-        let onEvent: (event: Sample) => Promise<void>;
-        let onClose: () => Promise<void>;
-        let receiver: Receiver | void;
+    //     if (ret < 0) {
+    //         throw `Error ${ret} while declaring Subscriber`
+    //     }
+    //     return ret
 
-        if (intoHandler in handler) {
-            const h = await handler[intoHandler]();
-            onEvent = h.onEvent;
-            // ??  check if h.onClose is nullish, 
-            // if it is nullish (null | undefined) return second operand
-            // else return first operand
-            onClose = h.onClose ?? (async () => { });
-            receiver = h.receiver;
-        } else {
-            onEvent = <((sample: Sample) => Promise<void>)>(handler);
-            onClose = <(() => Promise<void>)>(async () => { });
-            receiver = (() => { })();
+    // }
+
+    async declare_subscriber(keyexpr: IntoKeyExpr, handler: () => void): Promise<Subscriber<void>> {
+        const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+
+        const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, handler);
+
+        if (ret < 0) {
+            throw `Error ${ret} while declaring Subscriber`
         }
-
-        const on_event_ptr: number = Zenoh.registerJSCallback(onEvent);
-        const on_close_ptr: number = Zenoh.registerJSCallback(onClose);
-
-        // TODO : Remove console.logs() - Put here to appease the TS compiler for unused symbols
-        console.log(key);
-        console.log(receiver);
-        console.log(on_event_ptr);
-        console.log(on_close_ptr);
-
-        if (typeof (handler) === "function") {
-            throw "Unimplemented"
-        } else {
-            throw "Unimplemented"
-        }
-
-        // Implement Callback to Handler / Reciever Abstraction 
-        // const callback_ptr: number = Zenoh.registerJSCallback(callback);
-
-        // const pke = await this.declare_ke(keyexpr);
-
-        // const ret = await Zenoh.api._zw_sub(this.__ptr, key, callback_ptr);
-
-        // if (ret < 0) {
-        //     throw "An error occured while putting"
-        // }
-        // return ret
+        return ret
     }
     
     async neo_sub(keyexpr: IntoKeyExpr): Promise<number> {

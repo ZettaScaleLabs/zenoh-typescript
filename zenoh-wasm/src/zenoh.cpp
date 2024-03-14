@@ -121,8 +121,14 @@ int zw_default_config(std::string locator_str) {
   return (int)config;
 }
 
+pthread_t main_thread;
+em_proxying_queue* proxy_queue = NULL;
+
 // returns z_owned_session_t *
 int zw_open_session(int config_ptr) {
+  main_thread = pthread_self();
+  proxy_queue = em_proxying_queue_create();
+
   z_owned_config_t *config = reinterpret_cast<z_owned_config_t *>(config_ptr);
   z_owned_session_t *session =
       (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
@@ -138,8 +144,8 @@ int zw_open_session(int config_ptr) {
 
 int zw_start_tasks(int session_ptr) {
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
-  if (zp_start_read_task(z_loan(*s), NULL) < 0 ||
-      zp_start_lease_task(z_loan(*s), NULL) < 0) {
+  if (zp_start_read_task(z_loan(*s), NULL) != 0 ||
+      zp_start_lease_task(z_loan(*s), NULL) != 0) {
     printf("Unable to start read and lease tasks");
     return -1;
   }
@@ -225,6 +231,56 @@ int zw_make_ke(std::string keyexpr_str) {
   return (int)ke;
 }
 
+struct closure_t {
+  void* cb;
+  const z_sample_t* sample;
+};
+
+void run_cb(void* arg) {
+  // printf("------ thread %lu: RUN CB ------\n", pthread_self());
+  emscripten::val* cb = (emscripten::val*) ((closure_t*)arg)->cb;
+  (*cb)();
+}
+
+void data_handler(const z_sample_t *sample, void *arg) {
+  // printf("------ thread %lu: DATA HANDLER ------\n", pthread_self());
+  // (void)(arg);
+  // z_owned_str_t keystr = z_keyexpr_to_string(sample->keyexpr);
+  // printf(">> [Subscriber] Received ('%s': '%.*s')\n", z_str_loan(&keystr), (int)sample->payload.len,
+  //         sample->payload.start);
+  // z_str_drop(z_str_move(&keystr));
+  closure_t closure;
+  closure.cb = arg;
+  closure.sample = sample;
+  emscripten_proxy_sync(proxy_queue, main_thread, run_cb, &closure);
+}
+
+int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_cb) {
+  z_subscriber_options_t options = z_subscriber_options_t();
+
+  z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
+  z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
+
+  emscripten::val *ts_cb_ptr = (emscripten::val *)z_malloc(sizeof(emscripten::val));
+  (*ts_cb_ptr) = emscripten::val(ts_cb);
+
+  z_owned_closure_sample_t *callback =
+      (z_owned_closure_sample_t *)z_malloc(sizeof(z_owned_closure_sample_t));
+  *callback = z_closure_sample(data_handler, NULL, ts_cb_ptr);
+
+  z_owned_subscriber_t *sub =
+      (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
+  *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke), z_closure_sample_move(callback), &options);
+
+  if (!z_check(*sub)) {
+    printf("Unable to declare subscriber!\n");
+    z_free(sub);
+    return NULL;
+  }
+
+  return (int)sub;
+}
+
 void zw_close_session(int session_ptr) {
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
 
@@ -308,13 +364,6 @@ void neo_poll_read_func(int session_ptr) {
 
 }
 
-void data_handler(const z_sample_t *sample, void *arg) {
-  (void)(arg);
-  z_owned_str_t keystr = z_keyexpr_to_string(sample->keyexpr);
-  printf(">> [Subscriber] Received ('%s': '%.*s')\n", z_str_loan(&keystr),
-         (int)sample->payload.len, sample->payload.start);
-  z_str_drop(z_str_move(&keystr));
-}
 
 // expects an Async Callback for now
 // TODO: Sync
@@ -431,9 +480,7 @@ int pass_arr_cpp(std::string js_arr) {
   return 10;
 }
 
-pthread_t main_thread;
 pthread_t worker;
-em_proxying_queue* proxy_queue = NULL;
 int i = 0;
 
 void run_job(void* arg) {
@@ -451,11 +498,6 @@ static void* worker_main(void *arg) {
   }
 }
 
-void main_loop() {
-  // printf("------ thread %lu: main_loop ------\n", pthread_self());
-  emscripten_proxy_execute_queue(proxy_queue);
-}
-
 int run_on_event(emscripten::val arg) {
   // printf("------ thread %lu: run_on_event ------\n", pthread_self());
   main_thread = pthread_self();
@@ -466,7 +508,6 @@ int run_on_event(emscripten::val arg) {
   pthread_create(&worker, NULL, worker_main, (void*)cb);
 
   proxy_queue = em_proxying_queue_create();
-  emscripten_set_main_loop(main_loop, 100, false);
   return 0;
 }
 
@@ -485,6 +526,7 @@ EMSCRIPTEN_BINDINGS(my_module) {
   emscripten::function("zw_close_session", &zw_close_session);
   emscripten::function("zw_version", &zw_version);
   emscripten::function("zw_declare_ke", &zw_declare_ke);
+  emscripten::function("zw_declare_subscriber", &zw_declare_subscriber);
 
   //
   emscripten::function("neo_zw_sub", &neo_zw_sub);
