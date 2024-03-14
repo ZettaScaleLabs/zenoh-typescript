@@ -64,8 +64,8 @@ async function main() {
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     console.log("session.declare_subscriber");
     
-    var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String) => {
-        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '')");
+    var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
+        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + new TextDecoder().decode(value) + "')");
     });
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 

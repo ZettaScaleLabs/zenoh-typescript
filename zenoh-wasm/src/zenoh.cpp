@@ -238,9 +238,10 @@ struct closure_t {
 
 void run_cb(void* arg) {
   // printf("------ thread %lu: RUN CB ------\n", pthread_self());
-  emscripten::val* cb = (emscripten::val*) ((closure_t*)arg)->cb;
-  z_owned_str_t keystr = z_keyexpr_to_string(((closure_t*)arg)->sample->keyexpr);
-  (*cb)((int)z_str_loan(&keystr));
+  closure_t* closure = (closure_t*)arg;
+  emscripten::val* cb = (emscripten::val*) closure->cb;
+  z_owned_str_t keystr = z_keyexpr_to_string(closure->sample->keyexpr);
+  (*cb)((int)z_str_loan(&keystr), (int)closure->sample->payload.start, (int)closure->sample->payload.len);
   z_str_drop(z_str_move(&keystr));
 }
 

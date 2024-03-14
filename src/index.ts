@@ -21,6 +21,7 @@ import Module from "./wasm/zenoh-wasm.js"
 
 // TODO : Clean up Any's with proper types
 interface Module {
+    HEAPU8: any;
     UTF8ToString(x: any): string,
     stringToUTF8OnStack(x: string): any,
     onRuntimeInitialized(): Promise<any>,
@@ -506,10 +507,12 @@ export class Session {
 
     // }
 
-    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: String) => void): Promise<Subscriber<void>> {
+    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: String, value: Uint8Array) => void): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-        const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, (keyexpr: number) => { handler(Zenoh.UTF8ToString(keyexpr)) });
+        const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, (keyexpr: number, pl_start: number, pl_len: number) => {
+            handler(Zenoh.UTF8ToString(keyexpr), Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len))
+        });
 
         if (ret < 0) {
             throw `Error ${ret} while declaring Subscriber`
