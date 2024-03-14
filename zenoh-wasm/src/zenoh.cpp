@@ -239,7 +239,9 @@ struct closure_t {
 void run_cb(void* arg) {
   // printf("------ thread %lu: RUN CB ------\n", pthread_self());
   emscripten::val* cb = (emscripten::val*) ((closure_t*)arg)->cb;
-  (*cb)();
+  z_owned_str_t keystr = z_keyexpr_to_string(((closure_t*)arg)->sample->keyexpr);
+  (*cb)((int)z_str_loan(&keystr));
+  z_str_drop(z_str_move(&keystr));
 }
 
 void data_handler(const z_sample_t *sample, void *arg) {

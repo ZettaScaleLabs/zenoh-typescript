@@ -21,6 +21,7 @@ import Module from "./wasm/zenoh-wasm.js"
 
 // TODO : Clean up Any's with proper types
 interface Module {
+    UTF8ToString(x: any): string,
     stringToUTF8OnStack(x: string): any,
     onRuntimeInitialized(): Promise<any>,
     // TODO Delete ?
@@ -505,7 +506,7 @@ export class Session {
 
     // }
 
-    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (num: number) => number): Promise<Subscriber<void>> {
+    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: number) => number): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
         const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, handler);
