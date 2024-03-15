@@ -20,6 +20,45 @@ import * as zenoh from "../../../esm"
 //
 
 const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
+
+class Stats {
+    round_count: number;
+    round_size: number;
+    finished_rounds: number;
+    round_start: number;
+    global_start: number | undefined;
+   
+    constructor(round_size: number) {
+        this.round_count = 0;
+        this.round_size = round_size;
+        this.finished_rounds = 0;
+        this.round_start = Date.now(),
+        this.global_start = undefined;
+    }
+   
+    increment() {
+        if (this.round_count == 0) {
+            this.round_start = Date.now();
+            if (this.global_start === undefined) {
+                this.global_start = this.round_start;
+            }
+            this.round_count += 1;
+        } else if (this.round_count < this.round_size) {
+            this.round_count += 1;
+        } else {
+            this.print_round();
+            this.finished_rounds += 1;
+            this.round_count = 0;
+        }
+    }
+
+    print_round() {
+        let elapsed = (Date.now() - this.round_start) / 1000;
+        let throughtput = this.round_size / elapsed;
+        console.log(throughtput + " msg/s");
+    }
+}
+
 async function main() {
     // Test push
     console.log("zenoh.Session.open");
@@ -40,7 +79,7 @@ async function main() {
 
     // const keyexpr = await session.declare_ke("demo/ts/rcv");
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
-    const keyexpr2 = await session.declare_ke("demo/example/**");
+    // const keyexpr2 = await session.declare_ke("demo/example/**");
 
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
     // console.log("Pre Put values !");
@@ -62,12 +101,23 @@ async function main() {
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
-    console.log("session.declare_subscriber");
+    // console.log("session.declare_subscriber");
     
-    var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
-        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + new TextDecoder().decode(value) + "')");
-    });
+    // var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
+    //     console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + new TextDecoder().decode(value) + "')");
+    // });
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
+
+    // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 
+    // console.log("session.declare_subscriber");
+
+    // var stats = new Stats(100000);
+    // const keyexpr_thr = await session.declare_ke("test/thr");
+    
+    // var sub_res = await session.declare_subscriber(keyexpr_thr, (keyexpr: String, value: Uint8Array) => {
+    //     stats.increment();
+    // });
+    // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 
 
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
     // console.log("BEGIN DEV Tests ");
@@ -110,7 +160,7 @@ async function main() {
     while (true) {
         var seconds = 10;
         await sleep(1000 * seconds);
-        console.log("Main Loop ? ", count)
+        // console.log("Main Loop ? ", count)
         count = count+1;
     }
 }
