@@ -80,6 +80,7 @@ async function main() {
     // const keyexpr = await session.declare_ke("demo/ts/rcv");
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
     // const keyexpr2 = await session.declare_ke("demo/example/**");
+    const keyexpr2 = await session.declare_ke("demo/send/to/ts");
 
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
     // console.log("Pre Put values !");
@@ -103,9 +104,14 @@ async function main() {
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     // console.log("session.declare_subscriber");
     
-    // var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
-    //     console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + new TextDecoder().decode(value) + "')");
-    // });
+    var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
+
+        // console.log(">> [Subscriber] Received  PUT ('" + keyexpr + "': '" + value + "')");
+        const decoder = new TextDecoder();
+        let sharedView = new Uint8Array(value)
+        let text =  decoder.decode(sharedView)
+        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
+    });
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
     // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 

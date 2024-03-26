@@ -27,7 +27,7 @@ interface Module {
     onRuntimeInitialized(): Promise<any>,
     // TODO Delete ?
     registerJSCallback(callback: any): number,
-    
+
 
     writeArrayToMemory(array: Uint8Array, buffer: number): any, // TODO: Returns None ? 
     // Working Callbacks
@@ -131,7 +131,7 @@ export async function zenoh(): Promise<Module> {
 // ██      ██    ██ ██ ██  ██ █████   ██ ██   ███ 
 // ██      ██    ██ ██  ██ ██ ██      ██ ██    ██ 
 //  ██████  ██████  ██   ████ ██      ██  ██████  
-                           
+
 /**
  * The configuration for a Zenoh Session.
  */
@@ -455,7 +455,7 @@ export class Session {
         const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
         const ret = await Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
-        
+
         if (ret < 0) {
             throw `Error ${ret} while putting`
         }
@@ -464,9 +464,9 @@ export class Session {
 
     // Returns a pointer to the key expression in Zenoh Memory 
     async declare_ke(keyexpr: string): Promise<KeyExpr> {
-        
+
         const Zenoh: Module = await zenoh();
-        
+
         const ret = await Zenoh.zw_declare_ke(this.__ptr, keyexpr);
 
         if (ret < 0) {
@@ -504,24 +504,29 @@ export class Session {
     //         throw `Error ${ret} while declaring Subscriber`
     //     }
     //     return ret
-
     // }
 
     async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: String, value: Uint8Array) => void): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-        const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, (keyexpr: number, pl_start: number, pl_len: number) => {
-            handler(Zenoh.UTF8ToString(keyexpr), Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len))
-        });
+        console.log("Declare Subscriber");
+        const ret = await Zenoh.zw_declare_subscriber(
+            this.__ptr,
+            key.__ptr,
+            (keyexpr: number, pl_start: number, pl_len: number) => {
+                handler(Zenoh.UTF8ToString(keyexpr), Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len))
+            });
+
+        console.log("End Declare Subscriber");
 
         if (ret < 0) {
             throw `Error ${ret} while declaring Subscriber`
         }
         return ret
     }
-    
+
     async neo_sub(keyexpr: IntoKeyExpr): Promise<number> {
-    // async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
+        // async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
         // const Zenoh: Module = await zenoh();
         console.log("INSIDE neo_sub ");
 
@@ -529,12 +534,12 @@ export class Session {
 
         const pke = key_expr.__ptr;
 
-       
+
         function executeAsync(func: any) {
             setTimeout(func, 0);
         }
 
-        
+
         // TODO How do i stop this async Function ? 
         // Cleanup
         const session_ptr = this.__ptr;
@@ -570,6 +575,33 @@ export class Session {
 
         return ret
     }
+
+}
+
+
+// TODO: Should this be part of some other class ? 
+// Kind of like the idea of leaving it here so that the user can decide what they want decoded and how it works
+export class Utils {
+    // static decoder = new TextDecoder()
+    private decoder = new TextDecoder();
+
+    decodeFromSharedBuffer(sharedBuffer:SharedArrayBuffer) {
+        const copyLength = Math.min(sharedBuffer.byteLength)
+      
+        // Create a temporary ArrayBuffer and copy the contents of the shared buffer
+        // into it.
+        const tempBuffer = new ArrayBuffer(copyLength)
+        const tempView = new Uint8Array(tempBuffer)
+      
+        let sharedView = new Uint8Array(sharedBuffer)
+        if (sharedBuffer.byteLength != copyLength) {
+          sharedView = sharedView.subarray(0, copyLength)
+        }
+        tempView.set(sharedView)
+      
+        return this.decoder.decode(tempBuffer)
+      }
+
 }
 
 // ██████  ███████ ██    ██ 
@@ -577,7 +609,7 @@ export class Session {
 // ██   ██ █████   ██    ██ 
 // ██   ██ ██       ██  ██  
 // ██████  ███████   ████   
-                         
+
 // TODO  Delete everything below this point                          
 
 function ts_callback(num: number): number {

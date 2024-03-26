@@ -260,7 +260,8 @@ void data_handler(const z_sample_t *sample, void *arg) {
 
 int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_cb) {
   z_subscriber_options_t options = z_subscriber_options_t();
-
+  
+  // TODO: surely Reinterpret_Cast is not the right kind of cast here ? 
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
 
