@@ -105,13 +105,26 @@ async function main() {
     // console.log("session.declare_subscriber");
     
     var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
-
-        // console.log(">> [Subscriber] Received  PUT ('" + keyexpr + "': '" + value + "')");
         const decoder = new TextDecoder();
+        // TODO: I believe that this copies the array out of WASM, 
+        // out of its SharedArrayView Memory structure
         let sharedView = new Uint8Array(value)
         let text =  decoder.decode(sharedView)
         console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
     });
+
+    // 
+    const keyexpr3 = await session.declare_ke("demo/send/to/ts2");
+
+    var sub_res = await session.declare_subscriber(keyexpr3, (keyexpr: String, value: Uint8Array) => {
+        const decoder = new TextDecoder();
+        // TODO: I believe that this copies the array out of WASM, 
+        // out of its SharedArrayView Memory structure
+        let sharedView = new Uint8Array(value)
+        let text =  decoder.decode(sharedView)
+        console.log(">> [Subscriber 2] Received PUT ('" + keyexpr + "': '" + text + "')");
+    });
+
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
     // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 

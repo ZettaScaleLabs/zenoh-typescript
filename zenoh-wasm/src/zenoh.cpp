@@ -36,8 +36,13 @@
 #include <unistd.h>
 #include <pthread.h>
 
-extern "C" {
+// Program State
+pthread_t main_thread;
+em_proxying_queue *proxy_queue = NULL;
 
+
+
+// Expose Interface To TS
 EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
 // EMSCRIPTEN_KEEPALIVE
@@ -57,7 +62,8 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 // }
 
 EMSCRIPTEN_KEEPALIVE
-void *zw_session_close(z_owned_config_t *config) {
+void *zw_session_close(z_owned_config_t *config)
+{
   z_owned_session_t *session =
       (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
 
@@ -93,12 +99,6 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr) { return z_drop(keyexpr); }
 //   return get;
 // }
 
-// TODO
-// TODO
-// TODO
-// TODO
-// TODO
-
 // ███    ██ ███████  ██████
 // ████   ██ ██      ██    ██
 // ██ ██  ██ █████   ██    ██
@@ -106,10 +106,12 @@ void zw_delete_ke(z_owned_keyexpr_t *keyexpr) { return z_drop(keyexpr); }
 // ██   ████ ███████  ██████
 
 EMSCRIPTEN_KEEPALIVE
-int zw_default_config(std::string locator_str) {
+int zw_default_config(std::string locator_str)
+{
   const char *locator = (const char *)locator_str.data();
 
-  if (locator == NULL) {
+  if (locator == NULL)
+  {
     return NULL;
   }
 
@@ -121,11 +123,10 @@ int zw_default_config(std::string locator_str) {
   return (int)config;
 }
 
-pthread_t main_thread;
-em_proxying_queue* proxy_queue = NULL;
-
 // returns z_owned_session_t *
-int zw_open_session(int config_ptr) {
+int zw_open_session(int config_ptr)
+{
+
   main_thread = pthread_self();
   proxy_queue = em_proxying_queue_create();
 
@@ -133,7 +134,8 @@ int zw_open_session(int config_ptr) {
   z_owned_session_t *session =
       (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
   *session = z_open(z_move(*config));
-  if (!z_check(*session)) {
+  if (!z_check(*session))
+  {
     printf("Unable to open session!\n");
     z_free(session);
     return NULL;
@@ -142,52 +144,20 @@ int zw_open_session(int config_ptr) {
   return (int)session;
 }
 
-int zw_start_tasks(int session_ptr) {
+int zw_start_tasks(int session_ptr)
+{
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   if (zp_start_read_task(z_loan(*s), NULL) != 0 ||
-      zp_start_lease_task(z_loan(*s), NULL) != 0) {
+      zp_start_lease_task(z_loan(*s), NULL) != 0)
+  {
     printf("Unable to start read and lease tasks");
     return -1;
   }
   return 0;
 }
 
-// void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
-int zw_declare_ke(int session_ptr, std::string keyexpr_str) {
-  // TODO CLEANUP
-  // std::cout << "C - zw_declare_ke NEW!" << std::endl;
-  // std::cout << "session_ptr: " << session_ptr << std::endl;
-  // std::cout << "keyexpr_str: " << keyexpr_str << std::endl;
-
-  z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
-
-  z_owned_keyexpr_t *ke =
-      (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
-
-  const char *keyexpr = (const char *)keyexpr_str.data();
-
-  z_keyexpr_t key = z_keyexpr(keyexpr);
-
-  *ke = z_declare_keyexpr(z_loan(*s), key);
-
-  if (!z_check(*ke)) {
-    printf("Unable to declare key expression!\n");
-    exit(-1);
-  }
-
-  // TODO Cleanup
-  // std::cout << "ke: " << ke << std::endl;
-  // std::cout << "=========" << std::endl;
-  // std::cout << "    zw_declare_ke ke " << ke << std::endl;
-  printf("zw_declare_ke \n");
-  printf("%p \n", ke);
-  printf("%d \n", (int)ke);
-  printf("zw_declare_ke\n");
-
-  return (int)ke;
-}
-
-int zw_put(int session_ptr, int key_expr_ptr, std::string value_str) {
+int zw_put(int session_ptr, int key_expr_ptr, std::string value_str)
+{
   // TODO: cleanup
   // std::cout << "session_ptr"  << session_ptr << std::endl;
   // std::cout << "key_expr_ptr" << key_expr_ptr << std::endl;
@@ -218,12 +188,14 @@ int zw_put(int session_ptr, int key_expr_ptr, std::string value_str) {
 
 // returns z_owned_keyexpr_t
 // int zw_make_ke(const char *keyexpr) {
-int zw_make_ke(std::string keyexpr_str) {
+int zw_make_ke(std::string keyexpr_str)
+{
   const char *keyexpr = (const char *)keyexpr_str.data();
 
   z_owned_keyexpr_t *ke = NULL;
   z_owned_keyexpr_t oke = z_keyexpr_new(keyexpr);
-  if (z_check(oke)) {
+  if (z_check(oke))
+  {
     ke = (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
     _z_keyexpr_set_owns_suffix(oke._value, true);
     *ke = oke;
@@ -231,21 +203,24 @@ int zw_make_ke(std::string keyexpr_str) {
   return (int)ke;
 }
 
-struct closure_t {
-  void* cb;
-  const z_sample_t* sample;
+struct closure_t
+{
+  void *cb;
+  const z_sample_t *sample;
 };
 
-void run_cb(void* arg) {
+void run_callback(void *arg)
+{
   // printf("------ thread %lu: RUN CB ------\n", pthread_self());
-  closure_t* closure = (closure_t*)arg;
-  emscripten::val* cb = (emscripten::val*) closure->cb;
+  closure_t *closure = (closure_t *)arg;
+  emscripten::val *cb = (emscripten::val *)closure->cb;
   z_owned_str_t keystr = z_keyexpr_to_string(closure->sample->keyexpr);
   (*cb)((int)z_str_loan(&keystr), (int)closure->sample->payload.start, (int)closure->sample->payload.len);
   z_str_drop(z_str_move(&keystr));
 }
 
-void data_handler(const z_sample_t *sample, void *arg) {
+void data_handler(const z_sample_t *sample, void *arg)
+{
   // printf("------ thread %lu: DATA HANDLER ------\n", pthread_self());
   // (void)(arg);
   // z_owned_str_t keystr = z_keyexpr_to_string(sample->keyexpr);
@@ -255,27 +230,75 @@ void data_handler(const z_sample_t *sample, void *arg) {
   closure_t closure;
   closure.cb = arg;
   closure.sample = sample;
-  emscripten_proxy_sync(proxy_queue, main_thread, run_cb, &closure);
+  emscripten_proxy_sync(proxy_queue, main_thread, run_callback, &closure);
 }
 
-int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_cb) {
+
+// ██████  ███████  ██████ ██       █████  ██████  ███████     
+// ██   ██ ██      ██      ██      ██   ██ ██   ██ ██          
+// ██   ██ █████   ██      ██      ███████ ██████  █████       
+// ██   ██ ██      ██      ██      ██   ██ ██   ██ ██          
+// ██████  ███████  ██████ ███████ ██   ██ ██   ██ ███████     
+
+// void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
+int zw_declare_ke(int session_ptr, std::string keyexpr_str)
+{
+  // TODO CLEANUP
+  // std::cout << "C - zw_declare_ke NEW!" << std::endl;
+  // std::cout << "session_ptr: " << session_ptr << std::endl;
+  // std::cout << "keyexpr_str: " << keyexpr_str << std::endl;
+
+  z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
+
+  z_owned_keyexpr_t *ke =
+      (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
+
+  const char *keyexpr = (const char *)keyexpr_str.data();
+
+  z_keyexpr_t key = z_keyexpr(keyexpr);
+
+  *ke = z_declare_keyexpr(z_loan(*s), key);
+
+  if (!z_check(*ke))
+  {
+    printf("Unable to declare key expression!\n");
+    exit(-1);
+  }
+
+  // TODO Cleanup
+  // std::cout << "ke: " << ke << std::endl;
+  // std::cout << "=========" << std::endl;
+  // std::cout << "    zw_declare_ke ke " << ke << std::endl;
+  // printf("zw_declare_ke \n");
+  // printf("%p \n", ke);
+  // printf("%d \n", (int)ke);
+  // printf("zw_declare_ke\n");
+
+  return (int)ke;
+}
+
+int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_cb)
+{
   z_subscriber_options_t options = z_subscriber_options_t();
-  
-  // TODO: surely Reinterpret_Cast is not the right kind of cast here ? 
+
+  // TODO: surely Reinterpret_Cast is not the right kind of cast here ?
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
 
   emscripten::val *ts_cb_ptr = new emscripten::val(std::move(ts_cb));
-  
+
   z_owned_closure_sample_t *callback =
       (z_owned_closure_sample_t *)z_malloc(sizeof(z_owned_closure_sample_t));
+
   *callback = z_closure_sample(data_handler, NULL, ts_cb_ptr);
 
   z_owned_subscriber_t *sub =
       (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
+
   *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke), z_closure_sample_move(callback), &options);
 
-  if (!z_check(*sub)) {
+  if (!z_check(*sub))
+  {
     printf("Unable to declare subscriber!\n");
     z_free(sub);
     return NULL;
@@ -284,7 +307,42 @@ int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_
   return (int)sub;
 }
 
-void zw_close_session(int session_ptr) {
+
+int zw_declare_publisher(int session_ptr, int key_expr_ptr, emscripten::val ts_cb)
+{
+
+  // z_subscriber_options_t options = z_subscriber_options_t();
+
+  // // TODO: surely Reinterpret_Cast is not the right kind of cast here ?
+  // z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
+  // z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
+
+  // emscripten::val *ts_cb_ptr = new emscripten::val(std::move(ts_cb));
+
+  // z_owned_closure_sample_t *callback =
+  //     (z_owned_closure_sample_t *)z_malloc(sizeof(z_owned_closure_sample_t));
+
+  // *callback = z_closure_sample(data_handler, NULL, ts_cb_ptr);
+
+  // z_owned_subscriber_t *sub =
+  //     (z_owned_subscriber_t *)z_malloc(sizeof(z_owned_subscriber_t));
+
+  // *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke), z_closure_sample_move(callback), &options);
+
+  // if (!z_check(*sub))
+  // {
+  //   printf("Unable to declare subscriber!\n");
+  //   z_free(sub);
+  //   return NULL;
+  // }
+
+  return (int)sub;
+}
+
+
+
+void zw_close_session(int session_ptr)
+{
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
 
   z_close(z_move(*s));
@@ -322,25 +380,13 @@ void zw_close_session(int session_ptr) {
 //////////////////////////////////
 //////////////////////////////////
 //////////////////////////////////
-void remove_js_callback(void *ts_cb) {
+void remove_js_callback(void *ts_cb)
+{
   // TODO: Do i need to call free here ? to clean up the ts_db
   // z_free(ts_cb ?? );
   std::cout << "    C - remove_js_callback!" << std::endl;
 }
 
-void wrapping_sub_callback(const z_sample_t *sample, void *ts_cb_ptr) {
-  std::cout << "    INSIDE wrapping_sub_callback - ts_cb_ptr" << std::endl;
-
-  emscripten::val *ts_cb = reinterpret_cast<emscripten::val *>(ts_cb_ptr);
-
-  (*ts_cb)(100).await().as<void>();
-  // (*ts_cb)(*sample).await().as<void>();
-
-  // If call_js_callback proxy to JS becomes async then the free has to be done
-  // in call_js_callback
-  // TODO
-  // z_free(data);
-}
 
 // ███████ ██    ██ ██████
 // ██      ██    ██ ██   ██
@@ -348,7 +394,8 @@ void wrapping_sub_callback(const z_sample_t *sample, void *ts_cb_ptr) {
 //      ██ ██    ██ ██   ██
 // ███████  ██████  ██████
 
-void neo_poll_read_func(int session_ptr) {
+void neo_poll_read_func(int session_ptr)
+{
   std::cout << "    neo_poll_read_func" << std::endl;
 
   //
@@ -364,9 +411,7 @@ void neo_poll_read_func(int session_ptr) {
   std::cout << "    neo_poll_read_func zp_send_join" << std::endl;
   zp_send_join(z_session_loan(session), NULL);
   std::cout << "    neo_poll_read_func FINISH" << std::endl;
-
 }
-
 
 // expects an Async Callback for now
 // TODO: Sync
@@ -377,7 +422,8 @@ int neo_zw_sub(
     int ke_ptr,
     // exists where ?
     emscripten::val ts_cb // This is a value
-) {
+)
+{
 
   std::cout << "    C - neo_zw_sub!" << std::endl;
   std::cout << "    session_ptr: " << session_ptr << std::endl;
@@ -446,7 +492,8 @@ int zw_version() { return Z_PROTO_VERSION; }
 // C++ Way of Calling Callbacks
 // cb : Async Function from JS
 // cb : is a js object, ripe for any and all JS fuckery
-int callback_test_async(emscripten::val cb) {
+int callback_test_async(emscripten::val cb)
+{
   printf("------ callback_test_async ------\n");
 
   int ret = cb(5).await().as<int>();
@@ -454,7 +501,8 @@ int callback_test_async(emscripten::val cb) {
   return ret;
 }
 
-int callback_test(emscripten::val cb) {
+int callback_test(emscripten::val cb)
+{
   printf("------ callback_test ------\n");
 
   int ret = cb(5).as<int>();
@@ -464,7 +512,8 @@ int callback_test(emscripten::val cb) {
   return ret;
 }
 
-int callback_test_typed(CallbackType cb) {
+int callback_test_typed(CallbackType cb)
+{
   printf("------ callback_test ------\n");
 
   int ret = cb(5).as<int>();
@@ -474,10 +523,12 @@ int callback_test_typed(CallbackType cb) {
   return ret;
 }
 
-int pass_arr_cpp(std::string js_arr) {
+int pass_arr_cpp(std::string js_arr)
+{
 
   printf("------ pass_arr_cpp ------\n");
-  for (unsigned char item : js_arr) {
+  for (unsigned char item : js_arr)
+  {
     std::cout << item << std::endl;
   }
   return 10;
@@ -486,35 +537,40 @@ int pass_arr_cpp(std::string js_arr) {
 pthread_t worker;
 int i = 0;
 
-void run_job(void* arg) {
+void run_job(void *arg)
+{
   // printf("------ thread %lu: RUN JOB ------\n", pthread_self());
-  emscripten::val* cb = (emscripten::val*) arg;
+  emscripten::val *cb = (emscripten::val *)arg;
   (*cb)(i);
   i++;
 }
 
-static void* worker_main(void *arg) {
-  while(true) {
+static void *worker_main(void *arg)
+{
+  while (true)
+  {
     // printf("------ thread %lu: PROXY JOB ------\n", pthread_self());
     emscripten_proxy_sync(proxy_queue, main_thread, run_job, arg);
     sleep(1);
   }
 }
 
-int run_on_event(emscripten::val arg) {
+int run_on_event(emscripten::val arg)
+{
   // printf("------ thread %lu: run_on_event ------\n", pthread_self());
   main_thread = pthread_self();
 
   emscripten::val *cb = new emscripten::val(std::move(arg));
 
-  pthread_create(&worker, NULL, worker_main, (void*)cb);
+  pthread_create(&worker, NULL, worker_main, (void *)cb);
 
   proxy_queue = em_proxying_queue_create();
   return 0;
 }
 
 // Macro to Expose Functions
-EMSCRIPTEN_BINDINGS(my_module) {
+EMSCRIPTEN_BINDINGS(my_module)
+{
   // Types
   // TODO SAMPLE ?
   emscripten::register_type<CallbackType>("(num: number) => number");
@@ -545,4 +601,3 @@ EMSCRIPTEN_BINDINGS(my_module) {
   //
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-};
