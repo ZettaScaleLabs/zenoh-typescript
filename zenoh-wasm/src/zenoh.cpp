@@ -336,7 +336,8 @@ int zw_declare_publisher(int session_ptr, int key_expr_ptr, emscripten::val ts_c
   //   return NULL;
   // }
 
-  return (int)sub;
+  // return (int)sub;
+  return  10;
 }
 
 
