@@ -206,7 +206,6 @@ export class Value {
 export class KeyExpr implements IntoSelector {
     __ptr: number
 
-    // 
     static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: number) => (new KeyExpr(ptr)).delete());
 
     // 
@@ -219,6 +218,9 @@ export class KeyExpr implements IntoSelector {
     }
     private async delete() {
         const Zenoh = await zenoh();
+        // print 
+        console.log("TODO Add _zw_delete_ke !", this.__ptr)
+        // TODO nex
         Zenoh.api._zw_delete_ke(this.__ptr); // delete the C ptr
         KeyExpr.registry.unregister(this); // make sure we aren't called again
     }
@@ -299,21 +301,34 @@ export interface IntoHandler<Event, Receiver> {
     [intoHandler]: () => Promise<Handler<Event, Receiver>>
 }
 
+
+export enum SampleKind {
+    PUT = "PUT",
+    DELETE = "DELETE",
+}
+
 // TODO : Something that has been sent through Put or delete
 // Samples Are publication events
 export class Sample {
     keyexpr: KeyExpr
     value: Value
-    kind: "PUT" | "DELETE"
+    kind: SampleKind
     constructor(
         keyexpr: KeyExpr,
         value: Value,
-        kind: "PUT" | "DELETE",) {
+        kind: SampleKind) {
         this.keyexpr = keyexpr
         this.value = value
         this.kind = kind
     }
-    // static new(): Promise<Sample>;
+    // static new(): Sample {
+
+    // };
+
+    new(keyexpr:KeyExpr, payload: Value, kind: SampleKind): Sample {
+        return new Sample(keyexpr, payload, kind);
+    }
+
 }
 
 declare global {
@@ -522,56 +537,85 @@ export class Session {
         return ret
     }
 
-    async neo_sub(keyexpr: IntoKeyExpr): Promise<number> {
-        // async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
-        // const Zenoh: Module = await zenoh();
-        console.log("INSIDE neo_sub ");
+    async declare_subscriber_handler(keyexpr: IntoKeyExpr, handler: (sample: Sample) => void): Promise<Subscriber<void>> {
+        const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-        const [Zenoh, key_expr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+        const ret = await Zenoh.zw_declare_subscriber(
+            this.__ptr,
+            key.__ptr,
+            async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
 
-        const pke = key_expr.__ptr;
+                let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
+                // Copies value from WASM to Javascript
+                // TODO: Verify that this is okay
+                let uint8_array_cloned = new Uint8Array(uint8_array_view)
+                let value = new Value(uint8_array_cloned);
+                
+                let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
+                let kind = SampleKind.PUT;
 
+                let sample = new Sample(key_expr, value, kind);
 
-        function executeAsync(func: any) {
-            setTimeout(func, 0);
-        }
+                handler(sample)
+            });
 
-
-        // TODO How do i stop this async Function ? 
-        // Cleanup
-        const session_ptr = this.__ptr;
-        executeAsync(async function () {
-            console.log("Inside Execute Async Function !");
-            while (1) {
-                console.log("Inside While loop !");
-                Zenoh.neo_poll_read_func(session_ptr);
-                console.log("Inside While loop !");
-
-            }
-
-            console.log("Finish Put Values");
-        });
-
-
-        // console.log("INSIDE before Function invok ");
-
-        async function neo_sub_async_ts_callback(num: number): Promise<number> {
-            console.log("    neo_sub_async_ts_callback: ", num);
-            return 25 + num;
-        }
-
-        // console.log("INSIDE neo_zw_sub ");
-
-        const ret = await Zenoh.neo_zw_sub(this.__ptr, pke, neo_sub_async_ts_callback);
-        console.log("ret")
         if (ret < 0) {
-            throw "An error occured while putting"
+            throw `Error ${ret} while declaring Subscriber`
         }
-
-        // console.log("INSIDE neo_sub END");
-
         return ret
     }
+
+
+    // async neo_sub(keyexpr: IntoKeyExpr): Promise<number> {
+    //     // async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
+    //     // const Zenoh: Module = await zenoh();
+    //     console.log("INSIDE neo_sub ");
+
+    //     const [Zenoh, key_expr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+
+    //     const pke = key_expr.__ptr;
+
+
+    //     function executeAsync(func: any) {
+    //         setTimeout(func, 0);
+    //     }
+
+
+    //     // TODO How do i stop this async Function ? 
+    //     // Cleanup
+    //     const session_ptr = this.__ptr;
+    //     executeAsync(async function () {
+    //         console.log("Inside Execute Async Function !");
+    //         while (1) {
+    //             console.log("Inside While loop !");
+    //             Zenoh.neo_poll_read_func(session_ptr);
+    //             console.log("Inside While loop !");
+
+    //         }
+
+    //         console.log("Finish Put Values");
+    //     });
+
+
+    //     // console.log("INSIDE before Function invok ");
+
+    //     async function neo_sub_async_ts_callback(num: number): Promise<number> {
+    //         console.log("    neo_sub_async_ts_callback: ", num);
+    //         return 25 + num;
+    //     }
+
+    //     // console.log("INSIDE neo_zw_sub ");
+
+    //     const ret = await Zenoh.neo_zw_sub(this.__ptr, pke, neo_sub_async_ts_callback);
+    //     console.log("ret")
+    //     if (ret < 0) {
+    //         throw "An error occured while putting"
+    //     }
+
+    //     // console.log("INSIDE neo_sub END");
+
+    //     return ret
+    // }
 
 }
 

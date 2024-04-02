@@ -27,15 +27,15 @@ class Stats {
     finished_rounds: number;
     round_start: number;
     global_start: number | undefined;
-   
+
     constructor(round_size: number) {
         this.round_count = 0;
         this.round_size = round_size;
         this.finished_rounds = 0;
         this.round_start = Date.now(),
-        this.global_start = undefined;
+            this.global_start = undefined;
     }
-   
+
     increment() {
         if (this.round_count == 0) {
             this.round_start = Date.now();
@@ -67,13 +67,13 @@ async function main() {
     // let conn_string = "ws/192.168.1.36:10000";
     // let conn_string = "ws/192.168.1.30:10000";
     // let conn_string = "ws/192.168.1.27:10000";
-    
+
     // console.log("Connecting to ",conn_string) 
-    
+
     const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
-    
+
     console.log("session.declare_ke");
-    
+
     // TODO: Very broken
     // const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
 
@@ -93,7 +93,7 @@ async function main() {
     //         let value: zenoh.Value = new zenoh.Value(uint8arr);
     //         var pub_res = await session.put(keyexpr1, value);
     //         console.log("Pub ", c);
-            
+
     //         await sleep(500);
     //         c++;
     //     }
@@ -103,27 +103,34 @@ async function main() {
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     // console.log("session.declare_subscriber");
-    
+
     var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
         const decoder = new TextDecoder();
         // TODO: I believe that this copies the array out of WASM, 
         // out of its SharedArrayView Memory structure
         let sharedView = new Uint8Array(value)
-        let text =  decoder.decode(sharedView)
+        let text = decoder.decode(sharedView)
         console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
     });
 
     // 
     const keyexpr3 = await session.declare_ke("demo/send/to/ts2");
 
-    var sub_res = await session.declare_subscriber(keyexpr3, (keyexpr: String, value: Uint8Array) => {
+
+    async function example_handler(num: number): Promise<number> {
+        console.log("    ASYNC TS CALLBACK: ", num);
+        return 25 + num;
+    }
+
+
+    var sub_res = await session.declare_subscriber_handler(keyexpr3, (sample: zenoh.Sample) => {
         const decoder = new TextDecoder();
-        // TODO: I believe that this copies the array out of WASM, 
-        // out of its SharedArrayView Memory structure
-        let sharedView = new Uint8Array(value)
-        let text =  decoder.decode(sharedView)
-        console.log(">> [Subscriber 2] Received PUT ('" + keyexpr + "': '" + text + "')");
+
+        let text = decoder.decode(sample.value.payload)
+        console.log(">> [Subscriber 2] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
     });
+
+
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
@@ -132,7 +139,7 @@ async function main() {
 
     // var stats = new Stats(100000);
     // const keyexpr_thr = await session.declare_ke("test/thr");
-    
+
     // var sub_res = await session.declare_subscriber(keyexpr_thr, (keyexpr: String, value: Uint8Array) => {
     //     stats.increment();
     // });
@@ -180,7 +187,7 @@ async function main() {
         var seconds = 10;
         await sleep(1000 * seconds);
         // console.log("Main Loop ? ", count)
-        count = count+1;
+        count = count + 1;
     }
 }
 

@@ -40,8 +40,6 @@
 pthread_t main_thread;
 em_proxying_queue *proxy_queue = NULL;
 
-
-
 // Expose Interface To TS
 EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
@@ -216,6 +214,15 @@ void run_callback(void *arg)
   emscripten::val *cb = (emscripten::val *)closure->cb;
   z_owned_str_t keystr = z_keyexpr_to_string(closure->sample->keyexpr);
   (*cb)((int)z_str_loan(&keystr), (int)closure->sample->payload.start, (int)closure->sample->payload.len);
+
+  // Experiment Experiment Experiment Experiment Experiment
+  // 
+  // TODO: Check, will this allocate a new string on every single sample.
+  // emscripten::val *keystr_val = new emscripten::val(keystr._value);
+  // (*cb)(keystr_val, (int)closure->sample->payload.start, (int)closure->sample->payload.len);
+  // 
+  // Experiment Experiment Experiment Experiment
+
   z_str_drop(z_str_move(&keystr));
 }
 
