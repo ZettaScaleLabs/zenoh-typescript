@@ -77,7 +77,11 @@ void *zw_session_close(z_owned_config_t *config)
 }
 
 EMSCRIPTEN_KEEPALIVE
-void zw_delete_ke(z_owned_keyexpr_t *keyexpr) { return z_drop(keyexpr); }
+void zw_delete_ke(int keyexpr_ptr)
+{
+  z_owned_keyexpr_t *key_expr = reinterpret_cast<z_owned_keyexpr_t *>(keyexpr_ptr);
+  return z_drop(key_expr);
+}
 
 // TODO Complete
 // EMSCRIPTEN_KEEPALIVE
@@ -128,6 +132,7 @@ int zw_open_session(int config_ptr)
   main_thread = pthread_self();
   proxy_queue = em_proxying_queue_create();
 
+  // TODO: Surely this is the wrong kind of cast ?
   z_owned_config_t *config = reinterpret_cast<z_owned_config_t *>(config_ptr);
   z_owned_session_t *session =
       (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
@@ -216,11 +221,11 @@ void run_callback(void *arg)
   (*cb)((int)z_str_loan(&keystr), (int)closure->sample->payload.start, (int)closure->sample->payload.len);
 
   // Experiment Experiment Experiment Experiment Experiment
-  // 
+  //
   // TODO: Check, will this allocate a new string on every single sample.
   // emscripten::val *keystr_val = new emscripten::val(keystr._value);
   // (*cb)(keystr_val, (int)closure->sample->payload.start, (int)closure->sample->payload.len);
-  // 
+  //
   // Experiment Experiment Experiment Experiment
 
   z_str_drop(z_str_move(&keystr));
@@ -240,12 +245,11 @@ void data_handler(const z_sample_t *sample, void *arg)
   emscripten_proxy_sync(proxy_queue, main_thread, run_callback, &closure);
 }
 
-
-// ██████  ███████  ██████ ██       █████  ██████  ███████     
-// ██   ██ ██      ██      ██      ██   ██ ██   ██ ██          
-// ██   ██ █████   ██      ██      ███████ ██████  █████       
-// ██   ██ ██      ██      ██      ██   ██ ██   ██ ██          
-// ██████  ███████  ██████ ███████ ██   ██ ██   ██ ███████     
+// ██████  ███████  ██████ ██       █████  ██████  ███████
+// ██   ██ ██      ██      ██      ██   ██ ██   ██ ██
+// ██   ██ █████   ██      ██      ███████ ██████  █████
+// ██   ██ ██      ██      ██      ██   ██ ██   ██ ██
+// ██████  ███████  ██████ ███████ ██   ██ ██   ██ ███████
 
 // void *zw_declare_ke(z_owned_session_t *s, const char *keyexpr)
 int zw_declare_ke(int session_ptr, std::string keyexpr_str)
@@ -314,7 +318,6 @@ int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_
   return (int)sub;
 }
 
-
 int zw_declare_publisher(int session_ptr, int key_expr_ptr, emscripten::val ts_cb)
 {
 
@@ -344,10 +347,8 @@ int zw_declare_publisher(int session_ptr, int key_expr_ptr, emscripten::val ts_c
   // }
 
   // return (int)sub;
-  return  10;
+  return 10;
 }
-
-
 
 void zw_close_session(int session_ptr)
 {
@@ -394,7 +395,6 @@ void remove_js_callback(void *ts_cb)
   // z_free(ts_cb ?? );
   std::cout << "    C - remove_js_callback!" << std::endl;
 }
-
 
 // ███████ ██    ██ ██████
 // ██      ██    ██ ██   ██
@@ -589,6 +589,7 @@ EMSCRIPTEN_BINDINGS(my_module)
   emscripten::function("zw_open_session", &zw_open_session);
   emscripten::function("zw_start_tasks", &zw_start_tasks);
   emscripten::function("zw_make_ke", &zw_make_ke);
+  emscripten::function("zw_delete_ke", &zw_delete_ke);
   emscripten::function("zw_close_session", &zw_close_session);
   emscripten::function("zw_version", &zw_version);
   emscripten::function("zw_declare_ke", &zw_declare_ke);

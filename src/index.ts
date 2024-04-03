@@ -47,6 +47,7 @@ interface Module {
     zw_start_tasks(...arg: any): any,
     zw_close_session(...arg: any): any,
     zw_declare_ke(...arg: any): any,
+    zw_delete_ke(...arg: any): any,
     zw_declare_subscriber(...arg: any): any,
     zw_make_ke(...arg: any): any,
     zw_default_config(clocator: any): any,
@@ -103,9 +104,6 @@ export async function zenoh(): Promise<Module> {
         mod_instance = await Module();
         mod_instance.onRuntimeInitialized = async () => {
             const api = {
-
-                // _zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
-                _zw_delete_ke: mod_instance.cwrap("zw_delete_ke", "void", ["number"], { async: true }),
 
                 _zw_sub: mod_instance.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
 
@@ -458,7 +456,8 @@ export class Session {
     }
 
     async close() {
-        // TODO: Is this correct ? 
+        // TODO: Is this correct ?
+        // Should i drop the session internals ?  
         const Zenoh: Module = await zenoh();
         await Zenoh.zw_close_session(this.__ptr)
         Session.registry.unregister(this)
@@ -544,19 +543,17 @@ export class Session {
             this.__ptr,
             key.__ptr,
             async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
-
+                // Looks into WASM Memory
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
                 // Copies value from WASM to Javascript
                 // TODO: Verify that this is okay
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
                 let value = new Value(uint8_array_cloned);
-                
                 let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
+                // TODO: Can this Be DELETE? 
                 let kind = SampleKind.PUT;
 
-                let sample = new Sample(key_expr, value, kind);
-
-                handler(sample)
+                handler(new Sample(key_expr, value, kind))
             });
 
         if (ret < 0) {
@@ -566,56 +563,31 @@ export class Session {
     }
 
 
-    // async neo_sub(keyexpr: IntoKeyExpr): Promise<number> {
-    //     // async neo_sub(keyexpr: string, callback: () => void): Promise<number> {
-    //     // const Zenoh: Module = await zenoh();
-    //     console.log("INSIDE neo_sub ");
+    async declare_publisher(keyexpr: IntoKeyExpr, handler: (sample: Sample) => void): Promise<Subscriber<void>> {
+        const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-    //     const [Zenoh, key_expr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+        const ret = await Zenoh.zw_declare_subscriber(
+            this.__ptr,
+            key.__ptr,
+            async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
+                // Looks into WASM Memory
+                let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
+                // Copies value from WASM to Javascript
+                // TODO: Verify that this is okay
+                let uint8_array_cloned = new Uint8Array(uint8_array_view)
+                let value = new Value(uint8_array_cloned);
+                let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
+                // TODO: Can this Be DELETE? 
+                let kind = SampleKind.PUT;
 
-    //     const pke = key_expr.__ptr;
+                handler(new Sample(key_expr, value, kind))
+            });
 
-
-    //     function executeAsync(func: any) {
-    //         setTimeout(func, 0);
-    //     }
-
-
-    //     // TODO How do i stop this async Function ? 
-    //     // Cleanup
-    //     const session_ptr = this.__ptr;
-    //     executeAsync(async function () {
-    //         console.log("Inside Execute Async Function !");
-    //         while (1) {
-    //             console.log("Inside While loop !");
-    //             Zenoh.neo_poll_read_func(session_ptr);
-    //             console.log("Inside While loop !");
-
-    //         }
-
-    //         console.log("Finish Put Values");
-    //     });
-
-
-    //     // console.log("INSIDE before Function invok ");
-
-    //     async function neo_sub_async_ts_callback(num: number): Promise<number> {
-    //         console.log("    neo_sub_async_ts_callback: ", num);
-    //         return 25 + num;
-    //     }
-
-    //     // console.log("INSIDE neo_zw_sub ");
-
-    //     const ret = await Zenoh.neo_zw_sub(this.__ptr, pke, neo_sub_async_ts_callback);
-    //     console.log("ret")
-    //     if (ret < 0) {
-    //         throw "An error occured while putting"
-    //     }
-
-    //     // console.log("INSIDE neo_sub END");
-
-    //     return ret
-    // }
+        if (ret < 0) {
+            throw `Error ${ret} while declaring Subscriber`
+        }
+        return ret
+    }
 
 }
 
