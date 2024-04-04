@@ -59,6 +59,32 @@ class Stats {
     }
 }
 
+// async function start_subscribers(session:zenoh.Session){
+//     const key_expr_1 = await session.declare_ke("demo/send/to/ts");
+//     // // First Subscriber
+//     var sub_res = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
+//         const decoder = new TextDecoder();
+//         // TODO: I believe that this copies the array out of WASM, 
+//         // out of its SharedArrayView Memory structure
+//         let sharedView = new Uint8Array(value)
+//         let text = decoder.decode(sharedView)
+//         console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
+//     });
+//     const key_expr_2 = await session.declare_ke("demo/send/to/ts");
+//     // Second Subscriber
+//     var sub_res = await session.declare_subscriber(key_expr_2, (keyexpr: String, value: Uint8Array) => {
+//         const decoder = new TextDecoder();
+//         // TODO: I believe that this copies the array out of WASM, 
+//         // out of its SharedArrayView Memory structure
+//         let sharedView = new Uint8Array(value)
+//         let text = decoder.decode(sharedView)
+//         console.log(">> [Subscriber2 ??] Received PUT ('" + keyexpr + "': '" + text + "')");
+//     });
+// }
+
+
+
+
 async function main() {
     // Test push
     console.log("zenoh.Session.open");
@@ -80,7 +106,7 @@ async function main() {
     // const keyexpr = await session.declare_ke("demo/ts/rcv");
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
     // const keyexpr2 = await session.declare_ke("demo/example/**");
-    const keyexpr2 = await session.declare_ke("demo/send/to/ts");
+
 
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
     // console.log("Pre Put values !");
@@ -104,7 +130,15 @@ async function main() {
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     // console.log("session.declare_subscriber");
 
-    var sub_res = await session.declare_subscriber(keyexpr2, (keyexpr: String, value: Uint8Array) => {
+
+
+
+    // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
+    // await start_subscribers(session);
+
+    // First Subscriber
+    const key_expr_1 = await session.declare_ke("demo/send/to/ts");
+    var sub_res = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
         const decoder = new TextDecoder();
         // TODO: I believe that this copies the array out of WASM, 
         // out of its SharedArrayView Memory structure
@@ -113,26 +147,24 @@ async function main() {
         console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
     });
 
-    // 
-    const keyexpr3 = await session.declare_ke("demo/send/to/ts2");
-
-
-    async function example_handler(num: number): Promise<number> {
-        console.log("    ASYNC TS CALLBACK: ", num);
-        return 25 + num;
-    }
-
-
-    var sub_res = await session.declare_subscriber_handler(keyexpr3, (sample: zenoh.Sample) => {
+    // Second Subscriber
+    const key_expr_2 = await session.declare_ke("demo/send/to/ts2");
+    var sub_res_2 = await session.declare_subscriber_handler(key_expr_2, (sample: zenoh.Sample) => {
         const decoder = new TextDecoder();
-
         let text = decoder.decode(sample.value.payload)
         console.log(">> [Subscriber 2] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
     });
 
+    // Third Subscriber
+    // TODO:THere is a bug that it will not b
+    const key_expr_3 = await session.declare_ke("demo/send/to/ts2");
+    async function example_handler(sample: zenoh.Sample): Promise<void> {
+        const decoder = new TextDecoder();
+        let text = decoder.decode(sample.value.payload)
+        console.log(">> [Subscriber 3] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
+    }
+    var sub_res_3 = await session.declare_subscriber_handler(key_expr_3, example_handler);
 
-
-    // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
 
     // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 
     // console.log("session.declare_subscriber");

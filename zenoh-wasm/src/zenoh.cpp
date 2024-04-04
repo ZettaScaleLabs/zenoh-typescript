@@ -308,6 +308,8 @@ int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_
 
   *sub = z_declare_subscriber(z_loan(*s), z_loan(*ke), z_closure_sample_move(callback), &options);
 
+  // TODO:There is a bug that the subscriber will 
+  // Not be able to start if a subscriber already exsists
   if (!z_check(*sub))
   {
     printf("Unable to declare subscriber!\n");

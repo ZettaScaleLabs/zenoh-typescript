@@ -216,10 +216,7 @@ export class KeyExpr implements IntoSelector {
     }
     private async delete() {
         const Zenoh = await zenoh();
-        // print 
-        console.log("TODO Add _zw_delete_ke !", this.__ptr)
-        // TODO nex
-        Zenoh.api._zw_delete_ke(this.__ptr); // delete the C ptr
+        Zenoh.zw_delete_ke(this.__ptr); // delete the C ptr
         KeyExpr.registry.unregister(this); // make sure we aren't called again
     }
 
