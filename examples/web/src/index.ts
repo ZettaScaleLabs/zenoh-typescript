@@ -101,7 +101,10 @@ async function main() {
     console.log("session.declare_ke");
 
     // TODO: Very broken
+    // TODO: Very broken
     // const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
+    // TODO: Very broken
+    // TODO: Very broken
 
     // const keyexpr = await session.declare_ke("demo/ts/rcv");
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
@@ -128,42 +131,55 @@ async function main() {
     // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
-    // console.log("session.declare_subscriber");
-
-
-
-
-    // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
-    // await start_subscribers(session);
-
     // First Subscriber
-    const key_expr_1 = await session.declare_ke("demo/send/to/ts");
-    var sub_res = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
-        const decoder = new TextDecoder();
-        // TODO: I believe that this copies the array out of WASM, 
-        // out of its SharedArrayView Memory structure
-        let sharedView = new Uint8Array(value)
-        let text = decoder.decode(sharedView)
-        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
-    });
+    // const key_expr_1 = await session.declare_ke("demo/send/to/ts");
+    // var sub_res = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
+    //     const decoder = new TextDecoder();
+    //     // TODO: I believe that this copies the array out of WASM, 
+    //     // out of its SharedArrayView Memory structure
+    //     let sharedView = new Uint8Array(value)
+    //     let text = decoder.decode(sharedView)
+    //     console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
+    // });
 
     // Second Subscriber
-    const key_expr_2 = await session.declare_ke("demo/send/to/ts2");
-    var sub_res_2 = await session.declare_subscriber_handler(key_expr_2, (sample: zenoh.Sample) => {
-        const decoder = new TextDecoder();
-        let text = decoder.decode(sample.value.payload)
-        console.log(">> [Subscriber 2] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
-    });
+    // const key_expr_2 = await session.declare_ke("demo/send/to/ts2");
+    // var sub_res_2 = await session.declare_subscriber_handler(key_expr_2, (sample: zenoh.Sample) => {
+    //     const decoder = new TextDecoder();
+    //     let text = decoder.decode(sample.value.payload)
+    //     console.log(">> [Subscriber 2] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
+    // });
+
+    // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
+    const keyexpr = await session.declare_ke("demo/send/from/ts");
+    const publisher = session.declare_publisher(keyexpr);
+
+
+
+    let enc: TextEncoder = new TextEncoder(); // always utf-8
+
+    let uint8arr: Uint8Array = enc.encode(`100 ABCDEFG 100`);
+    let value: zenoh.Value = new zenoh.Value(uint8arr);
+    var c = 0;
+    while (c < 50) {
+        (await publisher).put(keyexpr, value);
+        c = c + 1;
+        await sleep(500);
+    }
+
+    // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
+
+
 
     // Third Subscriber
     // TODO:THere is a bug that it will not b
-    const key_expr_3 = await session.declare_ke("demo/send/to/ts2");
-    async function example_handler(sample: zenoh.Sample): Promise<void> {
-        const decoder = new TextDecoder();
-        let text = decoder.decode(sample.value.payload)
-        console.log(">> [Subscriber 3] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
-    }
-    var sub_res_3 = await session.declare_subscriber_handler(key_expr_3, example_handler);
+    // const key_expr_3 = await session.declare_ke("demo/send/to/ts3");
+    // async function example_handler(sample: zenoh.Sample): Promise<void> {
+    //     const decoder = new TextDecoder();
+    //     let text = decoder.decode(sample.value.payload)
+    //     console.log(">> [Subscriber 3] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
+    // }
+    // var sub_res_3 = await session.declare_subscriber_handler(key_expr_3, example_handler);
 
 
     // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 

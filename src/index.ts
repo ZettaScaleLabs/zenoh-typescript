@@ -320,7 +320,7 @@ export class Sample {
 
     // };
 
-    new(keyexpr:KeyExpr, payload: Value, kind: SampleKind): Sample {
+    new(keyexpr: KeyExpr, payload: Value, kind: SampleKind): Sample {
         return new Sample(keyexpr, payload, kind);
     }
 
@@ -408,6 +408,7 @@ export class Query {
     }
 }
 
+// TODO
 export class Reply { }
 
 
@@ -559,33 +560,59 @@ export class Session {
         return ret
     }
 
+    async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
 
-    async declare_publisher(keyexpr: IntoKeyExpr, handler: (sample: Sample) => void): Promise<Subscriber<void>> {
-        const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+        // TODO Test this  
+        var publisher: Publisher = await Publisher.new(keyexpr, this);
 
-        const ret = await Zenoh.zw_declare_subscriber(
-            this.__ptr,
-            key.__ptr,
-            async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
-                // Looks into WASM Memory
-                let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
-                // Copies value from WASM to Javascript
-                // TODO: Verify that this is okay
-                let uint8_array_cloned = new Uint8Array(uint8_array_view)
-                let value = new Value(uint8_array_cloned);
-                let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
-                // TODO: Can this Be DELETE? 
-                let kind = SampleKind.PUT;
+        return publisher
+    }
 
-                handler(new Sample(key_expr, value, kind))
-            });
+}
+
+
+// ██████  ██    ██ ██████  ██      ██ ███████ ██   ██ ███████ ██████  
+// ██   ██ ██    ██ ██   ██ ██      ██ ██      ██   ██ ██      ██   ██ 
+// ██████  ██    ██ ██████  ██      ██ ███████ ███████ █████   ██████  
+// ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██ 
+// ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██ 
+
+
+export class Publisher {
+    __key_expr: KeyExpr;
+    __session: Session;
+
+    // METHOD 1
+    private constructor(key_expr: KeyExpr, session: Session) {
+        this.__key_expr = key_expr
+        this.__session = session
+        // TODO will I need this registry.register
+        // Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
+    }
+
+    // METHOD 2
+    // private constructor(key_expr: KeyExpr, session: Session) {
+    //     const Zenoh : Module = await zenoh();
+    //     // Pico is taking care of the publisher. 
+    //     let publisher_id : int = Zenoh.declare_publisher(key_expr, session);
+    //     this.__publisher_id = publisher_id; 
+    // }
+
+    async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
+
+        const val: Value = await value[intoValue]();
+        const ret = await this.__session.put(this.__key_expr, val);
 
         if (ret < 0) {
-            throw `Error ${ret} while declaring Subscriber`
+            throw `Error ${ret} while putting`
         }
         return ret
     }
 
+    static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
+        const key: KeyExpr = await keyexpr[intoKeyExpr]();
+        return new Publisher(key, session)
+    }
 }
 
 
@@ -595,22 +622,22 @@ export class Utils {
     // static decoder = new TextDecoder()
     private decoder = new TextDecoder();
 
-    decodeFromSharedBuffer(sharedBuffer:SharedArrayBuffer) {
+    decodeFromSharedBuffer(sharedBuffer: SharedArrayBuffer) {
         const copyLength = Math.min(sharedBuffer.byteLength)
-      
+
         // Create a temporary ArrayBuffer and copy the contents of the shared buffer
         // into it.
         const tempBuffer = new ArrayBuffer(copyLength)
         const tempView = new Uint8Array(tempBuffer)
-      
+
         let sharedView = new Uint8Array(sharedBuffer)
         if (sharedBuffer.byteLength != copyLength) {
-          sharedView = sharedView.subarray(0, copyLength)
+            sharedView = sharedView.subarray(0, copyLength)
         }
         tempView.set(sharedView)
-      
+
         return this.decoder.decode(tempBuffer)
-      }
+    }
 
 }
 
