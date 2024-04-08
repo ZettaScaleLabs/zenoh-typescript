@@ -154,18 +154,22 @@ async function main() {
     const keyexpr = await session.declare_ke("demo/send/from/ts");
     const publisher = session.declare_publisher(keyexpr);
 
-
-
     let enc: TextEncoder = new TextEncoder(); // always utf-8
 
-    let uint8arr: Uint8Array = enc.encode(`100 ABCDEFG 100`);
-    let value: zenoh.Value = new zenoh.Value(uint8arr);
     var c = 0;
-    while (c < 50) {
+    console.log("Publisher");
+    while (c < 50000) {
+        let currentTime = new Date().toTimeString();
+        // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
+        let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
+        let value: zenoh.Value = new zenoh.Value(uint8arr);
         (await publisher).put(keyexpr, value);
+        console.log("put");
         c = c + 1;
-        await sleep(500);
+        await sleep(1000);
+        console.log("After sleep");
     }
+    console.log("Publisher");
 
     // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
 

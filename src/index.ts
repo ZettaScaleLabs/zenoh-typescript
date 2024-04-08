@@ -39,8 +39,6 @@ interface Module {
 
 
 
-    // NEO API TODO Fix TYPES
-    neo_zw_sub(...arg: any): any,
     // 
     zw_put(...arg: any): any,
     zw_open_session(...arg: any): any,
@@ -49,9 +47,9 @@ interface Module {
     zw_declare_ke(...arg: any): any,
     zw_delete_ke(...arg: any): any,
     zw_declare_subscriber(...arg: any): any,
+    zw_declare_publisher(...arg: any): any,
     zw_make_ke(...arg: any): any,
     zw_default_config(clocator: any): any,
-    neo_poll_read_func(...arg: any): any,
     // zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
     api: any
     // DEV
@@ -576,8 +574,6 @@ export class Session {
 // ██████  ██    ██ ██████  ██      ██ ███████ ███████ █████   ██████  
 // ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██ 
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██ 
-
-
 export class Publisher {
     __key_expr: KeyExpr;
     __session: Session;
@@ -598,7 +594,7 @@ export class Publisher {
     //     this.__publisher_id = publisher_id; 
     // }
 
-    async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
+    async put(y: IntoKeyExpr, value: IntoValue): Promise<number> {
 
         const val: Value = await value[intoValue]();
         const ret = await this.__session.put(this.__key_expr, val);
