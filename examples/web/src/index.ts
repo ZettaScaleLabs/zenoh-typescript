@@ -84,9 +84,9 @@ class Stats {
 
 
 
-
 async function main() {
     // Test push
+
     console.log("zenoh.Session.open");
     // let conn_string = "ws/192.168.21.42:10000";
     // let conn_string = "ws/192.168.1.176:10000";
@@ -96,9 +96,9 @@ async function main() {
 
     // console.log("Connecting to ",conn_string) 
 
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
+    // const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
 
-    console.log("session.declare_ke");
+    // console.log("session.declare_ke");
 
     // TODO: Very broken
     // TODO: Very broken
@@ -151,25 +151,25 @@ async function main() {
     // });
 
     // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
-    const keyexpr = await session.declare_ke("demo/send/from/ts");
-    const publisher = session.declare_publisher(keyexpr);
+    // const keyexpr = await session.declare_ke("demo/send/from/ts");
+    // const publisher = session.declare_publisher(keyexpr);
 
-    let enc: TextEncoder = new TextEncoder(); // always utf-8
+    // let enc: TextEncoder = new TextEncoder(); // always utf-8
 
-    var c = 0;
-    console.log("Publisher");
-    while (c < 50000) {
-        let currentTime = new Date().toTimeString();
-        // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
-        let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
-        let value: zenoh.Value = new zenoh.Value(uint8arr);
-        (await publisher).put(keyexpr, value);
-        console.log("put");
-        c = c + 1;
-        await sleep(1000);
-        console.log("After sleep");
-    }
-    console.log("Publisher");
+    // var c = 0;
+    // console.log("Publisher");
+    // while (c < 50000) {
+    //     let currentTime = new Date().toTimeString();
+    //     // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
+    //     let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
+    //     let value: zenoh.Value = new zenoh.Value(uint8arr);
+    //     (await publisher).put(keyexpr, value);
+    //     console.log("put");
+    //     c = c + 1;
+    //     await sleep(1000);
+    //     console.log("After sleep");
+    // }
+    // console.log("Publisher");
 
     // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
 

@@ -45,21 +45,8 @@ em_proxying_queue *proxy_queue = NULL;
 // Expose Interface To TS
 EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
-// EMSCRIPTEN_KEEPALIVE
-// void *zw_default_config(const char *locator)
-// {
-//   if (locator == NULL)
-//   {
-//     return NULL;
-//   }
-
-//   z_owned_config_t *config =
-//       (z_owned_config_t *)z_malloc(sizeof(z_owned_config_t));
-//   *config = z_config_default();
-//   zp_config_insert(z_loan(*config), Z_CONFIG_CONNECT_KEY,
-//                    z_string_make(locator));
-//   return (void *)config;
-// }
+// A type Representing a pointer from Typescropt
+typedef size_t ts_ptr ;
 
 EMSCRIPTEN_KEEPALIVE
 void *zw_session_close(z_owned_config_t *config)
@@ -79,7 +66,7 @@ void *zw_session_close(z_owned_config_t *config)
 }
 
 EMSCRIPTEN_KEEPALIVE
-void zw_delete_ke(int keyexpr_ptr)
+void zw_delete_ke(ts_ptr keyexpr_ptr)
 {
   z_owned_keyexpr_t *key_expr = reinterpret_cast<z_owned_keyexpr_t *>(keyexpr_ptr);
   return z_drop(key_expr);
@@ -127,7 +114,7 @@ int zw_default_config(std::string locator_str)
 //      ██ ██           ██      ██ ██ ██    ██ ██  ██ ██
 // ███████ ███████ ███████ ███████ ██  ██████  ██   ████
 
-int zw_open_session(int config_ptr)
+int zw_open_session(ts_ptr config_ptr)
 {
 
   main_thread = pthread_self();
@@ -148,13 +135,13 @@ int zw_open_session(int config_ptr)
   return (int)session;
 }
 
-void zw_close_session(int session_ptr)
+void zw_close_session(ts_ptr session_ptr)
 {
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   z_close(z_move(*s));
 }
 
-int zw_start_tasks(int session_ptr)
+int zw_start_tasks(ts_ptr session_ptr)
 {
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   if (zp_start_read_task(z_loan(*s), NULL) != 0 ||
@@ -166,28 +153,15 @@ int zw_start_tasks(int session_ptr)
   return 0;
 }
 
-// Put on a session
-int zw_put(int session_ptr, int key_expr_ptr, std::string value_str)
+// Execute a Put on a session
+int zw_put(ts_ptr session_ptr, ts_ptr key_expr_ptr, std::string value_str)
 {
-
-  // TODO: cleanup
-  // std::cout << "session_ptr"  << session_ptr << std::endl;
-  // std::cout << "key_expr_ptr" << key_expr_ptr << std::endl;
-  // std::cout << "value_str"    << value_str << std::endl;
-  // printf("zw_put \n");
-  // printf("%p \n",(void*)key_expr_ptr);
-  // printf("%d \n",key_expr_ptr);
-  // printf("zw_put \n");
 
   z_put_options_t options = z_put_options_default();
   options.encoding = z_encoding(Z_ENCODING_PREFIX_TEXT_PLAIN, NULL);
 
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   z_owned_keyexpr_t *ke = reinterpret_cast<z_owned_keyexpr_t *>(key_expr_ptr);
-  // std::cout << "    zw_put ke " << key_expr_ptr << std::endl;
-  // printf("%X",key_expr_ptr);
-
-  // std::cout << "    keyexpr: " << ke->_value->_suffix << std::endl;
 
   // TODO: Static cast is supposed to safer ?
   const uint8_t *value = (const uint8_t *)value_str.data();
@@ -216,7 +190,7 @@ int zw_make_ke(std::string keyexpr_str)
   return (int)ke;
 }
 
-int zw_declare_ke(int session_ptr, std::string keyexpr_str)
+int zw_declare_ke(ts_ptr session_ptr, std::string keyexpr_str)
 {
   // TODO CLEANUP
   // std::cout << "C - zw_declare_ke NEW!" << std::endl;
@@ -297,7 +271,7 @@ void data_handler(const z_sample_t *sample, void *arg)
 // ██   ██ ██      ██      ██      ██   ██ ██   ██ ██
 // ██████  ███████  ██████ ███████ ██   ██ ██   ██ ███████
 
-int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_cb)
+int zw_declare_subscriber(ts_ptr session_ptr, ts_ptr key_expr_ptr, emscripten::val ts_cb)
 {
   z_subscriber_options_t options = z_subscriber_options_t();
 
@@ -335,7 +309,7 @@ int zw_declare_subscriber(int session_ptr, int key_expr_ptr, emscripten::val ts_
 // ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██
 
-int zw_declare_publisher(int session_ptr, int key_expr_ptr, emscripten::val ts_cb)
+int zw_declare_publisher(ts_ptr session_ptr, ts_ptr key_expr_ptr, emscripten::val ts_cb)
 {
 
   z_publisher_options_t options = z_publisher_options_t();
@@ -364,7 +338,7 @@ int zw_declare_publisher(int session_ptr, int key_expr_ptr, emscripten::val ts_c
   return (int)pub;
 }
 
-int zw_publisher_put(int publisher, std::string value_str)
+int zw_publisher_put(ts_ptr publisher, std::string value_str)
 {
   const z_publisher_put_options_t *options;
 
@@ -384,7 +358,7 @@ int zw_publisher_put(int publisher, std::string value_str)
   return (int)pub;
 }
 
-int zw_undeclare_publisher(int publisher)
+int zw_undeclare_publisher(ts_ptr publisher)
 {
   z_owned_publisher_t *pub = reinterpret_cast<z_owned_publisher_t *>(publisher);
 
@@ -520,18 +494,26 @@ EMSCRIPTEN_BINDINGS(my_module)
   // TODO SAMPLE ?
   emscripten::register_type<CallbackType>("(num: number) => number");
   // async function async_ts_callback(num: number): Promise<number> {
-
+  
   emscripten::function("zw_default_config", &zw_default_config);
-  emscripten::function("zw_put", &zw_put);
+  // Session
   emscripten::function("zw_open_session", &zw_open_session);
   emscripten::function("zw_start_tasks", &zw_start_tasks);
+  emscripten::function("zw_put", &zw_put);
+  emscripten::function("zw_close_session", &zw_close_session);
+  // Key Expr
   emscripten::function("zw_make_ke", &zw_make_ke);
   emscripten::function("zw_delete_ke", &zw_delete_ke);
-  emscripten::function("zw_close_session", &zw_close_session);
-  emscripten::function("zw_version", &zw_version);
   emscripten::function("zw_declare_ke", &zw_declare_ke);
+  // Sub
   emscripten::function("zw_declare_subscriber", &zw_declare_subscriber);
+  // Pub
   emscripten::function("zw_declare_publisher", &zw_declare_publisher);
+  emscripten::function("zw_publisher_put", &zw_publisher_put);
+  emscripten::function("zw_undeclare_publisher", &zw_undeclare_publisher);
+  // Misc
+  emscripten::function("zw_version", &zw_version);
+
 
   // DEV
   emscripten::function("callback_test", &callback_test);

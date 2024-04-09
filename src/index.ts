@@ -37,7 +37,8 @@ interface Module {
     // Add Function, Accepts any function and needs a function Signature, More info Belows
     addFunction(func: (...arg: any) => any, sig: string): any,
 
-
+    // TODO: Publisher  
+    zw_publisher_put(...arg: any): any,
 
     // 
     zw_put(...arg: any): any,
@@ -62,6 +63,10 @@ interface Module {
     callback_test_typed(...arg: any): any,
     run_on_event(...arg: any): any,
 }
+
+// 
+type WasmPtr = number;
+
 
 let mod_instance: Module;
 
@@ -132,8 +137,8 @@ export async function zenoh(): Promise<Module> {
  * The configuration for a Zenoh Session.
  */
 export class Config {
-    __ptr: number = 0
-    private constructor(ptr: number) {
+    __ptr: WasmPtr = 0
+    private constructor(ptr: WasmPtr) {
         this.__ptr = ptr
     }
     static async new(locator: string): Promise<Config> {
@@ -200,15 +205,17 @@ export class Value {
 // ██   ██ ███████    ██        ███████ ██   ██ ██      ██   ██ 
 
 export class KeyExpr implements IntoSelector {
-    __ptr: number
 
-    static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: number) => (new KeyExpr(ptr)).delete());
+    // I hate the idea of this being accessible outside the class
+    __ptr: WasmPtr;
+
+    static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: WasmPtr) => (new KeyExpr(ptr)).delete());
 
     // 
     [intoKeyExpr](): Promise<KeyExpr> { return Promise.resolve(this) }
     [intoSelector](): Promise<Selector> { return Promise.resolve(new Selector(this)) }
 
-    constructor(ptr: number) {
+    constructor(ptr: WasmPtr) {
         this.__ptr = ptr
         KeyExpr.registry.register(this, this.__ptr, this);
     }
@@ -222,7 +229,7 @@ export class KeyExpr implements IntoSelector {
 
         const Zenoh = await zenoh();
 
-        const ptr = await Zenoh.zw_make_ke(keyexpr);
+        const ptr: WasmPtr = await Zenoh.zw_make_ke(keyexpr);
         if (ptr === 0) {
             throw "Failed to construct zenoh.KeyExpr"
         }
@@ -267,9 +274,9 @@ Object.defineProperty(Function.prototype, "onClose", function (this: Function) {
 // ███████  ██████  ██████      ██         ██   ██ ██   ██ ██   ████ ██████  ███████ ███████ ██   ██ 
 
 export class Subscriber<Receiver> {
-    __sub_ptr: number
+    __sub_ptr: WasmPtr
     receiver: Receiver
-    private constructor(sub_ptr: number, receiver: Receiver) {
+    private constructor(sub_ptr: WasmPtr, receiver: Receiver) {
         this.__sub_ptr = sub_ptr
         this.receiver = receiver
     }
@@ -417,13 +424,17 @@ export class Reply { }
 // ███████ ███████ ███████ ███████ ██  ██████  ██   ████ 
 
 export class Session {
+
     // A FinalizationRegistry object lets you request a callback when a value is garbage-collected.
     static registry = new FinalizationRegistry(([ptr, task_ptr]: [number, number]) => (new Session(ptr, task_ptr)).close())
-    private __ptr: number = 0
-    //@ts-ignore
-    private __task_ptr: number = 0
 
-    private constructor(ptr: number, task_ptr: number) {
+    // TODO: I hate the idea of this being accessible outside the class
+    __ptr: number = 0
+
+    //@ts-ignore
+    private __task_ptr: WasmPtr = 0
+
+    private constructor(ptr: WasmPtr, task_ptr: WasmPtr) {
         this.__ptr = ptr
         this.__task_ptr = task_ptr
         Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
@@ -575,39 +586,46 @@ export class Session {
 // ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██ 
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██ 
 export class Publisher {
-    __key_expr: KeyExpr;
-    __session: Session;
+
+    private __publisher_ptr: WasmPtr;
+
 
     // METHOD 1
-    private constructor(key_expr: KeyExpr, session: Session) {
-        this.__key_expr = key_expr
-        this.__session = session
-        // TODO will I need this registry.register
-        // Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
-    }
-
-    // METHOD 2
     // private constructor(key_expr: KeyExpr, session: Session) {
-    //     const Zenoh : Module = await zenoh();
-    //     // Pico is taking care of the publisher. 
-    //     let publisher_id : int = Zenoh.declare_publisher(key_expr, session);
-    //     this.__publisher_id = publisher_id; 
+    //     this.__key_expr = key_expr
+    //     this.__session = session
+    //     // TODO will I need this registry.register
+    //     // Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
     // }
 
-    async put(y: IntoKeyExpr, value: IntoValue): Promise<number> {
+    // METHOD 2
 
+    private constructor(publisher_ptr: WasmPtr) {
+
+        this.__publisher_ptr = publisher_ptr;
+    }
+
+    async put(value: IntoValue): Promise<WasmPtr> {
+
+        // TODO expose Publisher 
         const val: Value = await value[intoValue]();
-        const ret = await this.__session.put(this.__key_expr, val);
+        const Zenoh: Module = await zenoh();
+        const ret = Zenoh.zw_publisher_put(this.__publisher_ptr, val);
 
         if (ret < 0) {
             throw `Error ${ret} while putting`
         }
-        return ret
+        // return ret
+        return 0;
     }
 
     static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
-        const key: KeyExpr = await keyexpr[intoKeyExpr]();
-        return new Publisher(key, session)
+
+        const Zenoh: Module = await zenoh();
+        const key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
+        let publisher_ptr: WasmPtr = Zenoh.zw_declare_publisher(key_expr, session);
+
+        return new Publisher(publisher_ptr)
     }
 }
 
