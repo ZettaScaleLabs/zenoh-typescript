@@ -82,23 +82,12 @@ class Stats {
 //     });
 // }
 
-
-
 async function main() {
     // Test push
 
     console.log("zenoh.Session.open");
-    // let conn_string = "ws/192.168.21.42:10000";
-    // let conn_string = "ws/192.168.1.176:10000";
-    // let conn_string = "ws/192.168.1.36:10000";
-    // let conn_string = "ws/192.168.1.30:10000";
-    // let conn_string = "ws/192.168.1.27:10000";
 
-    // console.log("Connecting to ",conn_string) 
-
-    // const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
-
-    // console.log("session.declare_ke");
+    const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
 
     // TODO: Very broken
     // TODO: Very broken
@@ -106,41 +95,45 @@ async function main() {
     // TODO: Very broken
     // TODO: Very broken
 
-    // const keyexpr = await session.declare_ke("demo/ts/rcv");
-    // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
-    // const keyexpr2 = await session.declare_ke("demo/example/**");
 
+    const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
 
-    // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
-    // console.log("Pre Put values !");
-    // executeAsync(async function () {
-    //     console.log("Inside Execute Async Function !");
-    //     var c = 0;
-    //     while (c < 50) {
-    //         let enc: TextEncoder = new TextEncoder(); // always utf-8
-    //         let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
-    //         let value: zenoh.Value = new zenoh.Value(uint8arr);
-    //         var pub_res = await session.put(keyexpr1, value);
-    //         console.log("Pub ", c);
+    // function executeAsync(func: any) {
+    //     setTimeout(func, 0);
+    // }
 
-    //         await sleep(500);
-    //         c++;
-    //     }
-    //     console.log("Finish Put Values");
-    // });
-    // PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB PUB 
+    // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
+    console.log("Pre Put values !");
+    (async () => {
+        console.log("Inside Execute Async Function !");
+        var c = 0;
+        while (c < 50) {
+            let enc: TextEncoder = new TextEncoder(); // always utf-8
+            let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
+            let value: zenoh.Value = new zenoh.Value(uint8arr);
+            var puT_res = await session.put(keyexpr1, value);
+            console.log("Put ", c);
+
+            await sleep(500);
+            c++;
+        }
+        console.log("Finish Put Values");
+    })();
+    // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     // First Subscriber
-    // const key_expr_1 = await session.declare_ke("demo/send/to/ts");
-    // var sub_res = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
-    //     const decoder = new TextDecoder();
-    //     // TODO: I believe that this copies the array out of WASM, 
-    //     // out of its SharedArrayView Memory structure
-    //     let sharedView = new Uint8Array(value)
-    //     let text = decoder.decode(sharedView)
-    //     console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
-    // });
+    const key_expr_1 = await session.declare_ke("demo/send/to/ts");
+    var sub_handle = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
+        const decoder = new TextDecoder();
+        // TODO: I believe that this copies the array out of WASM, 
+        // out of its SharedArrayView Memory structure
+        let sharedView = new Uint8Array(value)
+        let text = decoder.decode(sharedView)
+        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
+    });
+
+
 
     // Second Subscriber
     // const key_expr_2 = await session.declare_ke("demo/send/to/ts2");

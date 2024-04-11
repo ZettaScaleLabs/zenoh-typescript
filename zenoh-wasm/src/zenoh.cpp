@@ -46,7 +46,7 @@ em_proxying_queue *proxy_queue = NULL;
 EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
 // A type Representing a pointer from Typescropt
-typedef size_t ts_ptr ;
+typedef size_t ts_ptr ; // number 
 
 EMSCRIPTEN_KEEPALIVE
 void *zw_session_close(z_owned_config_t *config)

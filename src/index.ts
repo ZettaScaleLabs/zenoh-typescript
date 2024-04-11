@@ -90,7 +90,6 @@ export interface IntoKeyExpr {
 
 export const intoValue = Symbol("intoValue")
 
-
 /**
  * Something that may be turned into a Value.
  * 
@@ -115,9 +114,7 @@ export async function zenoh(): Promise<Module> {
                 // To allocate memory
                 _z_malloc: mod_instance.cwrap("z_malloc", "number", ["number"], { async: true }),
                 malloc: mod_instance.cwrap("malloc", "number", ["number"]),
-                // _zw_make_ke: module2.cwrap("zw_make_ke", "void", ["number"], { async: true }),
                 // TODO: add and expose zw_make_selector
-
             };
             mod_instance.api = api;
 
@@ -137,7 +134,9 @@ export async function zenoh(): Promise<Module> {
  * The configuration for a Zenoh Session.
  */
 export class Config {
+    
     __ptr: WasmPtr = 0
+
     private constructor(ptr: WasmPtr) {
         this.__ptr = ptr
     }
@@ -349,6 +348,10 @@ declare global {
 // TODO: TEST
 // Selector : High level <keyexpr>?arg1=lol&arg2=hi
 export class Selector {
+
+    // TODO clear memory of selector using FinalizationRegistry
+    // static registry = new FinalizationRegistry(([ptr, task_ptr]: [number, number]) => (new Session(ptr, task_ptr)).close())
+
     // KeyExpr object
     key_expr: KeyExpr
 
@@ -429,7 +432,7 @@ export class Session {
     static registry = new FinalizationRegistry(([ptr, task_ptr]: [number, number]) => (new Session(ptr, task_ptr)).close())
 
     // TODO: I hate the idea of this being accessible outside the class
-    __ptr: number = 0
+    private __ptr: WasmPtr = 0
 
     //@ts-ignore
     private __task_ptr: WasmPtr = 0
@@ -447,7 +450,7 @@ export class Session {
         if (!cfg.check()) {
             throw "Invalid config passed: it may have been already consumed by opening another session."
         }
-
+        
         const ptr = await Zenoh.zw_open_session(cfg.__ptr);
 
         cfg.__ptr = 0;
