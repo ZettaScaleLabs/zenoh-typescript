@@ -13,9 +13,11 @@
   "keywords": [],
   "author": "",
   "dependencies": {
+    "object-inspect": "^1.13.1",
     "tslog": "^4.9.2"
   },
   "devDependencies": {
+    "@types/object-inspect": "^1.13.0",
     "html-webpack-plugin": "^5.5.3",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.2",
@@ -24,5 +26,3 @@
     "webpack-dev-server": "^4.15.1"
   }
 }
-
-

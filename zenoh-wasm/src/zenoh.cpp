@@ -18,6 +18,7 @@
 #include "zenoh-pico/api/types.h"
 #include "zenoh-pico/system/platform.h"
 #include "zenoh-pico/net/primitives.h"
+#include "zenoh-pico/session/resource.h"
 
 // Emscripten
 #include <emscripten.h>
@@ -25,6 +26,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/val.h>
 #include <emscripten/proxying.h>
+
 // General C / C++
 #include <chrono>
 #include <cstdlib>
@@ -46,9 +48,8 @@ em_proxying_queue *proxy_queue = NULL;
 EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
 // A type Representing a pointer from Typescropt
-typedef size_t ts_ptr ; // number 
+typedef size_t ts_ptr; // number
 
-EMSCRIPTEN_KEEPALIVE
 void *zw_session_close(z_owned_config_t *config)
 {
   z_owned_session_t *session =
@@ -65,15 +66,7 @@ void *zw_session_close(z_owned_config_t *config)
   // return session;
 }
 
-EMSCRIPTEN_KEEPALIVE
-void zw_delete_ke(ts_ptr keyexpr_ptr)
-{
-  z_owned_keyexpr_t *key_expr = reinterpret_cast<z_owned_keyexpr_t *>(keyexpr_ptr);
-  return z_drop(key_expr);
-}
-
 // TODO Complete
-// EMSCRIPTEN_KEEPALIVE
 // int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
 //            z_owned_keyexpr_t *ke,
 //            // z_session_t *s,
@@ -90,7 +83,6 @@ void zw_delete_ke(ts_ptr keyexpr_ptr)
 //   return get;
 // }
 
-EMSCRIPTEN_KEEPALIVE
 int zw_default_config(std::string locator_str)
 {
   const char *locator = (const char *)locator_str.data();
@@ -177,6 +169,9 @@ int zw_put(ts_ptr session_ptr, ts_ptr key_expr_ptr, std::string value_str)
 
 int zw_make_ke(std::string keyexpr_str)
 {
+  
+  // std::cout << keyexpr_str << std::endl;
+
   const char *keyexpr = (const char *)keyexpr_str.data();
 
   z_owned_keyexpr_t *ke = NULL;
@@ -187,6 +182,9 @@ int zw_make_ke(std::string keyexpr_str)
     _z_keyexpr_set_owns_suffix(oke._value, true);
     *ke = oke;
   }
+
+  // printf("zw_make_ke ptr : %p \n", ke);
+
   return (int)ke;
 }
 
@@ -202,11 +200,11 @@ int zw_declare_ke(ts_ptr session_ptr, std::string keyexpr_str)
   z_owned_keyexpr_t *ke =
       (z_owned_keyexpr_t *)z_malloc(sizeof(z_owned_keyexpr_t));
 
-  const char *keyexpr = (const char *)keyexpr_str.data();
+  const char *keyexpr_string = (const char *)keyexpr_str.data();
 
-  z_keyexpr_t key = z_keyexpr(keyexpr);
+  z_keyexpr_t keyexpr = z_keyexpr(keyexpr_string);
 
-  *ke = z_declare_keyexpr(z_loan(*s), key);
+  *ke = z_declare_keyexpr(z_loan(*s), keyexpr);
 
   if (!z_check(*ke))
   {
@@ -215,16 +213,53 @@ int zw_declare_ke(ts_ptr session_ptr, std::string keyexpr_str)
   }
 
   // TODO Cleanup
-  // std::cout << "ke: " << ke << std::endl;
-  // std::cout << "=========" << std::endl;
-  // std::cout << "    zw_declare_ke ke " << ke << std::endl;
-  // printf("zw_declare_ke \n");
-  // printf("%p \n", ke);
-  // printf("%d \n", (int)ke);
-  // printf("zw_declare_ke\n");
+  printf("zw_declare_ke \n");
+  printf("pointer : %p \n", ke);
+  printf("decimal : %d \n", (int)ke);
+  printf("zw_declare_ke\n");
 
   return (int)ke;
 }
+
+void zw_delete_ke(ts_ptr keyexpr_ptr)
+{
+  z_owned_keyexpr_t *key_expr = reinterpret_cast<z_owned_keyexpr_t *>(keyexpr_ptr);
+  return z_drop(key_expr);
+}
+
+// TODO : ADD SESSION POINTER emscripten::val zw_get_keyexpr(ts_ptr session_ptr, ts_ptr keyexpr_ptr)
+// Session needs to handle resource pool
+// Look into .resolve
+emscripten::val zw_get_keyexpr(ts_ptr keyexpr_ptr)
+{
+
+  // TODO Cleanup
+  printf("zw_get_keyexpr \n");
+  printf("pointer : %p \n", keyexpr_ptr);
+  printf("decimal : %d \n", (int)keyexpr_ptr);
+  printf("zw_get_keyexpr\n");
+
+  z_owned_keyexpr_t *owned_key_expr = reinterpret_cast<z_owned_keyexpr_t *>(keyexpr_ptr);
+  // z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
+  
+  printf("z_owned_keyexpr_t *owned_key_expr value : %s \n", owned_key_expr->_value);
+  
+  // This KeyExpr is Null, only get the ID
+  // z_keyexpr_t key_expr = z_loan(*owned_key_expr);
+
+  // TODO: Get resource properly from Resource Pool managed by Zenoh Pico
+  // _z_resource_t *r = _z_get_resource_by_key(s=>, owned_key_expr->_value); 
+  // 
+  const char* my_str = "PLACEHOLDER/KEY/EXPR";
+  emscripten::val ts_str = emscripten::val::u8string(my_str);
+  return ts_str;
+}
+
+// ████████ ███████                ██████  █████  ██      ██      ██████   █████   ██████ ██   ██
+//    ██    ██                    ██      ██   ██ ██      ██      ██   ██ ██   ██ ██      ██  ██
+//    ██    ███████     █████     ██      ███████ ██      ██      ██████  ███████ ██      █████
+//    ██         ██               ██      ██   ██ ██      ██      ██   ██ ██   ██ ██      ██  ██
+//    ██    ███████                ██████ ██   ██ ███████ ███████ ██████  ██   ██  ██████ ██   ██
 
 struct closure_t
 {
@@ -238,7 +273,15 @@ void run_callback(void *arg)
   closure_t *closure = (closure_t *)arg;
   emscripten::val *cb = (emscripten::val *)closure->cb;
   z_owned_str_t keystr = z_keyexpr_to_string(closure->sample->keyexpr);
-  (*cb)((int)z_str_loan(&keystr), (int)closure->sample->payload.start, (int)closure->sample->payload.len);
+  // std::cout << "========== run_callback ============= " << std::endl;
+  // printf(">> '%s' '%p' \n", z_str_loan(&keystr), (int)z_str_loan(&keystr));
+  // std::cout << "========== run_callback ============= " << std::endl;
+
+  (*cb)(
+      (int)z_str_loan(&keystr), 
+      (int)closure->sample->payload.start, 
+      (int)closure->sample->payload.len
+      );
 
   // Experiment Experiment Experiment Experiment Experiment
   //
@@ -309,7 +352,7 @@ int zw_declare_subscriber(ts_ptr session_ptr, ts_ptr key_expr_ptr, emscripten::v
 // ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██
 
-int zw_declare_publisher(ts_ptr session_ptr, ts_ptr key_expr_ptr, emscripten::val ts_cb)
+int zw_declare_publisher(ts_ptr session_ptr, ts_ptr key_expr_ptr)
 {
 
   z_publisher_options_t options = z_publisher_options_t();
@@ -370,7 +413,6 @@ int zw_undeclare_publisher(ts_ptr publisher)
 //////////////////////////////////
 //////////////////////////////////
 //////////////////////////////////
-// EMSCRIPTEN_KEEPALIVE
 // zw_sub
 
 // void *zw_sub(z_owned_session_t *s, z_owned_keyexpr_t *ke, int js_callback)
@@ -494,7 +536,7 @@ EMSCRIPTEN_BINDINGS(my_module)
   // TODO SAMPLE ?
   emscripten::register_type<CallbackType>("(num: number) => number");
   // async function async_ts_callback(num: number): Promise<number> {
-  
+
   emscripten::function("zw_default_config", &zw_default_config);
   // Session
   emscripten::function("zw_open_session", &zw_open_session);
@@ -505,6 +547,7 @@ EMSCRIPTEN_BINDINGS(my_module)
   emscripten::function("zw_make_ke", &zw_make_ke);
   emscripten::function("zw_delete_ke", &zw_delete_ke);
   emscripten::function("zw_declare_ke", &zw_declare_ke);
+  emscripten::function("zw_get_keyexpr", &zw_get_keyexpr);
   // Sub
   emscripten::function("zw_declare_subscriber", &zw_declare_subscriber);
   // Pub
@@ -513,7 +556,6 @@ EMSCRIPTEN_BINDINGS(my_module)
   emscripten::function("zw_undeclare_publisher", &zw_undeclare_publisher);
   // Misc
   emscripten::function("zw_version", &zw_version);
-
 
   // DEV
   emscripten::function("callback_test", &callback_test);

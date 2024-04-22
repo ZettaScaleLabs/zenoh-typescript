@@ -13,11 +13,6 @@
 //
 
 import Module from "./wasm/zenoh-wasm.js"
-// TODO PROPER LOGGING
-// TODO Fix Logging
-
-// import { Logger, ILogObj } from "tslog";
-// const log: Logger<ILogObj> = new Logger();
 
 // TODO : Clean up Any's with proper types
 interface Module {
@@ -40,13 +35,16 @@ interface Module {
     // TODO: Publisher  
     zw_publisher_put(...arg: any): any,
 
-    // 
+    // Session
     zw_put(...arg: any): any,
     zw_open_session(...arg: any): any,
     zw_start_tasks(...arg: any): any,
     zw_close_session(...arg: any): any,
+    // KeyExpr
     zw_declare_ke(...arg: any): any,
     zw_delete_ke(...arg: any): any,
+    zw_get_keyexpr(...arg: any): any,
+    // Pub / Sub
     zw_declare_subscriber(...arg: any): any,
     zw_declare_publisher(...arg: any): any,
     zw_make_ke(...arg: any): any,
@@ -134,7 +132,7 @@ export async function zenoh(): Promise<Module> {
  * The configuration for a Zenoh Session.
  */
 export class Config {
-    
+
     __ptr: WasmPtr = 0
 
     private constructor(ptr: WasmPtr) {
@@ -207,6 +205,7 @@ export class KeyExpr implements IntoSelector {
 
     // I hate the idea of this being accessible outside the class
     __ptr: WasmPtr;
+    // __len: number;
 
     static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: WasmPtr) => (new KeyExpr(ptr)).delete());
 
@@ -222,6 +221,14 @@ export class KeyExpr implements IntoSelector {
         const Zenoh = await zenoh();
         Zenoh.zw_delete_ke(this.__ptr); // delete the C ptr
         KeyExpr.registry.unregister(this); // make sure we aren't called again
+    }
+
+    async toString(): Promise<String> {
+        // const Zenoh = await zenoh();
+        // return Zenoh.zw_get_keyexpr(this.__ptr);
+        // TODO: Get KeyExpr From Pool internally or store value of string here, but difficult because then KeyExpr 
+        // Cannot just be created from pointer
+        return "PLACEHOLDER"
     }
 
     static async new(keyexpr: string): Promise<KeyExpr> {
@@ -450,7 +457,7 @@ export class Session {
         if (!cfg.check()) {
             throw "Invalid config passed: it may have been already consumed by opening another session."
         }
-        
+
         const ptr = await Zenoh.zw_open_session(cfg.__ptr);
 
         cfg.__ptr = 0;
@@ -559,6 +566,34 @@ export class Session {
                 // TODO: Verify that this is okay
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
                 let value = new Value(uint8_array_cloned);
+
+                // TODO: this is horrible and wrong, and i need to get the string from the Sample->KeyExpr
+                // let key_expr: KeyExpr = this.declare_ke(keyexpr);
+                // let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
+                // TODO: Can this Be DELETE? 
+                let kind = SampleKind.PUT;
+
+                handler(new Sample(key, value, kind))
+            });
+
+        if (ret < 0) {
+            throw `Error ${ret} while declaring Subscriber`
+        }
+        return ret
+    }
+
+    async declare_subscriber_handler_async(keyexpr: IntoKeyExpr, handler:  (sample: Sample) => Promise<void>): Promise<Subscriber<void>> {
+        const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+
+        // TODO: Get KeyExpr from Sample, 
+        // Therefore internally get KeyExpr from Resource Pool managed by Zenoh-pico/Zenoh-cpp WASM
+        const ret = await Zenoh.zw_declare_subscriber(
+            this.__ptr,
+            key.__ptr,
+            async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
+                let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
+                let uint8_array_cloned = new Uint8Array(uint8_array_view)
+                let value = new Value(uint8_array_cloned);
                 let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
                 // TODO: Can this Be DELETE? 
                 let kind = SampleKind.PUT;
@@ -571,6 +606,7 @@ export class Session {
         }
         return ret
     }
+
 
     async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
 
@@ -591,7 +627,6 @@ export class Session {
 export class Publisher {
 
     private __publisher_ptr: WasmPtr;
-
 
     // METHOD 1
     // private constructor(key_expr: KeyExpr, session: Session) {

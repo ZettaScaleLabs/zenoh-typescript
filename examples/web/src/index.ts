@@ -13,6 +13,7 @@
 //
 
 import * as zenoh from "../../../esm"
+import inspect from 'object-inspect';
 
 // import { Logger } from "tslog";
 //
@@ -59,34 +60,9 @@ class Stats {
     }
 }
 
-// async function start_subscribers(session:zenoh.Session){
-//     const key_expr_1 = await session.declare_ke("demo/send/to/ts");
-//     // // First Subscriber
-//     var sub_res = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
-//         const decoder = new TextDecoder();
-//         // TODO: I believe that this copies the array out of WASM, 
-//         // out of its SharedArrayView Memory structure
-//         let sharedView = new Uint8Array(value)
-//         let text = decoder.decode(sharedView)
-//         console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
-//     });
-//     const key_expr_2 = await session.declare_ke("demo/send/to/ts");
-//     // Second Subscriber
-//     var sub_res = await session.declare_subscriber(key_expr_2, (keyexpr: String, value: Uint8Array) => {
-//         const decoder = new TextDecoder();
-//         // TODO: I believe that this copies the array out of WASM, 
-//         // out of its SharedArrayView Memory structure
-//         let sharedView = new Uint8Array(value)
-//         let text = decoder.decode(sharedView)
-//         console.log(">> [Subscriber2 ??] Received PUT ('" + keyexpr + "': '" + text + "')");
-//     });
-// }
-
 async function main() {
     // Test push
-
     console.log("zenoh.Session.open");
-
     const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
 
     // TODO: Very broken
@@ -96,59 +72,61 @@ async function main() {
     // TODO: Very broken
 
 
-    const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
 
     // function executeAsync(func: any) {
     //     setTimeout(func, 0);
     // }
-
     // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
-    console.log("Pre Put values !");
-    (async () => {
-        console.log("Inside Execute Async Function !");
-        var c = 0;
-        while (c < 50) {
-            let enc: TextEncoder = new TextEncoder(); // always utf-8
-            let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
-            let value: zenoh.Value = new zenoh.Value(uint8arr);
-            var puT_res = await session.put(keyexpr1, value);
-            console.log("Put ", c);
+    // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
+    // (async () => {
+    //     console.log("Inside Execute Async Function !");
+    //     var c = 0;
+    //     while (c < 50) {
+    //         let enc: TextEncoder = new TextEncoder(); // always utf-8
+    //         let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
+    //         let value: zenoh.Value = new zenoh.Value(uint8arr);
+    //         var puT_res = await session.put(keyexpr1, value);
+    //         console.log("Put ", c);
 
-            await sleep(500);
-            c++;
-        }
-        console.log("Finish Put Values");
-    })();
+    //         await sleep(500);
+    //         c++;
+    //     }
+    //     console.log("Finish Put Values");
+    // })();
     // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
+
+
+
 
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     // First Subscriber
-    const key_expr_1 = await session.declare_ke("demo/send/to/ts");
-    var sub_handle = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
+    // const key_expr_1 = await session.declare_ke("demo/send/to/ts");
+    // var sub_handle = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
+    //     const decoder = new TextDecoder();
+    //     // TODO: I believe that this copies the array out of WASM, 
+    //     // out of its SharedArrayView Memory structure
+    //     let sharedView = new Uint8Array(value)
+    //     let text = decoder.decode(sharedView)
+    //     console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
+    // });
+
+    // Second Subscriber
+    const key_expr_2: zenoh.KeyExpr = await session.declare_ke("demo/send/to/ts2");
+    // console.log(await key_expr_2.toString());
+    var sub_res_2 = await session.declare_subscriber_handler_async(key_expr_2, async (sample: zenoh.Sample) => {
         const decoder = new TextDecoder();
-        // TODO: I believe that this copies the array out of WASM, 
-        // out of its SharedArrayView Memory structure
-        let sharedView = new Uint8Array(value)
-        let text = decoder.decode(sharedView)
-        console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
+        let text = decoder.decode(sample.value.payload)
+        // console.log("DEBUG Sample", inspect(sample.keyexpr.toString()));
+        console.debug(">> [Subscriber 2] Received PUT ('" + sample.keyexpr.__ptr + "': '" + text + "')");
     });
 
 
-
-    // Second Subscriber
-    // const key_expr_2 = await session.declare_ke("demo/send/to/ts2");
-    // var sub_res_2 = await session.declare_subscriber_handler(key_expr_2, (sample: zenoh.Sample) => {
-    //     const decoder = new TextDecoder();
-    //     let text = decoder.decode(sample.value.payload)
-    //     console.log(">> [Subscriber 2] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
-    // });
-
+    // TODO FIX PUBLISHER
     // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
     // const keyexpr = await session.declare_ke("demo/send/from/ts");
     // const publisher = session.declare_publisher(keyexpr);
 
     // let enc: TextEncoder = new TextEncoder(); // always utf-8
-
     // var c = 0;
     // console.log("Publisher");
     // while (c < 50000) {
@@ -156,7 +134,7 @@ async function main() {
     //     // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
     //     let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
     //     let value: zenoh.Value = new zenoh.Value(uint8arr);
-    //     (await publisher).put(keyexpr, value);
+    //     (await publisher).put(value);
     //     console.log("put");
     //     c = c + 1;
     //     await sleep(1000);
@@ -168,27 +146,7 @@ async function main() {
 
 
 
-    // Third Subscriber
-    // TODO:THere is a bug that it will not b
-    // const key_expr_3 = await session.declare_ke("demo/send/to/ts3");
-    // async function example_handler(sample: zenoh.Sample): Promise<void> {
-    //     const decoder = new TextDecoder();
-    //     let text = decoder.decode(sample.value.payload)
-    //     console.log(">> [Subscriber 3] Received PUT ('" + sample.keyexpr + "': '" + text + "')");
-    // }
-    // var sub_res_3 = await session.declare_subscriber_handler(key_expr_3, example_handler);
 
-
-    // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 
-    // console.log("session.declare_subscriber");
-
-    // var stats = new Stats(100000);
-    // const keyexpr_thr = await session.declare_ke("test/thr");
-
-    // var sub_res = await session.declare_subscriber(keyexpr_thr, (keyexpr: String, value: Uint8Array) => {
-    //     stats.increment();
-    // });
-    // SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR SUB_THR 
 
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
     // console.log("BEGIN DEV Tests ");
@@ -197,41 +155,13 @@ async function main() {
     // console.log("END DEV Tests ");
     // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
 
-    // for Sub use:
-    // var enc = new TextDecoder("utf-8"); // Obviously use different 
-    // let decoded_message: string = enc.decode(arr);
 
-    // const result = await session.sub("demo/ts/test_server/", (...args: any) => {
-    //     console.log("Hello, here are your args: ", args)
-    // });
-
-    // session.do_function_callback();
-
-    // const myvar = {
-    //     [intoKeyExpr]: () =>{
-    //         throw "potat"
-    //     }
-    // }
-
-    // console.log("Opened session")
-    // const sub = await session.declare_subscriber("hi", {
-    // 	async onEvent(sample) { console.log("hi") },
-    // });
-
-    // app.get("/declare", async (req, res) => {
-    // 	await session.put("hi", "there");
-    // 	res.send("Hello world")
-    // })
-    // app.listen(3000)
-
-    // console.log("run_on_event");
-    // let ret_val = await zenoh.DEV.run_on_event(function(num: number) {console.log("    TS CALLBACK received: " + num)});
-
+    // Loop to spinn and keep alive
     var count = 0;
     while (true) {
         var seconds = 10;
         await sleep(1000 * seconds);
-        // console.log("Main Loop ? ", count)
+        console.log("Main Loop ? ", count)
         count = count + 1;
     }
 }
