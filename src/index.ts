@@ -13,6 +13,11 @@
 //
 
 import Module from "./wasm/zenoh-wasm.js"
+// TODO PROPER LOGGING
+// TODO Fix Logging
+
+// import { Logger, ILogObj } from "tslog";
+// const log: Logger<ILogObj> = new Logger();
 
 // TODO : Clean up Any's with proper types
 interface Module {
@@ -35,21 +40,17 @@ interface Module {
     // TODO: Publisher  
     zw_publisher_put(...arg: any): any,
 
-    // Session
+    // 
     zw_put(...arg: any): any,
     zw_open_session(...arg: any): any,
     zw_start_tasks(...arg: any): any,
     zw_close_session(...arg: any): any,
-    // KeyExpr
     zw_declare_ke(...arg: any): any,
     zw_delete_ke(...arg: any): any,
-    zw_get_keyexpr(...arg: any): any,
-    // Pub / Sub
     zw_declare_subscriber(...arg: any): any,
     zw_declare_publisher(...arg: any): any,
     zw_make_ke(...arg: any): any,
     zw_default_config(clocator: any): any,
-    // zw_make_ke: mod_instance.cwrap("zw_make_ke", "number", ["number"], { async: true }),
     api: any
     // DEV
     // DEV
@@ -205,7 +206,6 @@ export class KeyExpr implements IntoSelector {
 
     // I hate the idea of this being accessible outside the class
     __ptr: WasmPtr;
-    // __len: number;
 
     static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: WasmPtr) => (new KeyExpr(ptr)).delete());
 
@@ -221,14 +221,6 @@ export class KeyExpr implements IntoSelector {
         const Zenoh = await zenoh();
         Zenoh.zw_delete_ke(this.__ptr); // delete the C ptr
         KeyExpr.registry.unregister(this); // make sure we aren't called again
-    }
-
-    async toString(): Promise<String> {
-        // const Zenoh = await zenoh();
-        // return Zenoh.zw_get_keyexpr(this.__ptr);
-        // TODO: Get KeyExpr From Pool internally or store value of string here, but difficult because then KeyExpr 
-        // Cannot just be created from pointer
-        return "PLACEHOLDER"
     }
 
     static async new(keyexpr: string): Promise<KeyExpr> {
@@ -510,19 +502,8 @@ export class Session {
 
     // TODO Implement get
     async get(into_selector: IntoSelector, query: Query, callback: () => void): Promise<number> {
-
-        const [Zenoh, selector] = await Promise.all([zenoh(), into_selector[intoSelector]()]);
-
-        const pke = selector.key_expr.__ptr;
-        const callback_ptr: number = Zenoh.registerJSCallback(callback);
-        const ret = await Zenoh.api._zw_sub(this.__ptr, pke, callback_ptr);
-
-        if (ret < 0) {
-            throw "An error occured while getting"
-        }
-        return ret
+        throw "TODO"
     }
-
 
     // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
     // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
@@ -561,16 +542,14 @@ export class Session {
             key.__ptr,
             async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
                 // Looks into WASM Memory
+                console.log("")
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
+                console.log("")
                 // Copies value from WASM to Javascript
                 // TODO: Verify that this is okay
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
                 let value = new Value(uint8_array_cloned);
 
-                // TODO: this is horrible and wrong, and i need to get the string from the Sample->KeyExpr
-                // let key_expr: KeyExpr = this.declare_ke(keyexpr);
-                // let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
-                // TODO: Can this Be DELETE? 
                 let kind = SampleKind.PUT;
 
                 handler(new Sample(key, value, kind))
@@ -582,7 +561,7 @@ export class Session {
         return ret
     }
 
-    async declare_subscriber_handler_async(keyexpr: IntoKeyExpr, handler:  (sample: Sample) => Promise<void>): Promise<Subscriber<void>> {
+    async declare_subscriber_handler_async(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
         // TODO: Get KeyExpr from Sample, 
@@ -594,6 +573,9 @@ export class Session {
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
                 let value = new Value(uint8_array_cloned);
+
+
+
                 let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
                 // TODO: Can this Be DELETE? 
                 let kind = SampleKind.PUT;
@@ -606,7 +588,6 @@ export class Session {
         }
         return ret
     }
-
 
     async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
 
@@ -627,6 +608,7 @@ export class Session {
 export class Publisher {
 
     private __publisher_ptr: WasmPtr;
+
 
     // METHOD 1
     // private constructor(key_expr: KeyExpr, session: Session) {

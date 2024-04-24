@@ -50,10 +50,10 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 // A type Representing a pointer from Typescropt
 typedef size_t ts_ptr; // number
 
-void *zw_session_close(z_owned_config_t *config)
-{
-  z_owned_session_t *session =
-      (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
+// void *zw_session_close(z_owned_config_t *config)
+// {
+//   z_owned_session_t *session =
+//       (z_owned_session_t *)z_malloc(sizeof(z_owned_session_t));
 
   // TODO:CLOSE SESSION
   // *session = z_open(z_move(*config));
@@ -64,7 +64,7 @@ void *zw_session_close(z_owned_config_t *config)
   //   return NULL;
   // }
   // return session;
-}
+// }
 
 // TODO Complete
 // int zw_get(z_owned_session_t *s, // TODO: Do I need an owned session T ?
@@ -170,8 +170,6 @@ int zw_put(ts_ptr session_ptr, ts_ptr key_expr_ptr, std::string value_str)
 int zw_make_ke(std::string keyexpr_str)
 {
   
-  // std::cout << keyexpr_str << std::endl;
-
   const char *keyexpr = (const char *)keyexpr_str.data();
 
   z_owned_keyexpr_t *ke = NULL;
@@ -183,15 +181,13 @@ int zw_make_ke(std::string keyexpr_str)
     *ke = oke;
   }
 
-  // printf("zw_make_ke ptr : %p \n", ke);
-
   return (int)ke;
 }
 
 int zw_declare_ke(ts_ptr session_ptr, std::string keyexpr_str)
 {
   // TODO CLEANUP
-  // std::cout << "C - zw_declare_ke NEW!" << std::endl;
+  // std::cout << "Called : zw_declare_ke " << std::endl;
   // std::cout << "session_ptr: " << session_ptr << std::endl;
   // std::cout << "keyexpr_str: " << keyexpr_str << std::endl;
 
@@ -213,10 +209,10 @@ int zw_declare_ke(ts_ptr session_ptr, std::string keyexpr_str)
   }
 
   // TODO Cleanup
-  printf("zw_declare_ke \n");
-  printf("pointer : %p \n", ke);
-  printf("decimal : %d \n", (int)ke);
-  printf("zw_declare_ke\n");
+  // printf("zw_declare_ke \n");
+  // printf("pointer : %p \n", ke);
+  // printf("decimal : %d \n", (int)ke);
+  // printf("zw_declare_ke\n");
 
   return (int)ke;
 }
@@ -227,7 +223,7 @@ void zw_delete_ke(ts_ptr keyexpr_ptr)
   return z_drop(key_expr);
 }
 
-// TODO : ADD SESSION POINTER emscripten::val zw_get_keyexpr(ts_ptr session_ptr, ts_ptr keyexpr_ptr)
+// TODO : WIP:  ADD SESSION POINTER emscripten::val zw_get_keyexpr(ts_ptr session_ptr, ts_ptr keyexpr_ptr)
 // Session needs to handle resource pool
 // Look into .resolve
 emscripten::val zw_get_keyexpr(ts_ptr keyexpr_ptr)
@@ -240,9 +236,8 @@ emscripten::val zw_get_keyexpr(ts_ptr keyexpr_ptr)
   printf("zw_get_keyexpr\n");
 
   z_owned_keyexpr_t *owned_key_expr = reinterpret_cast<z_owned_keyexpr_t *>(keyexpr_ptr);
-  // z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
   
-  printf("z_owned_keyexpr_t *owned_key_expr value : %s \n", owned_key_expr->_value);
+  // printf("z_owned_keyexpr_t *owned_key_expr value : %s \n", owned_key_expr->_value);
   
   // This KeyExpr is Null, only get the ID
   // z_keyexpr_t key_expr = z_loan(*owned_key_expr);
@@ -270,6 +265,7 @@ struct closure_t
 void run_callback(void *arg)
 {
   // printf("------ thread %lu: RUN CB ------\n", pthread_self());
+  
   closure_t *closure = (closure_t *)arg;
   emscripten::val *cb = (emscripten::val *)closure->cb;
   z_owned_str_t keystr = z_keyexpr_to_string(closure->sample->keyexpr);
@@ -302,6 +298,7 @@ void data_handler(const z_sample_t *sample, void *arg)
   // printf(">> [Subscriber] Received ('%s': '%.*s')\n", z_str_loan(&keystr), (int)sample->payload.len,
   //         sample->payload.start);
   // z_str_drop(z_str_move(&keystr));
+
   closure_t closure;
   closure.cb = arg;
   closure.sample = sample;

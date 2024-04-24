@@ -38,6 +38,7 @@ set(CMAKE_EXECUTABLE_SUFFIX ".js")
 
 set(WASM_BUILD_FLAGS " \
 -fPIC \
+-D CMAKE_BUILD_TYPE=Debug \
 -D ZENOH_EMSCRIPTEN=1 \
 -D Z_LINK_WS=1 \
 -D Z_LINK_TCP=0 \
@@ -56,28 +57,39 @@ set(WASM_BUILD_FLAGS " \
 # func-wrapper Adds a JS-Callback to be passed to C to be used. 
 # TODO more functions exposed via Exported_functions
 set(WASM_LINK_FLAGS "--extern-pre-js=${CMAKE_SOURCE_DIR}/COPYWRITE.js \
--s TEXTDECODER=0 \
--s ENVIRONMENT=web,worker \
--s EXPORTED_RUNTIME_METHODS=['writeArrayToMemory','getValue','setValue','registerJSCallback','onRuntimeInitialized','cwrap','UTF8ToString','stringToUTF8OnStack'] \
--s EXPORTED_FUNCTIONS=['_malloc'] \
--s ERROR_ON_UNDEFINED_SYMBOLS=0 \
--s ALLOW_TABLE_GROWTH \
--s RESERVED_FUNCTION_POINTERS=100 \
 -s ASYNCIFY=1 \
+-s ALLOW_TABLE_GROWTH \
+-s ALLOW_MEMORY_GROWTH=1 \
+-s ENVIRONMENT=web,worker \
+-s EXPORTED_RUNTIME_METHODS=['writeArrayToMemory','getValue','setValue','cwrap','UTF8ToString','stringToUTF8OnStack'] \
+-s ERROR_ON_UNDEFINED_SYMBOLS=0 \
 -s EXPORT_ES6=1 \
--s MODULARIZE=1 \
--s USE_ES6_IMPORT_META=1 \
--s LINKABLE=1 \
 -s EXPORT_ALL=1 \
 -s EXPORT_NAME=zenohWasm \
--s ALLOW_TABLE_GROWTH \
+-s LINKABLE=1 \
+-s MODULARIZE=1 \
+-s RESERVED_FUNCTION_POINTERS=100 \
+-s STACK_OVERFLOW_CHECK=1 \
+-s STACK_SIZE=1048576 \
+-s TOTAL_STACK=32MB \
+-s TEXTDECODER=0 \
+-s TOTAL_MEMORY=1024mb \
+-s USE_ES6_IMPORT_META=1 \
 -fPIC \
 -pthread \
 -s PTHREAD_POOL_SIZE=5 \
 --bind")
 
-# -s PTHREAD_POOL_SIZE=1 \
-# -pthread \
+# TO TRY 
+# -s ALLOW_MEMORY_GROWTH=1 \
+
+# -s VERBOSE=1 \
+# Outputs a lot of information regarding builds
+
+# COMPILE FLAGS TRIED 
+
+# -s ASSERTIONS=2 \
+# Causes `Aborted(native code called abort())`
 
 # Cannot Export Types for C files
 # Need to figure out how to emit types for C files

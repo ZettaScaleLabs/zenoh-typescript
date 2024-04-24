@@ -65,17 +65,6 @@ async function main() {
     console.log("zenoh.Session.open");
     const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
 
-    // TODO: Very broken
-    // TODO: Very broken
-    // const keyexpr = await zenoh.KeyExpr.new("demo/ts/rcv");
-    // TODO: Very broken
-    // TODO: Very broken
-
-
-
-    // function executeAsync(func: any) {
-    //     setTimeout(func, 0);
-    // }
     // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
     // (async () => {
@@ -96,8 +85,6 @@ async function main() {
     // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
 
 
-
-
     // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
     // First Subscriber
     // const key_expr_1 = await session.declare_ke("demo/send/to/ts");
@@ -111,20 +98,22 @@ async function main() {
     // });
 
     // Second Subscriber
-    const key_expr_2: zenoh.KeyExpr = await session.declare_ke("demo/send/to/ts2");
+    const key_expr_2: zenoh.KeyExpr = await session.declare_ke("demo/send/to/ts");
     // console.log(await key_expr_2.toString());
-    var sub_res_2 = await session.declare_subscriber_handler_async(key_expr_2, async (sample: zenoh.Sample) => {
-        const decoder = new TextDecoder();
-        let text = decoder.decode(sample.value.payload)
-        // console.log("DEBUG Sample", inspect(sample.keyexpr.toString()));
-        console.debug(">> [Subscriber 2] Received PUT ('" + sample.keyexpr.__ptr + "': '" + text + "')");
-    });
+    var sub_res_2 = await session.declare_subscriber_handler_async(key_expr_2,
+        async (sample: zenoh.Sample) => {
+            const decoder = new TextDecoder();
+            let text = decoder.decode(sample.value.payload)
+            // console.log("DEBUG Sample", inspect(sample.keyexpr.toString()));
+            console.debug(">> [Subscriber 2] Received PUT ('" + sample.keyexpr.__ptr + "': '" + text + "')");
+        }
+    );
 
 
     // TODO FIX PUBLISHER
     // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
     // const keyexpr = await session.declare_ke("demo/send/from/ts");
-    // const publisher = session.declare_publisher(keyexpr);
+    // const publisher : zenoh.Publisher = await session.declare_publisher(keyexpr);
 
     // let enc: TextEncoder = new TextEncoder(); // always utf-8
     // var c = 0;
@@ -134,7 +123,7 @@ async function main() {
     //     // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
     //     let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
     //     let value: zenoh.Value = new zenoh.Value(uint8arr);
-    //     (await publisher).put(value);
+    //     (publisher).put(value);
     //     console.log("put");
     //     c = c + 1;
     //     await sleep(1000);
@@ -144,19 +133,7 @@ async function main() {
 
     // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
 
-
-
-
-
-    // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
-    // console.log("BEGIN DEV Tests ");
-    // await zenoh.DEV.call_functions_CPP_style();
-    // await zenoh.DEV.call_CPP_function_with_TS_Callback();
-    // console.log("END DEV Tests ");
-    // DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV DEV 
-
-
-    // Loop to spinn and keep alive
+    // Loop to spin and keep alive
     var count = 0;
     while (true) {
         var seconds = 10;
