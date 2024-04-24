@@ -542,9 +542,9 @@ export class Session {
             key.__ptr,
             async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
                 // Looks into WASM Memory
-                console.log("")
+
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
-                console.log("")
+
                 // Copies value from WASM to Javascript
                 // TODO: Verify that this is okay
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
@@ -570,11 +570,13 @@ export class Session {
             this.__ptr,
             key.__ptr,
             async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
+                console.log("Sub Before Sub Array ", pl_start," : ",  pl_start + pl_len)
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
+                console.log("After Sub Array")
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
+                console.log("After Sub Array Clone to TS")
+                
                 let value = new Value(uint8_array_cloned);
-
-
 
                 let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
                 // TODO: Can this Be DELETE? 

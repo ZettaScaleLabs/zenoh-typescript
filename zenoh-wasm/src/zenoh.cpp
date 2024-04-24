@@ -264,21 +264,27 @@ struct closure_t
 
 void run_callback(void *arg)
 {
-  // printf("------ thread %lu: RUN CB ------\n", pthread_self());
+  printf("------ thread %lu: RUN CB ------\n", pthread_self());
   
   closure_t *closure = (closure_t *)arg;
+  printf("------  RUN CB  After Get Closure ------\n");
+
   emscripten::val *cb = (emscripten::val *)closure->cb;
+  printf("------ RUN CB After CB destruct ------\n");
+  
   z_owned_str_t keystr = z_keyexpr_to_string(closure->sample->keyexpr);
+  printf("------ RUN CB After KeyExpr to String ------\n");
+
   // std::cout << "========== run_callback ============= " << std::endl;
   // printf(">> '%s' '%p' \n", z_str_loan(&keystr), (int)z_str_loan(&keystr));
   // std::cout << "========== run_callback ============= " << std::endl;
-
+  printf("------ RUN CB Before Call ------\n");
   (*cb)(
       (int)z_str_loan(&keystr), 
       (int)closure->sample->payload.start, 
       (int)closure->sample->payload.len
       );
-
+  printf("------ RUN CB After Call ------\n");
   // Experiment Experiment Experiment Experiment Experiment
   //
   // TODO: Check, will this allocate a new string on every single sample.
@@ -288,6 +294,7 @@ void run_callback(void *arg)
   // Experiment Experiment Experiment Experiment
 
   z_str_drop(z_str_move(&keystr));
+  printf("------ RUN CB After z_str_drop ------\n");
 }
 
 void data_handler(const z_sample_t *sample, void *arg)
@@ -302,6 +309,7 @@ void data_handler(const z_sample_t *sample, void *arg)
   closure_t closure;
   closure.cb = arg;
   closure.sample = sample;
+  printf("before Emscripten Proxy Sync \n");
   emscripten_proxy_sync(proxy_queue, main_thread, run_callback, &closure);
 }
 
