@@ -204,7 +204,7 @@ export class Value {
 
 export class KeyExpr implements IntoSelector {
 
-    // I hate the idea of this being accessible outside the class
+    // TODO: I hate the idea of this being accessible outside the class
     __ptr: WasmPtr;
 
     static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: WasmPtr) => (new KeyExpr(ptr)).delete());
@@ -431,7 +431,7 @@ export class Session {
     static registry = new FinalizationRegistry(([ptr, task_ptr]: [number, number]) => (new Session(ptr, task_ptr)).close())
 
     // TODO: I hate the idea of this being accessible outside the class
-    private __ptr: WasmPtr = 0
+    __ptr: WasmPtr = 0
 
     //@ts-ignore
     private __task_ptr: WasmPtr = 0
@@ -579,7 +579,6 @@ export class Session {
                 let value = new Value(uint8_array_cloned);
 
                 let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
-                // TODO: Can this Be DELETE? 
                 let kind = SampleKind.PUT;
 
                 handler(new Sample(key_expr, value, kind))
@@ -595,7 +594,6 @@ export class Session {
 
         // TODO Test this  
         var publisher: Publisher = await Publisher.new(keyexpr, this);
-
         return publisher
     }
 
@@ -611,17 +609,6 @@ export class Publisher {
 
     private __publisher_ptr: WasmPtr;
 
-
-    // METHOD 1
-    // private constructor(key_expr: KeyExpr, session: Session) {
-    //     this.__key_expr = key_expr
-    //     this.__session = session
-    //     // TODO will I need this registry.register
-    //     // Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
-    // }
-
-    // METHOD 2
-
     private constructor(publisher_ptr: WasmPtr) {
 
         this.__publisher_ptr = publisher_ptr;
@@ -632,7 +619,7 @@ export class Publisher {
         // TODO expose Publisher 
         const val: Value = await value[intoValue]();
         const Zenoh: Module = await zenoh();
-        const ret = Zenoh.zw_publisher_put(this.__publisher_ptr, val);
+        const ret = Zenoh.zw_publisher_put(this.__publisher_ptr, val.payload);
 
         if (ret < 0) {
             throw `Error ${ret} while putting`
@@ -641,11 +628,17 @@ export class Publisher {
         return 0;
     }
 
+    
+
     static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
 
         const Zenoh: Module = await zenoh();
+
         const key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
-        let publisher_ptr: WasmPtr = Zenoh.zw_declare_publisher(key_expr, session);
+
+        console.log("Start declare_publisher");
+        
+        let publisher_ptr: WasmPtr = Zenoh.zw_declare_publisher(session.__ptr, key_expr.__ptr);
 
         return new Publisher(publisher_ptr)
     }

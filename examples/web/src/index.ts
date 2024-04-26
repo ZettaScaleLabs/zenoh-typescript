@@ -61,11 +61,11 @@ class Stats {
 }
 
 async function main() {
-    // Test push
-    console.log("zenoh.Session.open");
+
+    // Open Zenoh Session 
     const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
 
-    // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
+    // Put Directly on session
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
     // (async () => {
     //     console.log("Inside Execute Async Function !");
@@ -74,64 +74,44 @@ async function main() {
     //         let enc: TextEncoder = new TextEncoder(); // always utf-8
     //         let uint8arr: Uint8Array = enc.encode(`${c} ABCDEFG ${c}`);
     //         let value: zenoh.Value = new zenoh.Value(uint8arr);
-    //         var puT_res = await session.put(keyexpr1, value);
+    //         var put_res = await session.put(keyexpr1, value);
     //         console.log("Put ", c);
-
     //         await sleep(500);
     //         c++;
     //     }
     //     console.log("Finish Put Values");
     // })();
-    // PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT PUT 
+
+    // Subscriber
+    // const key_expr_2: zenoh.KeyExpr = await session.declare_ke("demo/send/to/ts");
+    // var sub = await session.declare_subscriber_handler_async(key_expr_2,
+    //     async (sample: zenoh.Sample) => {
+    //         const decoder = new TextDecoder();
+    //         let text = decoder.decode(sample.value.payload)
+    //         // console.log("DEBUG Sample", inspect(sample.keyexpr.toString()));
+    //         console.debug(">> [Subscriber 2] Received PUT ('" + sample.keyexpr.__ptr + "': '" + text + "')");
+    //     }
+    // );
 
 
-    // SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB SUB 
-    // First Subscriber
-    // const key_expr_1 = await session.declare_ke("demo/send/to/ts");
-    // var sub_handle = await session.declare_subscriber(key_expr_1, (keyexpr: String, value: Uint8Array) => {
-    //     const decoder = new TextDecoder();
-    //     // TODO: I believe that this copies the array out of WASM, 
-    //     // out of its SharedArrayView Memory structure
-    //     let sharedView = new Uint8Array(value)
-    //     let text = decoder.decode(sharedView)
-    //     console.log(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + text + "')");
-    // });
+    // Publisher
+    const keyexpr = await session.declare_ke("demo/recv/from/ts");
+    const publisher : zenoh.Publisher = await session.declare_publisher(keyexpr);
 
-    // Second Subscriber
-    const key_expr_2: zenoh.KeyExpr = await session.declare_ke("demo/send/to/ts");
-    // console.log(await key_expr_2.toString());
-    var sub_res_2 = await session.declare_subscriber_handler_async(key_expr_2,
-        async (sample: zenoh.Sample) => {
-            const decoder = new TextDecoder();
-            let text = decoder.decode(sample.value.payload)
-            // console.log("DEBUG Sample", inspect(sample.keyexpr.toString()));
-            console.debug(">> [Subscriber 2] Received PUT ('" + sample.keyexpr.__ptr + "': '" + text + "')");
-        }
-    );
-
-
-    // TODO FIX PUBLISHER
-    // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
-    // const keyexpr = await session.declare_ke("demo/send/from/ts");
-    // const publisher : zenoh.Publisher = await session.declare_publisher(keyexpr);
-
-    // let enc: TextEncoder = new TextEncoder(); // always utf-8
-    // var c = 0;
-    // console.log("Publisher");
-    // while (c < 50000) {
-    //     let currentTime = new Date().toTimeString();
-    //     // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
-    //     let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
-    //     let value: zenoh.Value = new zenoh.Value(uint8arr);
-    //     (publisher).put(value);
-    //     console.log("put");
-    //     c = c + 1;
-    //     await sleep(1000);
-    //     console.log("After sleep");
-    // }
-    // console.log("Publisher");
-
-    // PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER PUBLISHER
+    let enc: TextEncoder = new TextEncoder(); // always utf-8
+    var c = 0;
+    console.log("Publisher");
+    while (c < 50000) {
+        let currentTime = new Date().toTimeString();
+        // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
+        let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
+        let value: zenoh.Value = new zenoh.Value(uint8arr);
+        (publisher).put(value);
+        console.log("put");
+        c = c + 1;
+        await sleep(1000);
+        console.log("After sleep");
+    }
 
     // Loop to spin and keep alive
     var count = 0;
