@@ -83,6 +83,15 @@ typedef size_t ts_ptr; // number
 //   return get;
 // }
 
+/**
+ * Exposes function to create a default session config to TypeScript
+ *
+ * Parameters:
+ *   locator_str: String defining config connection information
+ *
+ * Returns:
+ *   Returns a pointer in WASM memory of the default config
+ */
 int zw_default_config(std::string locator_str)
 {
   const char *locator = (const char *)locator_str.data();
@@ -106,6 +115,15 @@ int zw_default_config(std::string locator_str)
 //      ██ ██           ██      ██ ██ ██    ██ ██  ██ ██
 // ███████ ███████ ███████ ███████ ██  ██████  ██   ████
 
+/**
+ * Exposes function to open session, using a config pointer to Typescript
+ *
+ * Parameters:
+ *   config_ptr: pointer to config in WASM memory
+ *
+ * Returns:
+ *   Returns a pointer in WASM memory to session 
+ */
 int zw_open_session(ts_ptr config_ptr)
 {
 
@@ -127,12 +145,30 @@ int zw_open_session(ts_ptr config_ptr)
   return (int)session;
 }
 
-void zw_close_session(ts_ptr session_ptr)
+/**
+ * Exposes function to close session, using a config pointer to Typescript
+ *
+ * Parameters:
+ *   config_ptr: pointer to session in WASM memory
+ *
+ * Returns:
+ *   Returns 0 if session closed, negative value otherwise
+ */
+int zw_close_session(ts_ptr session_ptr)
 {
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
-  z_close(z_move(*s));
+  return z_close(z_move(*s));
 }
 
+/**
+ * Exposes function to start Zenoh-pico Read and Write to Typescript
+ *
+ * Parameters:
+ *   config_ptr: pointer to session in WASM memory
+ *
+ * Returns:
+ *   Returns 0 if successful, negative value otherwise
+ */
 int zw_start_tasks(ts_ptr session_ptr)
 {
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
@@ -145,7 +181,17 @@ int zw_start_tasks(ts_ptr session_ptr)
   return 0;
 }
 
-// Execute a Put on a session
+/**
+ * Exposes function to put Value on Key Expression on Session
+ *
+ * Parameters:
+ *  session_ptr  : pointer to session in WASM memory
+ *  key_expr_ptr : pointer to Key Expression in WASM memory
+ *  value_str    : Uint8 Array as String TODO: Represent rather as a emscripten::val and extract bytes ? 
+ *
+ * Returns:
+ *   Returns 0 if successful, negative value otherwise
+ */
 int zw_put(ts_ptr session_ptr, ts_ptr key_expr_ptr, std::string value_str)
 {
 
@@ -364,7 +410,7 @@ int zw_undeclare_publisher(ts_ptr publisher)
 
 int zw_version() { return Z_PROTO_VERSION; }
 
-// Macro to Expose Functions
+// Macro to expose functions to typescript
 EMSCRIPTEN_BINDINGS(my_module)
 {
   // Config
@@ -387,4 +433,5 @@ EMSCRIPTEN_BINDINGS(my_module)
   emscripten::function("zw_undeclare_publisher", &zw_undeclare_publisher);
   // Misc
   emscripten::function("zw_version", &zw_version);
+  //
 }

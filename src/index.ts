@@ -15,50 +15,47 @@
 import Module from "./wasm/zenoh-wasm.js"
 
 // TODO : Clean up Any's with proper types
+/**
+ * Interface for Module, overwriting Module from zenoh-wasm.js
+ * and manually exposing only what we want to use in the bindings 
+ */
 interface Module {
     HEAPU8: any;
     UTF8ToString(x: any): string,
-    stringToUTF8OnStack(x: string): any,
-    onRuntimeInitialized(): Promise<any>,
 
-
-    // Working Callbacks
-    cwrap(ident: string, returnType: string, argTypes: string[], opts: any): any,
-    cwrap(ident: string, returnType: string, argTypes: string[]): any,
-
-    // Add Function, Accepts any function and needs a function Signature, More info Belows
-    addFunction(func: (...arg: any) => any, sig: string): any,
-
-    // TODO: Publisher  
-    zw_publisher_put(...arg: any): any,
-
-    // 
-    zw_put(...arg: any): any,
-    zw_open_session(...arg: any): any,
-    zw_start_tasks(...arg: any): any,
-    zw_close_session(...arg: any): any,
-    zw_declare_ke(...arg: any): any,
-    zw_delete_ke(...arg: any): any,
-    zw_declare_subscriber(...arg: any): any,
-    zw_declare_publisher(...arg: any): any,
-    zw_make_ke(...arg: any): any,
-    zw_default_config(clocator: any): any,
-    api: any
-    // DEV
-    // DEV
-    // DEV
-    // Async Callbacks with Emscripten Automagically
-    callback_test(...arg: any): any,
-    callback_test_async(...arg: any): any,
-    pass_arr_cpp(...arg: any): any,
-    callback_test_typed(...arg: any): any,
-    run_on_event(...arg: any): any,
+    // Config
+    zw_default_config(clocator: string): WasmPtr,
+    // Session
+    zw_open_session(config_ptr: WasmPtr): WasmPtr,
+    zw_start_tasks(session_ptr: WasmPtr): number,
+    zw_put(session_ptr: WasmPtr, key_expr_ptr: WasmPtr, value: Uint8Array): number,
+    zw_close_session(session_ptr: WasmPtr): number,
+    // Key Expr
+    zw_declare_ke(session_ptr: WasmPtr, key_expr_str: string): number,
+    zw_delete_ke(key_expr_ptr: WasmPtr): number,
+    zw_make_ke(keyexpr_str: string): WasmPtr,
+    // Subscruber
+    zw_declare_subscriber(session_ptr: WasmPtr, key_expr_ptr: WasmPtr, fn: SubCallback): number,
+    //  Publisher  
+    zw_declare_publisher(session_ptr: WasmPtr, key_expr_ptr: WasmPtr): number,
+    zw_publisher_put(publisher_ptr: WasmPtr, value: Uint8Array): number,
+    zw_undeclare_publisher(publisher_ptr: WasmPtr): number,
+    // Misc
+    zw_version(): number,
 }
 
-// 
+/**
+ * Type Alias to Wasm Pointer 
+ */
 type WasmPtr = number;
+/**
+ * Subscriber Callback
+ */
+type SubCallback = (keyexpr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => Promise<void>;
 
-
+/**
+ * Instance of Module
+ */
 let mod_instance: Module;
 
 export const intoSelector = Symbol("intoSelector")
@@ -95,10 +92,6 @@ export interface IntoValue {
 export async function zenoh(): Promise<Module> {
     if (!mod_instance) {
         mod_instance = await Module();
-        mod_instance.onRuntimeInitialized = async () => {
-            // API was here
-        };
-        await mod_instance.onRuntimeInitialized()
     }
     return mod_instance
 }
@@ -121,8 +114,6 @@ export class Config {
     }
     static async new(locator: string): Promise<Config> {
         const Zenoh = await zenoh();
-        // TODO : Is this horrible ?
-        // const clocator = Zenoh.stringToUTF8OnStack(locator);
         const ptr = Zenoh.zw_default_config(locator);
 
         if (ptr === 0) {
@@ -145,7 +136,9 @@ export class Config {
 // TODO : Add encoding prop later when we need it
 // Default to empty string
 export class Value {
-
+    /**
+    * Class to represent an Array of Bytes recieved from Zenoh
+    */
     payload: Uint8Array
 
     constructor(payload: Uint8Array) {
@@ -183,7 +176,11 @@ export class Value {
 // ██   ██ ███████    ██        ███████ ██   ██ ██      ██   ██ 
 
 export class KeyExpr implements IntoSelector {
-
+    /**
+     * Class to represent a Key Expression in Zenoh
+     * Key Expression is Allocated and Managed by Zenoh Pico
+     * this class only exists to keep track of pointer to WASM c-instance
+     */
     // TODO: I hate the idea of this being accessible outside the class
     __ptr: WasmPtr;
 
@@ -253,10 +250,15 @@ Object.defineProperty(Function.prototype, "onClose", function (this: Function) {
 
 export class Subscriber<Receiver> {
     __sub_ptr: WasmPtr
-    receiver: Receiver
-    private constructor(sub_ptr: WasmPtr, receiver: Receiver) {
+    // receiver: Receiver
+    // private constructor(sub_ptr: WasmPtr, receiver: Receiver) {
+    constructor(sub_ptr: WasmPtr) {
         this.__sub_ptr = sub_ptr
-        this.receiver = receiver
+        // this.receiver = receiver
+    }
+
+    new(sub_pointer: WasmPtr): Subscriber<Receiver> {
+        return new Subscriber(sub_pointer);
     }
 }
 
@@ -286,7 +288,7 @@ export enum SampleKind {
 }
 
 // TODO : Something that has been sent through Put or delete
-// Samples Are publication events
+// Samples are publication events
 export class Sample {
     keyexpr: KeyExpr
     value: Value
@@ -299,14 +301,10 @@ export class Sample {
         this.value = value
         this.kind = kind
     }
-    // static new(): Sample {
-
-    // };
 
     new(keyexpr: KeyExpr, payload: Value, kind: SampleKind): Sample {
         return new Sample(keyexpr, payload, kind);
     }
-
 }
 
 declare global {
@@ -498,21 +496,22 @@ export class Session {
     //     return ret
     // }
 
-    async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: String, value: Uint8Array) => void): Promise<Subscriber<void>> {
-        const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
+    // TODO : Support Sync as well ? 
+    // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: String, value: Uint8Array) => void): Promise<Subscriber<void>> {
+    //     const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
-        const ret = await Zenoh.zw_declare_subscriber(
-            this.__ptr,
-            key.__ptr,
-            (keyexpr: number, pl_start: number, pl_len: number) => {
-                handler(Zenoh.UTF8ToString(keyexpr), Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len))
-            });
+    //     const ret = await Zenoh.zw_declare_subscriber(
+    //         this.__ptr,
+    //         key.__ptr,
+    //         (keyexpr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => {
+    //             handler(Zenoh.UTF8ToString(keyexpr), Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len))
+    //         });
 
-        if (ret < 0) {
-            throw `Error ${ret} while declaring Subscriber`
-        }
-        return ret
-    }
+    //     if (ret < 0) {
+    //         throw `Error ${ret} while declaring Subscriber`
+    //     }
+    //     return ret
+    // }
 
     async declare_subscriber_handler(keyexpr: IntoKeyExpr, handler: (sample: Sample) => void): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
@@ -520,16 +519,15 @@ export class Session {
         const ret = await Zenoh.zw_declare_subscriber(
             this.__ptr,
             key.__ptr,
-            async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
+            async (keyexpr_ptr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => {
                 // Looks into WASM Memory
-
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
 
                 // Copies value from WASM to Javascript
-                // TODO: Verify that this is okay
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
+                // 
                 let value = new Value(uint8_array_cloned);
-
+                // TODO : Actually get the Sample kind from the Sample
                 let kind = SampleKind.PUT;
 
                 handler(new Sample(key, value, kind))
@@ -538,7 +536,8 @@ export class Session {
         if (ret < 0) {
             throw `Error ${ret} while declaring Subscriber`
         }
-        return ret
+
+        return new Subscriber<void>(ret);
     }
 
     async declare_subscriber_handler_async(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>> {
@@ -549,12 +548,12 @@ export class Session {
         const ret = await Zenoh.zw_declare_subscriber(
             this.__ptr,
             key.__ptr,
-            async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
-                console.log("Sub Before Sub Array ", pl_start, " : ", pl_start + pl_len)
+            async (keyexpr_ptr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => {
+                // console.log("Sub Before Sub Array ", pl_start, " : ", pl_start + pl_len)
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
-                console.log("After Sub Array")
+                // console.log("After Sub Array")
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
-                console.log("After Sub Array Clone to TS")
+                // console.log("After Sub Array Clone to TS")
 
                 let value = new Value(uint8_array_cloned);
 
@@ -567,7 +566,9 @@ export class Session {
         if (ret < 0) {
             throw `Error ${ret} while declaring Subscriber`
         }
-        return ret
+
+        // TODO implement Proper Reciever
+        return new Subscriber<void>(ret);
     }
 
     async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
@@ -578,7 +579,6 @@ export class Session {
     }
 
 }
-
 
 // ██████  ██    ██ ██████  ██      ██ ███████ ██   ██ ███████ ██████  
 // ██   ██ ██    ██ ██   ██ ██      ██ ██      ██   ██ ██      ██   ██ 
@@ -596,19 +596,14 @@ export class Publisher {
 
     async put(value: IntoValue): Promise<WasmPtr> {
 
-        // TODO expose Publisher 
         const val: Value = await value[intoValue]();
         const Zenoh: Module = await zenoh();
         const ret = Zenoh.zw_publisher_put(this.__publisher_ptr, val.payload);
-
         if (ret < 0) {
             throw `Error ${ret} while putting`
         }
-        // return ret
-        return 0;
+        return ret
     }
-
-
 
     static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
 
@@ -623,7 +618,6 @@ export class Publisher {
         return new Publisher(publisher_ptr)
     }
 }
-
 
 // TODO: Should this be part of some other class ? 
 // Kind of like the idea of leaving it here so that the user can decide what they want decoded and how it works
@@ -649,75 +643,3 @@ export class Publisher {
 //     }
 
 // }
-
-// // ██████  ███████ ██    ██ 
-// // ██   ██ ██      ██    ██ 
-// // ██   ██ █████   ██    ██ 
-// // ██   ██ ██       ██  ██  
-// // ██████  ███████   ████   
-
-// // TODO  Delete everything below this point                          
-
-// function ts_callback(num: number): number {
-//     console.log("    TS CALLBACK: ", num);
-//     return 10 + num;
-// }
-
-// async function async_ts_callback(num: number): Promise<number> {
-//     console.log("    ASYNC TS CALLBACK: ", num);
-//     return 25 + num;
-// }
-
-// export class DEV {
-
-//     static async call_functions_CPP_style(): Promise<number> {
-//         console.log("Start : C++ method of Calling Functions");
-
-//         const Zenoh: Module = await zenoh();
-
-//         const arr = new Uint8Array([65, 66, 67, 68]);
-
-//         console.log("Zenoh.pass_arr_cpp();");
-//         let ret_val = await Zenoh.pass_arr_cpp(arr);
-//         console.log("ret_val: ", ret_val);
-
-//         console.log("=====================================");
-//         return 10;
-//     }
-
-//     static async call_CPP_function_with_TS_Callback() {
-
-//         console.log("Start : C++ method of passing Callbacks to CPP code from TypeScript");
-
-//         const Zenoh: Module = await zenoh();
-
-//         console.log("Sync Callback");
-//         let ret_val = Zenoh.callback_test(ts_callback);
-//         console.log("Return Value: ", ret_val);
-
-//         console.log("Async Callback Typed");
-//         let ret_val_typed = await Zenoh.callback_test_typed(ts_callback);
-//         console.log("Return Value: ", ret_val_typed);
-
-
-//         // CALLBACK ASYNC        
-//         console.log("Async Callback");
-//         let ret_val_async_1 = await Zenoh.callback_test_async(async_ts_callback);
-//         console.log("Return Value: ", ret_val_async_1);
-
-//         // CALLBACK ASYNC with promise
-//         console.log("Async Callback");
-//         let ret_val_async = await Zenoh.callback_test_async(async_ts_callback);
-//         console.log("Return Value: ", ret_val_async);
-//         console.log("=====================================");
-
-//     }
-
-//     static async run_on_event(ts_callback: any) {
-//         const Zenoh: Module = await zenoh();
-//         await Zenoh.run_on_event(ts_callback);
-//     }
-// }
-
-
-

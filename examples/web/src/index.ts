@@ -102,15 +102,14 @@ async function main() {
     var c = 0;
     console.log("Publisher");
     while (c < 50000) {
-        let currentTime = new Date().toTimeString();
-        // const foo = new String(`ABC : ${currentTime} `); // Creates a String object    
-        let uint8arr: Uint8Array = enc.encode(`ABC : ${currentTime} `);
+        let currentTime = new Date().toUTCString();
+        let str: string = `ABCD - ${currentTime}`;
+        let uint8arr: Uint8Array = enc.encode(str);
         let value: zenoh.Value = new zenoh.Value(uint8arr);
+        console.log("Publisher Put: `", str,"`");
         (publisher).put(value);
-        console.log("put");
         c = c + 1;
         await sleep(1000);
-        console.log("After sleep");
     }
 
     // Loop to spin and keep alive
