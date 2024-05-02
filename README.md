@@ -61,11 +61,9 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 [zenoh-pico]:https://github.com/eclipse-zenoh/zenoh-pico
 
 ## Running the Examples
-  TODO:
+
   Our Example structure, will have a pub/sub pair in the browser periodically putting,
   and a pub/sub pair locally on the command line to match, 
-  TODO:
-
 
   In order to run the examples, the user must:
 

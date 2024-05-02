@@ -47,8 +47,7 @@
     "build:copy_artifacts": "npm run build:copy_zenoh_js && npm run build:copy_wasm",
     "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"esm/wasm\" && cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"cjs/wasm\"",
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"./cjs\" && cpx -v \"src/**/*.wasm\" \"./esm\"",
-    "// TODO THINGS ": "",
-    "//build:cjs": "npx tsc --module commonjs --outDir cjs/ && echo '{\"type\": \"commonjs\"}' > cjs/package.json",
+   
     "//   PACKAGE       //": "",
     "webpack": "webpack",
     "example": "cd examples && npm run start"

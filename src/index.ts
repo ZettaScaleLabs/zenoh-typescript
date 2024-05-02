@@ -13,11 +13,6 @@
 //
 
 import Module from "./wasm/zenoh-wasm.js"
-// TODO PROPER LOGGING
-// TODO Fix Logging
-
-// import { Logger, ILogObj } from "tslog";
-// const log: Logger<ILogObj> = new Logger();
 
 // TODO : Clean up Any's with proper types
 interface Module {
@@ -25,11 +20,8 @@ interface Module {
     UTF8ToString(x: any): string,
     stringToUTF8OnStack(x: string): any,
     onRuntimeInitialized(): Promise<any>,
-    // TODO Delete ?
-    registerJSCallback(callback: any): number,
 
 
-    writeArrayToMemory(array: Uint8Array, buffer: number): any, // TODO: Returns None ? 
     // Working Callbacks
     cwrap(ident: string, returnType: string, argTypes: string[], opts: any): any,
     cwrap(ident: string, returnType: string, argTypes: string[]): any,
@@ -104,19 +96,7 @@ export async function zenoh(): Promise<Module> {
     if (!mod_instance) {
         mod_instance = await Module();
         mod_instance.onRuntimeInitialized = async () => {
-            const api = {
-
-                _zw_sub: mod_instance.cwrap("zw_sub", "number", ["number", "number", "number"], { async: true }),
-
-                _test_call_js_callback: mod_instance.cwrap("test_call_js_callback", "number", [], { async: true }),
-                _register_rm_callback: mod_instance.cwrap("register_rm_callback", "void", ["number"], { async: true }),
-                // To allocate memory
-                _z_malloc: mod_instance.cwrap("z_malloc", "number", ["number"], { async: true }),
-                malloc: mod_instance.cwrap("malloc", "number", ["number"]),
-                // TODO: add and expose zw_make_selector
-            };
-            mod_instance.api = api;
-
+            // API was here
         };
         await mod_instance.onRuntimeInitialized()
     }
@@ -570,12 +550,12 @@ export class Session {
             this.__ptr,
             key.__ptr,
             async (keyexpr_ptr: number, pl_start: number, pl_len: number) => {
-                console.log("Sub Before Sub Array ", pl_start," : ",  pl_start + pl_len)
+                console.log("Sub Before Sub Array ", pl_start, " : ", pl_start + pl_len)
                 let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
                 console.log("After Sub Array")
                 let uint8_array_cloned = new Uint8Array(uint8_array_view)
                 console.log("After Sub Array Clone to TS")
-                
+
                 let value = new Value(uint8_array_cloned);
 
                 let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
@@ -628,7 +608,7 @@ export class Publisher {
         return 0;
     }
 
-    
+
 
     static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
 
@@ -637,7 +617,7 @@ export class Publisher {
         const key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
 
         console.log("Start declare_publisher");
-        
+
         let publisher_ptr: WasmPtr = Zenoh.zw_declare_publisher(session.__ptr, key_expr.__ptr);
 
         return new Publisher(publisher_ptr)
@@ -647,99 +627,97 @@ export class Publisher {
 
 // TODO: Should this be part of some other class ? 
 // Kind of like the idea of leaving it here so that the user can decide what they want decoded and how it works
-export class Utils {
-    // static decoder = new TextDecoder()
-    private decoder = new TextDecoder();
+// export class Utils {
+//     // static decoder = new TextDecoder()
+//     private decoder = new TextDecoder();
 
-    decodeFromSharedBuffer(sharedBuffer: SharedArrayBuffer) {
-        const copyLength = Math.min(sharedBuffer.byteLength)
+//     decodeFromSharedBuffer(sharedBuffer: SharedArrayBuffer) {
+//         const copyLength = Math.min(sharedBuffer.byteLength)
 
-        // Create a temporary ArrayBuffer and copy the contents of the shared buffer
-        // into it.
-        const tempBuffer = new ArrayBuffer(copyLength)
-        const tempView = new Uint8Array(tempBuffer)
+//         // Create a temporary ArrayBuffer and copy the contents of the shared buffer
+//         // into it.
+//         const tempBuffer = new ArrayBuffer(copyLength)
+//         const tempView = new Uint8Array(tempBuffer)
 
-        let sharedView = new Uint8Array(sharedBuffer)
-        if (sharedBuffer.byteLength != copyLength) {
-            sharedView = sharedView.subarray(0, copyLength)
-        }
-        tempView.set(sharedView)
+//         let sharedView = new Uint8Array(sharedBuffer)
+//         if (sharedBuffer.byteLength != copyLength) {
+//             sharedView = sharedView.subarray(0, copyLength)
+//         }
+//         tempView.set(sharedView)
 
-        return this.decoder.decode(tempBuffer)
-    }
+//         return this.decoder.decode(tempBuffer)
+//     }
 
-}
+// }
 
-// ██████  ███████ ██    ██ 
-// ██   ██ ██      ██    ██ 
-// ██   ██ █████   ██    ██ 
-// ██   ██ ██       ██  ██  
-// ██████  ███████   ████   
+// // ██████  ███████ ██    ██ 
+// // ██   ██ ██      ██    ██ 
+// // ██   ██ █████   ██    ██ 
+// // ██   ██ ██       ██  ██  
+// // ██████  ███████   ████   
 
-// TODO  Delete everything below this point                          
+// // TODO  Delete everything below this point                          
 
-function ts_callback(num: number): number {
-    console.log("    TS CALLBACK: ", num);
-    return 10 + num;
-}
+// function ts_callback(num: number): number {
+//     console.log("    TS CALLBACK: ", num);
+//     return 10 + num;
+// }
 
-async function async_ts_callback(num: number): Promise<number> {
-    console.log("    ASYNC TS CALLBACK: ", num);
-    return 25 + num;
-}
+// async function async_ts_callback(num: number): Promise<number> {
+//     console.log("    ASYNC TS CALLBACK: ", num);
+//     return 25 + num;
+// }
 
-export class DEV {
+// export class DEV {
 
-    static async call_functions_CPP_style(): Promise<number> {
-        console.log("Start : C++ method of Calling Functions");
+//     static async call_functions_CPP_style(): Promise<number> {
+//         console.log("Start : C++ method of Calling Functions");
 
-        const Zenoh: Module = await zenoh();
+//         const Zenoh: Module = await zenoh();
 
-        const arr = new Uint8Array([65, 66, 67, 68]);
-        // var dataPtr = Zenoh.api.malloc(arr.length);
-        // Zenoh.writeArrayToMemory(arr, dataPtr);
+//         const arr = new Uint8Array([65, 66, 67, 68]);
 
-        console.log("Zenoh.pass_arr_cpp();");
-        let ret_val = await Zenoh.pass_arr_cpp(arr);
-        console.log("ret_val: ", ret_val);
+//         console.log("Zenoh.pass_arr_cpp();");
+//         let ret_val = await Zenoh.pass_arr_cpp(arr);
+//         console.log("ret_val: ", ret_val);
 
-        console.log("=====================================");
-        return 10;
-    }
+//         console.log("=====================================");
+//         return 10;
+//     }
 
-    static async call_CPP_function_with_TS_Callback() {
+//     static async call_CPP_function_with_TS_Callback() {
 
-        console.log("Start : C++ method of passing Callbacks to CPP code from TypeScript");
+//         console.log("Start : C++ method of passing Callbacks to CPP code from TypeScript");
 
-        const Zenoh: Module = await zenoh();
+//         const Zenoh: Module = await zenoh();
 
-        console.log("Sync Callback");
-        let ret_val = Zenoh.callback_test(ts_callback);
-        console.log("Return Value: ", ret_val);
+//         console.log("Sync Callback");
+//         let ret_val = Zenoh.callback_test(ts_callback);
+//         console.log("Return Value: ", ret_val);
 
-        console.log("Async Callback Typed");
-        let ret_val_typed = await Zenoh.callback_test_typed(ts_callback);
-        console.log("Return Value: ", ret_val_typed);
+//         console.log("Async Callback Typed");
+//         let ret_val_typed = await Zenoh.callback_test_typed(ts_callback);
+//         console.log("Return Value: ", ret_val_typed);
 
 
-        // CALLBACK ASYNC        
-        console.log("Async Callback");
-        let ret_val_async_1 = await Zenoh.callback_test_async(async_ts_callback);
-        console.log("Return Value: ", ret_val_async_1);
+//         // CALLBACK ASYNC        
+//         console.log("Async Callback");
+//         let ret_val_async_1 = await Zenoh.callback_test_async(async_ts_callback);
+//         console.log("Return Value: ", ret_val_async_1);
 
-        // CALLBACK ASYNC with promise
-        console.log("Async Callback");
-        let ret_val_async = await Zenoh.callback_test_async(async_ts_callback);
-        console.log("Return Value: ", ret_val_async);
-        console.log("=====================================");
+//         // CALLBACK ASYNC with promise
+//         console.log("Async Callback");
+//         let ret_val_async = await Zenoh.callback_test_async(async_ts_callback);
+//         console.log("Return Value: ", ret_val_async);
+//         console.log("=====================================");
 
-    }
+//     }
 
-    static async run_on_event(ts_callback: any) {
-        const Zenoh: Module = await zenoh();
-        await Zenoh.run_on_event(ts_callback);
-    }
-}
+//     static async run_on_event(ts_callback: any) {
+//         const Zenoh: Module = await zenoh();
+//         await Zenoh.run_on_event(ts_callback);
+//     }
+// }
 
 
 

@@ -33,7 +33,7 @@ The project maintains the following source code repositories:
  * https://github.com/eclipse-zenoh/zenoh-java.git
  * https://github.com/eclipse-zenoh/zenoh-go.git
  * https://github.com/eclipse-zenoh/zenoh-python.git
- * TODO: add https://github.com/eclipse-zenoh/zenoh-TS.git when it is live
+
 
 ## Third-party Content
 
