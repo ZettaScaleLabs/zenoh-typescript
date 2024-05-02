@@ -89,6 +89,9 @@ export interface IntoValue {
     [intoValue]: () => Promise<Value>
 }
 
+/**
+ * Function to Initialize zenoh interface to WASM binary
+ */
 export async function zenoh(): Promise<Module> {
     if (!mod_instance) {
         mod_instance = await Module();
@@ -102,11 +105,10 @@ export async function zenoh(): Promise<Module> {
 // ██      ██    ██ ██  ██ ██ ██      ██ ██    ██ 
 //  ██████  ██████  ██   ████ ██      ██  ██████  
 
-/**
- * The configuration for a Zenoh Session.
- */
 export class Config {
-
+    /**
+     * The configuration for a Zenoh Session.
+     */
     __ptr: WasmPtr = 0
 
     private constructor(ptr: WasmPtr) {
@@ -213,19 +215,27 @@ export class KeyExpr implements IntoSelector {
 
 }
 
-// Mutate global Types String, Uint8Array to implement interfaces:
-// IntoKeyExpr, IntoValue,
+/**
+ * Mutate global Types String, Uint8Array to implement interfaces:
+ * Notable default implementers: 
+ *    IntoKeyExpr, IntoValue,
+ */
 Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
     return KeyExpr.new(this)
 })
 
-// Makes sure that string is UTF8, gives you blob and encoding.
+/**
+ * Makes sure that string is UTF8, gives you blob and encoding.
+ */
 Object.defineProperty(String.prototype, intoValue, function (this: string) {
     const encoder = new TextEncoder();
     const encoded = encoder.encode(this);
     return Promise.resolve(new Value(encoded))
 })
 
+/**
+ * Apply Uint8Array to intoValue
+ */
 Object.defineProperty(Uint8Array.prototype, intoValue, function (this: Uint8Array) {
     return Promise.resolve(new Value(this))
 })
@@ -249,6 +259,11 @@ Object.defineProperty(Function.prototype, "onClose", function (this: Function) {
 // ███████  ██████  ██████      ██         ██   ██ ██   ██ ██   ████ ██████  ███████ ███████ ██   ██ 
 
 export class Subscriber<Receiver> {
+
+    /**
+     * Class to hold pointer to subscriber in Wasm Memory
+     */
+
     __sub_ptr: WasmPtr
     // receiver: Receiver
     // private constructor(sub_ptr: WasmPtr, receiver: Receiver) {
@@ -263,6 +278,10 @@ export class Subscriber<Receiver> {
 }
 
 // TODO: Mimic Rust Channels 
+/**
+ * Interface to mimic Rust Channels from the WASM -> Typescript 
+ * Meant for use in Subscribers, with Events being receiving a new sample on the socket
+ */
 export interface Handler<Event, Receiver> {
     onEvent: (event: Event) => Promise<void>
     onClose?: () => Promise<void>
@@ -281,14 +300,18 @@ export interface IntoHandler<Event, Receiver> {
     [intoHandler]: () => Promise<Handler<Event, Receiver>>
 }
 
-
+/**
+ * Kinds of Samples that can be recieved from Zenoh-pico
+ */
 export enum SampleKind {
     PUT = "PUT",
     DELETE = "DELETE",
 }
 
 // TODO : Something that has been sent through Put or delete
-// Samples are publication events
+/**
+ * Samples are publication events receieved on the Socket
+ */
 export class Sample {
     keyexpr: KeyExpr
     value: Value
@@ -307,6 +330,10 @@ export class Sample {
     }
 }
 
+
+/**
+ * Extend String to IntoSelector
+ */
 declare global {
     // interface for KeyExpr?params to selector
     interface String extends IntoSelector { }
@@ -384,6 +411,8 @@ export class Selector {
     }
 }
 
+
+// TODO Implement Query API for Zenoh
 export class Query {
     selector: Selector
     async reply(sample: Sample): Promise<void> { }
@@ -393,9 +422,8 @@ export class Query {
     }
 }
 
-// TODO
+// TODO Implement Reply API
 export class Reply { }
-
 
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
 // ██      ██      ██      ██      ██ ██    ██ ████   ██ 
@@ -403,6 +431,11 @@ export class Reply { }
 //      ██ ██           ██      ██ ██ ██    ██ ██  ██ ██ 
 // ███████ ███████ ███████ ███████ ██  ██████  ██   ████ 
 
+/**
+ * Session Class 
+ * Holds pointer to Session Instance in WASM Memory
+ * methods
+ */
 export class Session {
 
     // A FinalizationRegistry object lets you request a callback when a value is garbage-collected.
@@ -420,6 +453,18 @@ export class Session {
         Session.registry.register(this, [this.__ptr, this.__task_ptr], this);
     }
 
+    /**
+     * Creates a new Session instance in WASM Memory given a config
+     *
+     * @remarks
+     *  The open function also runs zw_start_tasks, 
+     *  starting `zp_start_read_task`,`zp_start_lease_task` 
+     *  associating a read and write task to this session
+     *
+     * @param config - Config for session
+     * @returns Typescript instance of a Session
+     *
+     */
     static async open(config: Promise<Config> | Config): Promise<Session> {
         const cfg = await config;
         const Zenoh: Module = await zenoh();
@@ -428,7 +473,7 @@ export class Session {
             throw "Invalid config passed: it may have been already consumed by opening another session."
         }
 
-        const ptr = await Zenoh.zw_open_session(cfg.__ptr);
+        const ptr = Zenoh.zw_open_session(cfg.__ptr);
 
         cfg.__ptr = 0;
 
@@ -442,20 +487,32 @@ export class Session {
         return new Session(ptr, __task_ptr)
     }
 
+    /**
+     * Closes a session, cleaning up the resource in Zenoh, 
+     * and unregistering the instance of the class from TypeScript
+     *
+     * @returns Nothing
+     */
     async close() {
         // TODO: Is this correct ?
-        // Should i drop the session internals ?  
-        const Zenoh: Module = await zenoh();
+           const Zenoh: Module = await zenoh();
         await Zenoh.zw_close_session(this.__ptr)
         Session.registry.unregister(this)
     }
 
-    // Keyexpr can either be something that can be converted into a keyexpr or a pointer to a Keyexpr
+    /**
+     * Puts a value on the session, on a specific key expression KeyExpr 
+     * 
+     * @param keyexpr - something that implements intoKeyExpr
+     * @param value - something that implements intoValue
+     * 
+     * @returns success: 0, failure : -1
+     */
     async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
 
         const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
 
-        const ret = await Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
+        const ret = Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
 
         if (ret < 0) {
             throw `Error ${ret} while putting`
@@ -463,12 +520,18 @@ export class Session {
         return ret
     }
 
-    // Returns a pointer to the key expression in Zenoh Memory 
+    /**
+     * Declares a Key Expression on a session
+     *
+     * @param keyexpr - string of key_expression
+     * 
+     * @returns success: 0, failure : -1
+     */
     async declare_ke(keyexpr: string): Promise<KeyExpr> {
 
         const Zenoh: Module = await zenoh();
 
-        const ret = await Zenoh.zw_declare_ke(this.__ptr, keyexpr);
+        const ret = Zenoh.zw_declare_ke(this.__ptr, keyexpr);
 
         if (ret < 0) {
             throw "An error occured while Declaring Key Expr"
@@ -513,6 +576,16 @@ export class Session {
     //     return ret
     // }
 
+    /**
+     * Declares a Subscriber handler on a Session
+     *
+     * @remarks
+     *  The handler function will be passed to the Wasm Module and executed when a new sample arrives on the socket
+     * @param keyexpr - Something that implements IntoKeyExpr
+     * @param handler -  A callback function that takes a Sample and returns a Void
+     * 
+     * @returns success: 0, failure : -1
+     */
     async declare_subscriber_handler(keyexpr: IntoKeyExpr, handler: (sample: Sample) => void): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
@@ -540,6 +613,16 @@ export class Session {
         return new Subscriber<void>(ret);
     }
 
+    /**
+     * Declares a Subscriber handler on a Session
+     *
+     * @remarks
+     *  The handler function will be passed to the Wasm Module and executed when a new sample arrives on the socket
+     * @param keyexpr - Something that implements IntoKeyExpr
+     * @param handler -  A callback function that takes a Sample and returns a Void
+     * 
+     * @returns success: 0, failure : -1
+     */
     async declare_subscriber_handler_async(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>> {
         const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
 
@@ -586,6 +669,9 @@ export class Session {
 // ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██ 
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██ 
 export class Publisher {
+    /**
+     * Class that creates and keeps a reference to a publisher inside the WASM memory
+     */
 
     private __publisher_ptr: WasmPtr;
 
@@ -594,6 +680,13 @@ export class Publisher {
         this.__publisher_ptr = publisher_ptr;
     }
 
+    /**
+     * Puts a value on the publisher associated with this class instance
+     *
+     * @param value -  something that can bec converted into a Value
+     * 
+     * @returns success: 0, failure : -1
+     */
     async put(value: IntoValue): Promise<WasmPtr> {
 
         const val: Value = await value[intoValue]();
@@ -605,6 +698,14 @@ export class Publisher {
         return ret
     }
 
+    /**
+     * Creates a new Publisher on a session
+     *
+     * @param keyexpr -  something that can be converted into a Key Expression
+     * @param session -  A Session to create the publisher on
+     * 
+     * @returns success: 0, failure : -1
+     */
     static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
 
         const Zenoh: Module = await zenoh();
