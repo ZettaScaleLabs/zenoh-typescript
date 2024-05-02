@@ -704,7 +704,7 @@ export class Publisher {
      * @param keyexpr -  something that can be converted into a Key Expression
      * @param session -  A Session to create the publisher on
      * 
-     * @returns success: 0, failure : -1
+     * @returns a new Publisher instance
      */
     static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
 
