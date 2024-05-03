@@ -33,13 +33,17 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 2. Clone the [source] with `git`:
 
    ```bash
-   git clone --recurse-submodules https://github.com/ZettaScale-Labs/zenoh-ts.git
+   git clone --recurse-submodules https://github.com/ZettaScaleLabs/zenoh-ts.git
    ```
    This also clones [zenoh-pico]  according to the `.gitmodules` file. 
 
 3. Build:
 
     While in active development, running the command
+  ```bash
+    cd /zenoh-ts
+  ```
+  then  
 
   ```bash
     npm run clean_build_package

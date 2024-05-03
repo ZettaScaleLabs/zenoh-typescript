@@ -495,7 +495,7 @@ export class Session {
      */
     async close() {
         // TODO: Is this correct ?
-           const Zenoh: Module = await zenoh();
+        const Zenoh: Module = await zenoh();
         await Zenoh.zw_close_session(this.__ptr)
         Session.registry.unregister(this)
     }
@@ -700,8 +700,8 @@ export class Publisher {
 
     /**
      * Creates a new Publisher on a session
-     *
      * @param keyexpr -  something that can be converted into a Key Expression
+    *
      * @param session -  A Session to create the publisher on
      * 
      * @returns a new Publisher instance

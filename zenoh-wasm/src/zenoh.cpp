@@ -122,7 +122,7 @@ int zw_default_config(std::string locator_str)
  *   config_ptr: pointer to config in WASM memory
  *
  * Returns:
- *   Returns a pointer in WASM memory to session 
+ *   Returns a pointer in WASM memory to session
  */
 int zw_open_session(ts_ptr config_ptr)
 {
@@ -187,7 +187,7 @@ int zw_start_tasks(ts_ptr session_ptr)
  * Parameters:
  *  session_ptr  : pointer to session in WASM memory
  *  key_expr_ptr : pointer to Key Expression in WASM memory
- *  value_str    : Uint8 Array as String TODO: Represent rather as a emscripten::val and extract bytes ? 
+ *  value_str    : Uint8 Array as String TODO: Represent rather as a emscripten::val and extract bytes ?
  *
  * Returns:
  *   Returns 0 if successful, negative value otherwise
@@ -213,6 +213,15 @@ int zw_put(ts_ptr session_ptr, ts_ptr key_expr_ptr, std::string value_str)
 // ██  ██  ██         ██        ██       ██ ██  ██      ██   ██
 // ██   ██ ███████    ██        ███████ ██   ██ ██      ██   ██
 
+/**
+ * Exposes function to create Key Expression in the Zenoh Resource Pool
+ *
+ * Parameters:
+ *   keyexpr_str: string of Key Expression
+ *
+ * Returns:
+ *   Returns a pointer in WASM memory to a Key Expression
+ */
 int zw_make_ke(std::string keyexpr_str)
 {
 
@@ -230,6 +239,16 @@ int zw_make_ke(std::string keyexpr_str)
   return (int)ke;
 }
 
+/**
+ * Exposes function to create Key Expression on a Session in the Zenoh Resource Pool
+ *
+ * Parameters:
+ *   session_ptr: pointer to session in wasm memory
+ *   keyexpr_str: string of Key Expression
+ *
+ * Returns:
+ *   Returns a pointer in WASM memory to a Key Expression
+ */
 int zw_declare_ke(ts_ptr session_ptr, std::string keyexpr_str)
 {
   z_owned_session_t *s = reinterpret_cast<z_owned_session_t *>(session_ptr);
@@ -252,6 +271,15 @@ int zw_declare_ke(ts_ptr session_ptr, std::string keyexpr_str)
   return (int)ke;
 }
 
+/**
+ * Exposes function to delete a Key Expression in the Zenoh Resource Pool
+ *
+ * Parameters:
+ *   keyexpr_str: pointer to Key Expression
+ *
+ * Returns:
+ *   Returns 0 if successful, -1 otherwise
+ */
 void zw_delete_ke(ts_ptr keyexpr_ptr)
 {
   z_owned_keyexpr_t *key_expr = reinterpret_cast<z_owned_keyexpr_t *>(keyexpr_ptr);
@@ -274,18 +302,27 @@ void zw_delete_ke(ts_ptr keyexpr_ptr)
 //   return ts_str;
 // }
 
-//  █████  ███████ ██    ██ ███    ██  ██████      ██████  █████  ██      ██      ██████   █████   ██████ ██   ██ ███████ 
-// ██   ██ ██       ██  ██  ████   ██ ██          ██      ██   ██ ██      ██      ██   ██ ██   ██ ██      ██  ██  ██      
-// ███████ ███████   ████   ██ ██  ██ ██          ██      ███████ ██      ██      ██████  ███████ ██      █████   ███████ 
-// ██   ██      ██    ██    ██  ██ ██ ██          ██      ██   ██ ██      ██      ██   ██ ██   ██ ██      ██  ██       ██ 
-// ██   ██ ███████    ██    ██   ████  ██████      ██████ ██   ██ ███████ ███████ ██████  ██   ██  ██████ ██   ██ ███████ 
+//  █████  ███████ ██    ██ ███    ██  ██████      ██████  █████  ██      ██      ██████   █████   ██████ ██   ██ ███████
+// ██   ██ ██       ██  ██  ████   ██ ██          ██      ██   ██ ██      ██      ██   ██ ██   ██ ██      ██  ██  ██
+// ███████ ███████   ████   ██ ██  ██ ██          ██      ███████ ██      ██      ██████  ███████ ██      █████   ███████
+// ██   ██      ██    ██    ██  ██ ██ ██          ██      ██   ██ ██      ██      ██   ██ ██   ██ ██      ██  ██       ██
+// ██   ██ ███████    ██    ██   ████  ██████      ██████ ██   ██ ███████ ███████ ██████  ██   ██  ██████ ██   ██ ███████
 
+/**
+ * Struct to hold a new Sample and a pointer to a callback function
+ * This will be created when a new Sample is received on a Key Expression we are subscribed to,
+ * and will execute the callback function
+ */
 struct closure_t
 {
   void *cb;
   const z_sample_t *sample;
 };
 
+/**
+ * Function to execute callback function passing Sample payload pointer and length to Typescript
+ * payload will be read from WASM memory to Typescript
+ */
 void run_callback(void *arg)
 {
   closure_t *closure = (closure_t *)arg;
@@ -302,6 +339,10 @@ void run_callback(void *arg)
   z_str_drop(z_str_move(&keystr));
 }
 
+/**
+ * Creates a new Closure to be executed with Callback function and sample
+ * Adds the closure to the Proxy Queue for Emscripten to execute when time is given to the queue
+ */
 void data_handler(const z_sample_t *sample, void *arg)
 {
   closure_t closure;
@@ -316,6 +357,20 @@ void data_handler(const z_sample_t *sample, void *arg)
 // ██   ██ ██      ██      ██      ██   ██ ██   ██ ██
 // ██████  ███████  ██████ ███████ ██   ██ ██   ██ ███████
 
+/**
+ * Exposes function to declare Subscriber for KeyExpression on Session with Typescript User Callback
+ *
+ * Remarks: ts_cb MUST be executed on the same thread as the main Javascript Event loop,
+ * otherwise a Pthread error will occur
+ *
+ * Parameters:
+ *   session_ptr : pointer to Session in WASM Memory
+ *   key_expr_ptr : pointer to Key Expression in WASM Memory
+ *   ts_cb: Typescript Callback represented as Emscripten `val`
+ *
+ * Returns:
+ *   Returns 0 if successful, -1 otherwise
+ */
 int zw_declare_subscriber(ts_ptr session_ptr, ts_ptr key_expr_ptr, emscripten::val ts_cb)
 {
   z_subscriber_options_t options = z_subscriber_options_t();
@@ -353,6 +408,17 @@ int zw_declare_subscriber(ts_ptr session_ptr, ts_ptr key_expr_ptr, emscripten::v
 // ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██
 
+/**
+ * Exposes function to declare Publisher for Key Expression on Session
+ *
+ *
+ * Parameters:
+ *   session_ptr : pointer to Session in WASM Memory
+ *   key_expr_ptr : pointer to Key Expression WASM Memory
+ *
+ * Returns:
+ *   Returns 0 if successful, -1 otherwise
+ */
 int zw_declare_publisher(ts_ptr session_ptr, ts_ptr key_expr_ptr)
 {
 
@@ -381,13 +447,26 @@ int zw_declare_publisher(ts_ptr session_ptr, ts_ptr key_expr_ptr)
   return (int)pub;
 }
 
-int zw_publisher_put(ts_ptr publisher, std::string value_str)
+/**
+ * Exposes function to Put a value on a Publisher
+ *
+ * Remarks:  value_str does not have to be a string,
+ * value_str can be a Unit8Array from Typescript and will be recieved as a string on the CPP side
+ *
+ * Parameters:
+ *   publisher_ptr : pointer to Session in WASM Memory
+ *   value_str : value to put on publisher, See Remarks
+ *
+ * Returns:
+ *   Returns 0 if successful, -1 otherwise
+ */
+int zw_publisher_put(ts_ptr publisher_ptr, std::string value_str)
 {
   const z_publisher_put_options_t *options;
 
   const uint8_t *value = (const uint8_t *)value_str.data();
 
-  z_owned_publisher_t *pub = reinterpret_cast<z_owned_publisher_t *>(publisher);
+  z_owned_publisher_t *pub = reinterpret_cast<z_owned_publisher_t *>(publisher_ptr);
 
   int8_t res = z_publisher_put(z_loan(*pub), value, value_str.length(), NULL);
 
@@ -401,16 +480,43 @@ int zw_publisher_put(ts_ptr publisher, std::string value_str)
   return (int)pub;
 }
 
-int zw_undeclare_publisher(ts_ptr publisher)
+/**
+ * Exposes function to Undeclare Publisher
+ *
+ * Parameters:
+ *   publisher_ptr : pointer to Session in WASM Memory
+ *
+ * Returns:
+ *   Returns 0 if successful, -1 otherwise
+ */
+int zw_undeclare_publisher(ts_ptr publisher_ptr)
 {
-  z_owned_publisher_t *pub = reinterpret_cast<z_owned_publisher_t *>(publisher);
+  z_owned_publisher_t *pub = reinterpret_cast<z_owned_publisher_t *>(publisher_ptr);
 
   return z_undeclare_publisher(z_move(*pub));
 }
 
+/**
+ * Exposes function to get zw_version
+ *
+ * Parameters: None
+ *
+ * Returns:
+ *   Returns Z_PROTO_VERSION
+ */
 int zw_version() { return Z_PROTO_VERSION; }
 
-// Macro to expose functions to typescript
+/**
+ * Macro to expose functions to Typescript
+ * EMSCRIPTEN_BINDINGS also does some **magic** that converts Javascript Objects
+ * to be represented by `emscripten::val`'s
+ * this allows us to accept arbitrary objects, functions, strings, and a number of other things
+ * from Javascript and read / execute them in CPP
+ * NOTE: There are some caveates with how this works,
+ * functions from TS -> CPP must be executed on the same thread that Javascript is running on
+ * Not on a WebWorker that gets spawned.
+ */
+
 EMSCRIPTEN_BINDINGS(my_module)
 {
   // Config
