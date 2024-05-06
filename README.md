@@ -101,10 +101,24 @@ RUST_LOG=DEBUG ./z_pub -k demo/send/to/ts
 
 The setup should look like this diagram below
 
-<img src="./example.png" height="150">
-
-
+<img src="./example.png" >
 
 
 [zenoh]: https://github.com/eclipse-zenoh/zenoh
 
+
+### Known Limitations + Future
+
+This set of bindings to Typescript started out as a long running experiment to get a full implementation of the Zenoh protocol to compile and run natively in the browser. 
+It was born out of the then state of the Rust [Zenoh] implementation not supporting targeting Web Assembly due to project and library structure.  
+At the time [Zenoh-pico] was ready to compile to WASM, and so this repository was born.  
+After much experimentation, we have discovered a number of long term drawbacks of Zenoh-pico -> WASM using the Emscripten compiler and have decided to move in a different direction. 
+Between the many iterations of reducing interface, callback, async-compatability, and build complexity, to the limitations of Emscripten, we have found there are ways of getting Zenoh available to Typescript/Javascript developers with much lower development friction, both short term and long.
+
+What works today is `put`, `publisher` and _mostly_ `subscriber`, 
+There is a recurring pthread issue when creating a `subscriber` that occurs when using this implementation (Async threaded TS <-> CPP interop != simple)
+
+We are open sourcing this Repo for the community to see what was implemented, play around with what works, and as an option to fix what does not, but ultimately offer no production ready gaurentees with this set of language bindings in its current state.
+
+We are switching focus to another, simpler and lower maintenence way of exposing Zenoh to a Typescript environment.  
+Look out in our blog for announcements as we continue to strive to produce quality, roboust, performant software.

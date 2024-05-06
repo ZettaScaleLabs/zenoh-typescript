@@ -541,10 +541,10 @@ export class Session {
         return key_expr;
     }
 
-    // TODO Implement get
-    async get(into_selector: IntoSelector, query: Query, callback: () => void): Promise<number> {
-        throw "TODO"
-    }
+    // TODO:  Implement get
+    // async get(into_selector: IntoSelector, query: Query, callback: () => void): Promise<number> {
+    //     throw "TODO"
+    // }
 
     // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
     // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
