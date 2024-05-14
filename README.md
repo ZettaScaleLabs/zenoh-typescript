@@ -28,7 +28,7 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 1. Make sure that the following utilities are available on your platform. 
  - [Docker](https://www.docker.com/), Please check [here](https://docs.docker.com/engine/install/) to learn how to install it.
  - [NPM](https://www.npmjs.com/package/npm)
- - Typescript 
+ - [Typescript](https://www.typescriptlang.org/download/) 
 
 2. Clone the [source] with `git`:
 
@@ -98,6 +98,9 @@ RUST_LOG=DEBUG ./z_sub -k demo/recv/from/ts
 ```
 RUST_LOG=DEBUG ./z_pub -k demo/send/to/ts
 ```
+
+  3.3. Navigate to the webpage 
+
 
 The setup should look like this diagram below
 

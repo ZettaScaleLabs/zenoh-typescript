@@ -13,14 +13,6 @@
 //
 
 import * as zenoh from "../../../esm"
-import inspect from 'object-inspect';
-
-// import { Logger } from "tslog";
-//
-// import tslog from 'tslog'
-//
-
-const output_area = <HTMLDivElement>document.getElementById("zenoh-output");
 
 class Stats {
     round_count: number;
