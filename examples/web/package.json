@@ -13,6 +13,7 @@
   "keywords": [],
   "author": "",
   "dependencies": {
+    "fp-ts": "^2.16.5",
     "object-inspect": "^1.13.1",
     "tslog": "^4.9.2"
   },

@@ -12,8 +12,11 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
-import * as zenoh from "../../../esm"
-import inspect from 'object-inspect';
+// import * as zenoh from "../../../esm"
+import { Option, some, none, fold } from 'fp-ts/Option';
+import { SimpleChannel } from "channel-ts";
+
+// import inspect from 'object-inspect';
 
 // import { Logger } from "tslog";
 //
@@ -60,10 +63,176 @@ class Stats {
     }
 }
 
+
+// class WrappedSocket {
+//     // Clunky but its better than nothing
+//     opt_ws: Option<WebSocket>;
+//     on_msg_cb: (sample: string) => void;
+//     // 
+//     connect(url: string): void {
+//         let ws = new WebSocket(url);
+//         ws.onopen = this.onOpen;
+//         ws.onmessage = this.onMessage;
+//         ws.onerror = this.onError;
+//         ws.onclose = this.onClose;
+//         this.opt_ws = some(ws);
+//     }
+
+//     onOpen(event: any): void {
+//         console.log(event)
+//         if (this.opt_ws._tag === "None") {
+//             console.log("Websocket Not intialized !");
+//         } else {
+//             this.opt_ws.value.send("Sub")
+//         };
+//     }
+
+//     // An event listener to be called when a message is received from the server
+//     onMessage(event: any): void {
+//         if (this.opt_ws._tag === "Some") {
+//             this.opt_ws.value.send("Sub Time baby")
+//             console.log("Message from Server", event);
+//             sleep(1);
+//         } else {
+//             console.log("Wrapped Socket not connected")
+//         };
+//     }
+//     // An event listener to be called when an error occurs. This is a simple event named "error".
+//     onError(event: any): void {
+//         console.log(JSON.stringify(event.data));
+//     }
+//     // An event listener to be called when the WebSocket connection's readyState changes to CLOSED.
+//     onClose(event: any): void {
+//         console.log(JSON.stringify(event.data));
+//     }
+//     //
+//     private constructor(on_msg_cb: (sample: string) => void) {
+//         console.log("Socket is None")
+//         this.opt_ws = none;
+//         this.on_msg_cb = on_msg_cb
+
+//     }
+
+//     static new(on_msg_cb: (sample: string) => void): WrappedSocket {
+//         // TODO Check format of string
+//         return new WrappedSocket(on_msg_cb);
+//     }
+// }
+
+
+enum ControlMsgVariant {
+    OpenSession="OpenSession",
+    CloseSession="CloseSession",
+    // 
+    UndeclareSession="UndeclareSession",
+}
+
+interface ControlMsg {
+    Control: ControlMsgVariant; 
+}
+
+
+export class Session {
+
+    ws: WebSocket;
+    ch: SimpleChannel<string>;
+    session: Option<string>;
+
+    private constructor(ws: WebSocket, ch: SimpleChannel<string>) {
+        this.ws = ws;
+        this.ch = ch;
+        this.session = none;
+    }
+
+    async put(keyexpr: string, val: string): Promise<void> {
+        let json = {
+            "keyexpr": keyexpr,
+            "val": val
+        };
+
+        this.ws.send(JSON.stringify(json));
+    }
+
+    async subscriber(keyexpr: string, handler: ((val: string) => Promise<void>)): Promise<void> {
+
+        for await (const data of this.ch) { // use async iterator to receive data
+            handler(data);
+        }
+    }
+
+    static async new(config: string): Promise<Session> {
+        const chan = new SimpleChannel<string>(); // creates a new simple channel
+
+        let ws = new WebSocket(config);
+
+        ws.onopen = function (event: any) {
+            // console.log("Connected to RemoteAPI")
+            var msg = <ControlMsg> { Control: ControlMsgVariant.OpenSession }
+            var json = JSON.stringify(msg);
+            this.send(json);
+        };
+
+        ws.onmessage = function (event: any) {
+            // console.log("msg from server", event)
+            chan.send(event)
+        };
+
+        while (ws.readyState != 1) {
+            await sleep(1);
+            // console.log(ws.readyState);
+        }
+
+        return new Session(ws, chan);
+    }
+
+}
+
+
+
 async function main() {
 
+    var addr = "ws://127.0.0.1:10000"
+    let session = Session.new(addr);
+    // function cb( (val: string) => Promise<void>);
+
+    const cb1 = async (msg: string) => {
+        console.log('Message from SVR:', msg);
+    }
+
+    (await session).subscriber("demo/test", cb1);
+
+    (await session).put("demo/test", "Value")
+
+    // function on_msg_cb(msg: string) {
+    //     console.log("inside on_msg_cb", msg);
+    // };
+    // let wrapped_socket = WrappedSocket.new(on_msg_cb);
+    // wrapped_socket.connect(addr);
+
+    // Coms channel
+    // const chan = new SimpleChannel<string>(); // creates a new simple channel
+    // let ws = new WebSocket(addr);
+    // ws.onopen = function(event:any ){
+    //     console.log("connected")
+    //     this.send("Sub Message");
+    // };
+    // ws.onmessage = function(event:any ){
+    //     console.log("msg from server", event)
+    //     chan.send("data")
+    // };
+    // while(ws.readyState != 1){
+    //     await sleep(1);
+    //     console.log(ws.readyState);
+    // }
+
+    // let rcv_msg = chan.receive()
+    // console.log("chan ",chan)
+    // console.log("rcv_msg ",rcv_msg)
+
+
+    ////////////////////////
     // Open Zenoh Session 
-    const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
+    // const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"))
 
     // Put Directly on session
     // const keyexpr1 = await session.declare_ke("demo/recv/from/ts");
@@ -95,22 +264,22 @@ async function main() {
 
 
     // Publisher
-    const keyexpr = await session.declare_ke("demo/recv/from/ts");
-    const publisher : zenoh.Publisher = await session.declare_publisher(keyexpr);
+    // const keyexpr = await session.declare_ke("demo/recv/from/ts");
+    // const publisher : zenoh.Publisher = await session.declare_publisher(keyexpr);
 
-    let enc: TextEncoder = new TextEncoder(); // always utf-8
-    var c = 0;
-    console.log("Publisher");
-    while (c < 50000) {
-        let currentTime = new Date().toUTCString();
-        let str: string = `ABCD - ${currentTime}`;
-        let uint8arr: Uint8Array = enc.encode(str);
-        let value: zenoh.Value = new zenoh.Value(uint8arr);
-        console.log("Publisher Put: `", str,"`");
-        (publisher).put(value);
-        c = c + 1;
-        await sleep(1000);
-    }
+    // let enc: TextEncoder = new TextEncoder(); // always utf-8
+    // var c = 0;
+    // console.log("Publisher");
+    // while (c < 50000) {
+    //     let currentTime = new Date().toUTCString();
+    //     let str: string = `ABCD - ${currentTime}`;
+    //     let uint8arr: Uint8Array = enc.encode(str);
+    //     let value: zenoh.Value = new zenoh.Value(uint8arr);
+    //     console.log("Publisher Put: `", str,"`");
+    //     (publisher).put(value);
+    //     c = c + 1;
+    //     await sleep(1000);
+    // }
 
     // Loop to spin and keep alive
     var count = 0;
