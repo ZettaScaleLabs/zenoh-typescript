@@ -25,9 +25,9 @@
  * methods
  */
 import { SimpleChannel } from 'channel-ts';
-import { Option, some, none, fold } from 'fp-ts/Option';
+// import { Option,  none, } from 'fp-ts/Option';
 
-let ws: Option<WebSocket> = none;
+// let ws: Option<WebSocket> = none;
 
 export class Session {
 

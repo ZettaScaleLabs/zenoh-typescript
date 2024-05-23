@@ -12,7 +12,7 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
-// import * as zenoh from "../../../esm"
+// import * as Zenoh from "../../../esm"
 import { Option, some, none, fold } from 'fp-ts/Option';
 import { SimpleChannel } from "channel-ts";
 
@@ -119,18 +119,49 @@ class Stats {
 //     }
 // }
 
-
-enum ControlMsgVariant {
-    OpenSession="OpenSession",
-    CloseSession="CloseSession",
-    // 
-    UndeclareSession="UndeclareSession",
+enum CtrlMsgVar {
+    OpenSession = "OpenSession",
+    CloseSession = "CloseSession",
+    UndeclareSession = "UndeclareSession",
 }
 
-interface ControlMsg {
-    Control: ControlMsgVariant; 
+class SessionMsg {
+    Session: String
+    constructor(input: String) {
+        this.Session = input;
+    }
 }
 
+class CreateKeyExpr {
+    CreateKeyExpr: String
+    constructor(input: String) {
+        this.CreateKeyExpr = input;
+    }
+}
+
+class CreateSubscriber {
+    CreateSubscriber: String
+    constructor(input: String) {
+        this.CreateSubscriber = input;
+    }
+}
+
+
+interface ControlInterface<T> {
+    Control: T,
+    to_json(input: T): string
+}
+
+class ControlMessage<T> implements ControlInterface<T> {
+    Control: T;
+
+    constructor(input: T) {
+        this.Control = input;
+    }
+    to_json(): string {
+        return JSON.stringify(this);
+    }
+}
 
 export class Session {
 
@@ -154,10 +185,26 @@ export class Session {
     }
 
     async subscriber(keyexpr: string, handler: ((val: string) => Promise<void>)): Promise<void> {
-
+        
         for await (const data of this.ch) { // use async iterator to receive data
             handler(data);
         }
+    }
+
+    async send_ctrl_message<T>(ctrl_msg: ControlMessage<T>) {
+        // {"Control":{"CreateKeyExpr":"/demo/test"}}
+        console.log("Control Message:")
+        console.log(ctrl_msg.to_json())
+
+        this.ws.send(ctrl_msg.to_json());
+    }
+
+    async declare_ke(key_expr: string) {
+        this.send_ctrl_message(new ControlMessage(new CreateKeyExpr(key_expr)))
+    }
+
+    async declare_subscriber(key_expr: string) {
+        this.send_ctrl_message(new ControlMessage(new CreateSubscriber(key_expr)))
     }
 
     static async new(config: string): Promise<Session> {
@@ -166,10 +213,9 @@ export class Session {
         let ws = new WebSocket(config);
 
         ws.onopen = function (event: any) {
-            // console.log("Connected to RemoteAPI")
-            var msg = <ControlMsg> { Control: ControlMsgVariant.OpenSession }
-            var json = JSON.stringify(msg);
-            this.send(json);
+            var ctrl_msg = new ControlMessage(CtrlMsgVar.OpenSession);
+            // this here is a websocket
+            this.send(ctrl_msg.to_json());
         };
 
         ws.onmessage = function (event: any) {
@@ -187,21 +233,31 @@ export class Session {
 
 }
 
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 async function main() {
 
     var addr = "ws://127.0.0.1:10000"
     let session = Session.new(addr);
-    // function cb( (val: string) => Promise<void>);
 
     const cb1 = async (msg: string) => {
         console.log('Message from SVR:', msg);
     }
 
-    (await session).subscriber("demo/test", cb1);
+    // (await session).declare_ke("demo/example/zenoh-rs-pub");
+    (await session).declare_subscriber("demo/example/zenoh-rs-pub");
+    const seconds2 = 2;
+    await sleep(1000 * seconds2);
+    (await session).declare_subscriber("demo/example/zenoh-rs-pub");
 
-    (await session).put("demo/test", "Value")
+    
+
+
+    // (await session).subscriber("demo/test", cb1);
+
+    // (await session).put("demo/test", "Value")
 
     // function on_msg_cb(msg: string) {
     //     console.log("inside on_msg_cb", msg);
