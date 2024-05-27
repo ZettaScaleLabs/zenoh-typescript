@@ -152,6 +152,36 @@ interface ControlInterface<T> {
     to_json(input: T): string
 }
 
+// export interface DataMessage {
+//     key_expr: string
+//     kind: string
+//     timestamp: string | null,
+//     value: Array<number>
+// }
+
+// export interface DataMessage {
+//     key_expr: string
+//     kind: string
+//     timestamp: string | null,
+//     value: Array<number>
+// }
+
+class DataMessage {
+    key_expr: string
+    kind: string
+    timestamp: string | null
+    value: Array<number>;
+
+    constructor(key_expr: string, kind: string, timestamp: string | null, value: Array<number>) {
+        this.key_expr = key_expr;
+        this.kind = kind;
+        this.timestamp = timestamp;
+        this.value = value;
+    }
+}
+
+
+
 class ControlMessage<T> implements ControlInterface<T> {
     Control: T;
 
@@ -163,16 +193,27 @@ class ControlMessage<T> implements ControlInterface<T> {
     }
 }
 
+interface Subscriber {
+    [keyexpr: string]: (keyexpr: String, value: Uint8Array) => void   
+}
+
+
 export class Session {
 
     ws: WebSocket;
     ch: SimpleChannel<string>;
     session: Option<string>;
+    subscribers: Subscriber
+    // worker:Worker;
+    // key_expr: Array<string>;
+    // ch_runner: 
 
+    // private constructor(ws: WebSocket, ch: SimpleChannel<string>, worker:Worker) {
     private constructor(ws: WebSocket, ch: SimpleChannel<string>) {
         this.ws = ws;
         this.ch = ch;
         this.session = none;
+        this.subscribers = {};
     }
 
     async put(keyexpr: string, val: string): Promise<void> {
@@ -185,10 +226,11 @@ export class Session {
     }
 
     async subscriber(keyexpr: string, handler: ((val: string) => Promise<void>)): Promise<void> {
-        
+        // this.subscribers
         for await (const data of this.ch) { // use async iterator to receive data
             handler(data);
         }
+
     }
 
     async send_ctrl_message<T>(ctrl_msg: ControlMessage<T>) {
@@ -199,12 +241,31 @@ export class Session {
         this.ws.send(ctrl_msg.to_json());
     }
 
+    // TODO TEST
+    // TODO TEST
+    // TODO TEST
+    // TODO TEST
+    // TODO TEST
+    async channel_receive() {
+        // use async iterator to receive data
+        for await(const data of this.ch) { 
+            console.log(`Data: ${data}`);
+            for (const [key, func] of Object.keys(this.subscribers.keys)) {
+                console.log(`${key}: ${func}`);
+            }
+            console.log(`Received: ${data}`);
+        }
+        console.log("Closed");
+    }
+
+    //
     async declare_ke(key_expr: string) {
         this.send_ctrl_message(new ControlMessage(new CreateKeyExpr(key_expr)))
     }
 
-    async declare_subscriber(key_expr: string) {
-        this.send_ctrl_message(new ControlMessage(new CreateSubscriber(key_expr)))
+    async declare_subscriber(key_expr: string, handler: (keyexpr: String, value: Uint8Array) => void){
+        this.subscribers[key_expr] = handler;
+        this.send_ctrl_message(new ControlMessage(new CreateSubscriber(key_expr)));
     }
 
     static async new(config: string): Promise<Session> {
@@ -213,22 +274,32 @@ export class Session {
         let ws = new WebSocket(config);
 
         ws.onopen = function (event: any) {
+            // `this` here is a websocket object
             var ctrl_msg = new ControlMessage(CtrlMsgVar.OpenSession);
-            // this here is a websocket
             this.send(ctrl_msg.to_json());
         };
 
         ws.onmessage = function (event: any) {
-            // console.log("msg from server", event)
+            // `this` here is a websocket object
+            let msg_from_svr = JSON.parse(event.data) as DataMessage;
+
+            console.log(msg_from_svr)
+
             chan.send(event)
         };
+        
+        // const worker = new Worker("worker.js");
+        // worker.onmessage = function(event:any) {
+        //     console.log("Worker recieved message")
+        // }
 
         while (ws.readyState != 1) {
             await sleep(1);
-            // console.log(ws.readyState);
         }
 
-        return new Session(ws, chan);
+        var session = new Session(ws, chan);
+        session.channel_receive();
+        return session
     }
 
 }
@@ -247,12 +318,21 @@ async function main() {
     }
 
     // (await session).declare_ke("demo/example/zenoh-rs-pub");
-    (await session).declare_subscriber("demo/example/zenoh-rs-pub");
-    const seconds2 = 2;
-    await sleep(1000 * seconds2);
-    (await session).declare_subscriber("demo/example/zenoh-rs-pub");
+    (await session).declare_subscriber("demo/example/zenoh-rs-pub",
+        async (keyexpr: String, value: Uint8Array) => {
+            console.debug(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + value + "')");
+        }
+    );
 
-    
+    // const seconds2 = 2;
+
+    // await sleep(1000 * seconds2);
+
+    // (await session).declare_subscriber("demo/example/zenoh-rs-pub");
+
+
+
+
 
 
     // (await session).subscriber("demo/test", cb1);
