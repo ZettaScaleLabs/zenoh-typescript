@@ -4,7 +4,7 @@ import './webpage.ts'
 import { subscriber2} from './remote_api.ts'
 import adze from 'adze';
 import { RemoteSession, SubClass } from './remote_api.ts'
-
+import { main_ch } from './experiments.ts'
 
 
 function subscriber(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
@@ -24,12 +24,14 @@ async function main() {
     console.log("    Insider Callback Value    ", value);
   }
 
+  // main_ch();
+
   // console.log("Calling Function");
   // subscriber("demo/1",callback)
   // console.log("===========================");
   // subscriber2("demo/1",callback)
 
-  // //////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   var addr = "ws://127.0.0.1:10000"
   let session = RemoteSession.new(addr);
 
@@ -38,21 +40,17 @@ async function main() {
   };
  
   (await session).declare_subscriber("demo/1", callback);
+
   (await session).declare_subscriber("demo/2", callback);
-  (await session).declare_subscriber("demo/3", callback);
-
-
-
-
 
   // Loop to spin and keep alive
-  // var count = 0;
-  // while (true) {
-  //   var seconds = 10;
-  //   await sleep(1000 * seconds);
-  //   console.log("Main Loop ? ", count)
-  //   count = count + 1;
-  // }
+  var count = 0;
+  while (true) {
+    var seconds = 10;
+    await sleep(1000 * seconds);
+    console.log("Main Loop ? ", count)
+    count = count + 1;
+  }
 }
 
 main().then(() => console.log("Done")).catch(e => {

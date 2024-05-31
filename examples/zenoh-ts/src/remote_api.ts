@@ -29,27 +29,93 @@ class CreateSubscriber {
     }
 }
 
-
 interface ControlInterface<T> {
     Control: T,
     to_json(input: T): string
 }
 
-class DataMessage {
+
+interface Session_Msg {
+    UUID: string 
+}
+interface KeyExpr_Msg{
+    key_expr_wrapper: string 
+}
+interface Subscriber_Msg {
+    UUID: string
+}
+interface Publisher_Msg {
+    UUID: string
+}
+
+type FrontEndMessage = Session_Msg | KeyExpr_Msg | Subscriber_Msg | Publisher_Msg;
+
+
+class WebSocketMessage {
+    message: DataMessageLike | ControlMessage<FrontEndMessage>
+
+    constructor(message: DataMessageLike) {
+        this.message = message;
+    }
+
+    try_as_data_message(): Option<DataMessage> {
+        if (this.message.hasOwnProperty('Data')) {
+            let d_message: DataMessage = this.message as DataMessage;
+            return some(d_message)
+        } else {
+            return none
+        }
+    }
+
+    try_as_control_message(): Option<ControlMessage<FrontEndMessage>> {
+        if (this.message.hasOwnProperty('Data')) {
+            let d_message: ControlMessage<FrontEndMessage> = this.message as ControlMessage<FrontEndMessage>;
+            return some(d_message)
+        } else {
+            return none
+        }
+    }
+}
+
+
+interface SampleLike {
+    key_expr: string
+    kind: string
+    timestamp: string | null
+    value: Array<number>;
+}
+
+class Sample {
     key_expr: string
     kind: string
     timestamp: string | null
     value: Array<number>;
 
-    constructor(key_expr: string, kind: string, timestamp: string | null, value: Array<number>) {
-        this.key_expr = key_expr;
-        this.kind = kind;
-        this.timestamp = timestamp;
-        this.value = value;
+    constructor(data: SampleLike) {
+        this.key_expr = data.key_expr;
+        this.kind = data.kind;
+        this.timestamp = data.timestamp;
+        this.value = data.value;
     }
 }
 
+interface DataMessageLike {
+    sample: SampleLike
+    get_sample(): Sample
+}
 
+// {"Data":{"Sample":{"key_expr":"demo/1","value":[91,49,49,52,48,93,32,80,117,98,32,102,114,111,109,32,82,117,115,116,33],"kind":"Put","timestamp":null}}}
+class DataMessage {
+    sample: Sample
+
+    constructor(data: DataMessageLike) {
+        this.sample = data.sample;
+    }
+
+    get_sample(): Sample {
+        return this.sample
+    }
+}
 
 class ControlMessage<T> implements ControlInterface<T> {
     Control: T;
@@ -76,12 +142,6 @@ export class SubClass {
         this.key_expr = key_expr
     }
 }
-
-type DescribableFunction = {
-    (keyexpr: String, value: Uint8Array): void
-};
-
-
 
 export class RemoteSession {
 
@@ -118,7 +178,7 @@ export class RemoteSession {
 
     }
 
-    async send_ctrl_message<T>(ctrl_msg: ControlMessage<T>) {
+    private async send_ctrl_message<T>(ctrl_msg: ControlMessage<T>) {
         // {"Control":{"CreateKeyExpr":"/demo/test"}}
         console.log("Control Message:")
         console.log(ctrl_msg.to_json())
@@ -126,20 +186,47 @@ export class RemoteSession {
         this.ws.send(ctrl_msg.to_json());
     }
 
-
-    async channel_receive() {
+    private async channel_receive() {
         // use async iterator to receive data
-        for await (const data of this.ch) {
-            println("Data1: ", data);
-            // console.log("       channel_receive this.subscribers", this.subscribers)
-            // console.log("       channel_receive this.subscribers", Object.keys(this.subscribers))
 
-            for (const key of Object.keys(this.subscribers)) {
-                console.log("KEY", key);
+        for await (const message of this.ch) {
+            // const person = new Person(data);
+            println("Data Message: -", message);
+            println("Type : -", typeof message);
+            if (message["Session"]){
+                console.log("Continue")
+                continue
+
             }
-            console.log(`Received: ${data}`);
+            
+            // TODO: Handle Failing here
+            let ws_obj: WebSocketMessage = message as WebSocketMessage;
+            // let ws_obj: WebSocketMessage = JSON.parse(message);
+            let opt_ctrl_msg = ws_obj.try_as_control_message();
+            if (opt_ctrl_msg._tag == "Some") {
+                this.handle_control_message(opt_ctrl_msg.value)
+                continue
+            }
+            let opt_data_msg = ws_obj.try_as_data_message();
+            if (opt_data_msg._tag == "Some") {
+                this.handle_data_message(opt_data_msg.value)
+                continue
+            }
+
         }
         console.log("Closed");
+    }
+
+    private async handle_control_message<T>(control_msg: ControlMessage<T>) {
+        console.log("ControlMessage ", control_msg)
+    }
+
+    private async handle_data_message(data_msg: DataMessage) {
+
+        console.log("DataMessage ", data_msg)
+        for (const key of Object.keys(this.subscribers)) {
+            console.log("KEY", key);
+        }
     }
 
     //
@@ -149,14 +236,12 @@ export class RemoteSession {
 
     async declare_subscriber(
         key_expr: string,
-        fn: (keyexpr: String, value: Uint8Array)=> void
+        fn: (keyexpr: String, value: Uint8Array) => void
     ) {
         this.subscribers[key_expr] = fn;
         // console.log("declare_subscriber");
         // println("       key_expr", key_expr)
-        // console.log("       CALL FUNCTION")
         // this.subscribers[key_expr]("MY KEY EXPR", new Uint8Array());
-        // console.log("       END FUNCTION")
         // console.log("       this.subscribers", this.subscribers)
         this.send_ctrl_message(new ControlMessage(new CreateSubscriber(key_expr)));
     }
@@ -174,10 +259,11 @@ export class RemoteSession {
 
         ws.onmessage = function (event: any) {
             // `this` here is a websocket object
-            let msg_from_svr = JSON.parse(event.data) as DataMessage;
-            console.log("msg_from_svr",msg_from_svr);
-            console.log(msg_from_svr)
-            chan.send(event)
+            let msg_from_svr = JSON.parse(event.data);
+            console.log("   1   MSG FROM SVR", msg_from_svr);
+            chan.send(msg_from_svr)
+            // console.log("   1   AFTER", msg_from_svr);
+
         };
 
         while (ws.readyState != 1) {
