@@ -19,9 +19,9 @@ async function main() {
 
 
   const callback = function (key_expr: String, value: Uint8Array): void {
-    console.log("    Insider Callback");
-    console.log("    Insider Callback Key_expr ", key_expr);
-    console.log("    Insider Callback Value    ", value);
+    console.log("    MyFunction Callback");
+    console.log("    MyFunction Callback Key_expr ", key_expr);
+    console.log("    MyFunction Callback Value    ", value);
   }
 
   // main_ch();
@@ -35,9 +35,9 @@ async function main() {
   var addr = "ws://127.0.0.1:10000"
   let session = RemoteSession.new(addr);
 
-  const cb = (keyexpr: String, value: Uint8Array) => {
-    console.debug(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + value + "')");
-  };
+  // const cb = (keyexpr: String, value: Uint8Array) => {
+  //   console.debug(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + value + "')");
+  // };
  
   (await session).declare_subscriber("demo/1", callback);
 

@@ -1,4 +1,5 @@
 import { Option, some, none, fold } from 'fp-ts/Option';
+import * as O from 'fp-ts/Option'
 import { SimpleChannel } from "channel-ts";
 import adze from 'adze';
 
@@ -51,6 +52,13 @@ interface Publisher_Msg {
 type FrontEndMessage = Session_Msg | KeyExpr_Msg | Subscriber_Msg | Publisher_Msg;
 
 
+interface WebSocketMessageLike {
+    message: DataMessageLike | ControlMessage<FrontEndMessage>
+    try_as_data_message(): Option<DataMessage> ;
+    try_as_control_message(): Option<ControlMessage<FrontEndMessage>>;
+}
+
+
 class WebSocketMessage {
     message: DataMessageLike | ControlMessage<FrontEndMessage>
 
@@ -68,7 +76,7 @@ class WebSocketMessage {
     }
 
     try_as_control_message(): Option<ControlMessage<FrontEndMessage>> {
-        if (this.message.hasOwnProperty('Data')) {
+        if (this.message.hasOwnProperty('Control')) {
             let d_message: ControlMessage<FrontEndMessage> = this.message as ControlMessage<FrontEndMessage>;
             return some(d_message)
         } else {
@@ -82,14 +90,14 @@ interface SampleLike {
     key_expr: string
     kind: string
     timestamp: string | null
-    value: Array<number>;
+    value: Uint8Array;
 }
 
 class Sample {
     key_expr: string
     kind: string
     timestamp: string | null
-    value: Array<number>;
+    value: Uint8Array;
 
     constructor(data: SampleLike) {
         this.key_expr = data.key_expr;
@@ -100,7 +108,7 @@ class Sample {
 }
 
 interface DataMessageLike {
-    sample: SampleLike
+    Sample: SampleLike
     get_sample(): Sample
 }
 
@@ -109,7 +117,7 @@ class DataMessage {
     sample: Sample
 
     constructor(data: DataMessageLike) {
-        this.sample = data.sample;
+        this.sample = data.Sample;
     }
 
     get_sample(): Sample {
@@ -190,26 +198,26 @@ export class RemoteSession {
         // use async iterator to receive data
 
         for await (const message of this.ch) {
-            // const person = new Person(data);
-            println("Data Message: -", message);
-            println("Type : -", typeof message);
-            if (message["Session"]){
-                console.log("Continue")
-                continue
 
+            let ws_message_like: DataMessageLike = JSON.parse(message) as DataMessageLike;
+            let ws_message = new WebSocketMessage(ws_message_like);
+
+            // println("Data Message: -", ws_message);
+            // println("Type : -", typeof ws_message);
+            if (ws_message.hasOwnProperty('Session')){
+                console.log("Continue Ignore Session Messages")
+                continue
             }
             
-            // TODO: Handle Failing here
-            let ws_obj: WebSocketMessage = message as WebSocketMessage;
-            // let ws_obj: WebSocketMessage = JSON.parse(message);
-            let opt_ctrl_msg = ws_obj.try_as_control_message();
+            // TODO: Clean Up checking of Value 
+            let opt_ctrl_msg = ws_message.try_as_control_message();
             if (opt_ctrl_msg._tag == "Some") {
-                this.handle_control_message(opt_ctrl_msg.value)
+                this.handle_control_message(opt_ctrl_msg.value["Control"])
                 continue
             }
-            let opt_data_msg = ws_obj.try_as_data_message();
+            let opt_data_msg = ws_message.try_as_data_message();
             if (opt_data_msg._tag == "Some") {
-                this.handle_data_message(opt_data_msg.value)
+                this.handle_data_message(opt_data_msg.value["Data"])
                 continue
             }
 
@@ -221,11 +229,21 @@ export class RemoteSession {
         console.log("ControlMessage ", control_msg)
     }
 
-    private async handle_data_message(data_msg: DataMessage) {
+    private async handle_data_message(data_msg_like: DataMessageLike) {
 
-        console.log("DataMessage ", data_msg)
+        // console.log("DataMessageLike OBJ", data_msg_like)
+        // console.log("DataMessageLike ", JSON.stringify(data_msg_like))
+        let data_msg = new DataMessage(data_msg_like)
+        // console.log("DataMessage ", data_msg)
+
         for (const key of Object.keys(this.subscribers)) {
-            console.log("KEY", key);
+            
+            let sample: Sample = data_msg.get_sample();
+            if (sample.key_expr == key) {
+                // TODO : matching logic of keyexpr
+                this.subscribers[key](key, sample.value);
+                break
+            }
         }
     }
 
@@ -239,10 +257,6 @@ export class RemoteSession {
         fn: (keyexpr: String, value: Uint8Array) => void
     ) {
         this.subscribers[key_expr] = fn;
-        // console.log("declare_subscriber");
-        // println("       key_expr", key_expr)
-        // this.subscribers[key_expr]("MY KEY EXPR", new Uint8Array());
-        // console.log("       this.subscribers", this.subscribers)
         this.send_ctrl_message(new ControlMessage(new CreateSubscriber(key_expr)));
     }
 
@@ -259,9 +273,8 @@ export class RemoteSession {
 
         ws.onmessage = function (event: any) {
             // `this` here is a websocket object
-            let msg_from_svr = JSON.parse(event.data);
-            console.log("   1   MSG FROM SVR", msg_from_svr);
-            chan.send(msg_from_svr)
+            // console.log("   1   MSG FROM SVR", event.data);
+            chan.send(event.data)
             // console.log("   1   AFTER", msg_from_svr);
 
         };
