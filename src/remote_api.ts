@@ -21,10 +21,10 @@ class CreateKeyExpr {
     }
 }
 
-class CreateSubscriber {
-    CreateSubscriber: String
+class DeclareSubscriber {
+    DeclareSubscriber: String
     constructor(input: String) {
-        this.CreateSubscriber = input;
+        this.DeclareSubscriber = input;
     }
 }
 
@@ -135,7 +135,7 @@ export class RemoteSession {
 
     async declare_subscriber(key_expr: string, handler: (keyexpr: String, value: Uint8Array) => void){
         this.subscribers[key_expr] = handler;
-        this.send_ctrl_message(new ControlMessage(new CreateSubscriber(key_expr)));
+        this.send_ctrl_message(new ControlMessage(new DeclareSubscriber(key_expr)));
     }
 
     static async new(config: string): Promise<RemoteSession> {

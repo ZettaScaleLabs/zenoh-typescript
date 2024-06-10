@@ -1,7 +1,7 @@
 import './style.css'
 import './webpage.ts'
 
-import { subscriber2} from './remote_api.ts'
+import { subscriber2 } from './remote_api.ts'
 import adze from 'adze';
 import { RemoteSession, SubClass } from './remote_api.ts'
 import { main_ch } from './experiments.ts'
@@ -19,13 +19,17 @@ async function main() {
 
 
   const callback = function (key_expr: String, value: Uint8Array): void {
-    console.log("    MyFunction Callback");
-    console.log("    MyFunction Callback Key_expr ", key_expr);
-    console.log("    MyFunction Callback Value    ", value);
+    console.log("    cb demo 1 :  Key_expr ", key_expr);
+    console.log("    cb demo 1 :  Value    ", value);
+  }
+
+
+  const callback2 = function (key_expr: String, value: Uint8Array): void {
+    console.log("    cb demo 2 :  Key_expr ", key_expr);
+    console.log("    cb demo 2 :  Value    ", value);
   }
 
   // main_ch();
-
   // console.log("Calling Function");
   // subscriber("demo/1",callback)
   // console.log("===========================");
@@ -38,10 +42,12 @@ async function main() {
   // const cb = (keyexpr: String, value: Uint8Array) => {
   //   console.debug(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + value + "')");
   // };
- 
+
   (await session).declare_subscriber("demo/1", callback);
 
-  (await session).declare_subscriber("demo/2", callback);
+  (await session).declare_subscriber("demo/2", callback2);
+
+
 
   // Loop to spin and keep alive
   var count = 0;

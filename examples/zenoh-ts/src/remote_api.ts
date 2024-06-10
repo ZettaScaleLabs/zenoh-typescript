@@ -23,10 +23,10 @@ class CreateKeyExpr {
     }
 }
 
-class CreateSubscriber {
-    CreateSubscriber: String
+class DeclareSubscriber {
+    DeclareSubscriber: String
     constructor(input: String) {
-        this.CreateSubscriber = input;
+        this.DeclareSubscriber = input;
     }
 }
 
@@ -37,10 +37,10 @@ interface ControlInterface<T> {
 
 
 interface Session_Msg {
-    UUID: string 
+    UUID: string
 }
-interface KeyExpr_Msg{
-    key_expr_wrapper: string 
+interface KeyExpr_Msg {
+    key_expr_wrapper: string
 }
 interface Subscriber_Msg {
     UUID: string
@@ -54,7 +54,7 @@ type FrontEndMessage = Session_Msg | KeyExpr_Msg | Subscriber_Msg | Publisher_Ms
 
 interface WebSocketMessageLike {
     message: DataMessageLike | ControlMessage<FrontEndMessage>
-    try_as_data_message(): Option<DataMessage> ;
+    try_as_data_message(): Option<DataMessage>;
     try_as_control_message(): Option<ControlMessage<FrontEndMessage>>;
 }
 
@@ -204,11 +204,11 @@ export class RemoteSession {
 
             // println("Data Message: -", ws_message);
             // println("Type : -", typeof ws_message);
-            if (ws_message.hasOwnProperty('Session')){
+            if (ws_message.hasOwnProperty('Session')) {
                 console.log("Continue Ignore Session Messages")
                 continue
             }
-            
+
             // TODO: Clean Up checking of Value 
             let opt_ctrl_msg = ws_message.try_as_control_message();
             if (opt_ctrl_msg._tag == "Some") {
@@ -237,7 +237,7 @@ export class RemoteSession {
         // console.log("DataMessage ", data_msg)
 
         for (const key of Object.keys(this.subscribers)) {
-            
+
             let sample: Sample = data_msg.get_sample();
             if (sample.key_expr == key) {
                 // TODO : matching logic of keyexpr
@@ -247,7 +247,6 @@ export class RemoteSession {
         }
     }
 
-    //
     async declare_ke(key_expr: string) {
         this.send_ctrl_message(new ControlMessage(new CreateKeyExpr(key_expr)))
     }
@@ -257,7 +256,7 @@ export class RemoteSession {
         fn: (keyexpr: String, value: Uint8Array) => void
     ) {
         this.subscribers[key_expr] = fn;
-        this.send_ctrl_message(new ControlMessage(new CreateSubscriber(key_expr)));
+        this.send_ctrl_message(new ControlMessage(new DeclareSubscriber(key_expr)));
     }
 
     static async new(config: string): Promise<RemoteSession> {
