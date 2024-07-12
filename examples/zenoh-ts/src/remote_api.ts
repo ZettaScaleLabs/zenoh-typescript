@@ -2,6 +2,22 @@ import { Option, some, none, fold } from 'fp-ts/Option';
 import * as O from 'fp-ts/Option'
 import { SimpleChannel } from "channel-ts";
 import adze from 'adze';
+import { v4 as uuidv4 } from 'uuid';
+
+// Import interface 
+import { RemoteAPIMsg } from "./interface/RemoteAPIMsg";
+import { SampleWS } from "./interface/SampleWS";
+import { SampleKindWS } from "./interface/SampleKindWS";
+import { ErrorMsg } from "./interface/ErrorMsg";
+import { DataMsg } from "./interface/DataMsg";
+import { ControlMsg } from "./interface/ControlMsg";
+
+// Import My interface
+import { CtrlMsgVar, CreateKeyExpr, DeclareSubscriber, DeclarePublisher, } from "./my_interface";
+import { Session_Msg, KeyExpr_Msg, Subscriber_Msg, } from "./my_interface";
+import { Publisher_Msg, WebSocketMessageLike, WebSocketMessage, } from "./my_interface";
+import { SampleLike, Sample, DataMessageLike, DataMessage, ControlMessage } from "./my_interface";
+
 
 export function subscriber2(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
     console.log("  SUBSCRIBER 2");
@@ -10,134 +26,54 @@ export function subscriber2(ke: string, handler: (key_expr: String, value: Uint8
     console.log("  Calling Handler ", handler(ke, new Uint8Array([1, 2, 3])))
 }
 
-enum CtrlMsgVar {
-    OpenSession = "OpenSession",
-    CloseSession = "CloseSession",
-    UndeclareSession = "UndeclareSession",
-}
-
-class CreateKeyExpr {
-    CreateKeyExpr: String
-    constructor(input: String) {
-        this.CreateKeyExpr = input;
-    }
-}
-
-class DeclareSubscriber {
-    DeclareSubscriber: String
-    constructor(input: String) {
-        this.DeclareSubscriber = input;
-    }
-}
-
-interface ControlInterface<T> {
-    Control: T,
-    to_json(input: T): string
-}
-
-
-interface Session_Msg {
-    UUID: string
-}
-interface KeyExpr_Msg {
-    key_expr_wrapper: string
-}
-interface Subscriber_Msg {
-    UUID: string
-}
-interface Publisher_Msg {
-    UUID: string
-}
-
-type FrontEndMessage = Session_Msg | KeyExpr_Msg | Subscriber_Msg | Publisher_Msg;
-
-
-interface WebSocketMessageLike {
-    message: DataMessageLike | ControlMessage<FrontEndMessage>
-    try_as_data_message(): Option<DataMessage>;
-    try_as_control_message(): Option<ControlMessage<FrontEndMessage>>;
-}
-
-
-class WebSocketMessage {
-    message: DataMessageLike | ControlMessage<FrontEndMessage>
-
-    constructor(message: DataMessageLike) {
-        this.message = message;
-    }
-
-    try_as_data_message(): Option<DataMessage> {
-        if (this.message.hasOwnProperty('Data')) {
-            let d_message: DataMessage = this.message as DataMessage;
-            return some(d_message)
-        } else {
-            return none
-        }
-    }
-
-    try_as_control_message(): Option<ControlMessage<FrontEndMessage>> {
-        if (this.message.hasOwnProperty('Control')) {
-            let d_message: ControlMessage<FrontEndMessage> = this.message as ControlMessage<FrontEndMessage>;
-            return some(d_message)
-        } else {
-            return none
-        }
-    }
-}
-
-
-interface SampleLike {
-    key_expr: string
-    kind: string
-    timestamp: string | null
-    value: Uint8Array;
-}
-
-class Sample {
-    key_expr: string
-    kind: string
-    timestamp: string | null
-    value: Uint8Array;
-
-    constructor(data: SampleLike) {
-        this.key_expr = data.key_expr;
-        this.kind = data.kind;
-        this.timestamp = data.timestamp;
-        this.value = data.value;
-    }
-}
-
-interface DataMessageLike {
-    Sample: SampleLike
-    get_sample(): Sample
-}
-
-// {"Data":{"Sample":{"key_expr":"demo/1","value":[91,49,49,52,48,93,32,80,117,98,32,102,114,111,109,32,82,117,115,116,33],"kind":"Put","timestamp":null}}}
-class DataMessage {
-    sample: Sample
-
-    constructor(data: DataMessageLike) {
-        this.sample = data.Sample;
-    }
-
-    get_sample(): Sample {
-        return this.sample
-    }
-}
-
-class ControlMessage<T> implements ControlInterface<T> {
-    Control: T;
-
-    constructor(input: T) {
-        this.Control = input;
-    }
-    to_json(): string {
-        return JSON.stringify(this);
-    }
-}
-
 interface Subscriber {
-    [keyexpr: string]: (keyexpr: String, value: Uint8Array) => void
+    [subscriber_uuid: string]: (keyexpr: String, value: Uint8Array) => void
+}
+
+// ██████  ██    ██ ██████  ██      ██ ███████ ██   ██ ███████ ██████  
+// ██   ██ ██    ██ ██   ██ ██      ██ ██      ██   ██ ██      ██   ██ 
+// ██████  ██    ██ ██████  ██      ██ ███████ ███████ █████   ██████  
+// ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██ 
+// ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██ 
+
+
+export class Publisher {
+    key_expr: String;
+    publisher_id: uuidv4;
+    ws: WebSocket;
+
+    constructor(key_expr: String, publisher_id: uuidv4, ws: WebSocket) {
+        this.key_expr = key_expr;
+        this.publisher_id = publisher_id;
+        this.ws = ws;
+    }
+
+    put(value: String) {
+        // 
+        let sample: SampleWS = {
+            "key_expr": this.key_expr,
+            "kind": "PUT",
+            "value": value,
+        };
+
+
+        let datamsg: DataMsg = {
+            Sample: [sample, this.publisher_id]
+        };
+
+        let websocket_message = new WebSocketMessage(datamsg);
+
+        let remote_api_message: RemoteAPIMsg = { "Data": datamsg };
+
+        let string_message = JSON.stringify(websocket_message);
+
+
+        this.ws.send(string_message);
+    }
+
+    async undeclare() {
+        console.log("TODO Undeclare Publisher")
+    }
 }
 
 export type SubCallback = (keyexpr: String, value: Uint8Array) => void;
@@ -151,15 +87,19 @@ export class SubClass {
     }
 }
 
+
+// ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
+// ██   ██ ██      ████  ████ ██    ██    ██    ██          ██      ██      ██      ██      ██ ██    ██ ████   ██ 
+// ██████  █████   ██ ████ ██ ██    ██    ██    █████       ███████ █████   ███████ ███████ ██ ██    ██ ██ ██  ██ 
+// ██   ██ ██      ██  ██  ██ ██    ██    ██    ██               ██ ██           ██      ██ ██ ██    ██ ██  ██ ██ 
+// ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████ ███████ ███████ ███████ ██  ██████  ██   ████ 
+
 export class RemoteSession {
 
     ws: WebSocket;
     ch: SimpleChannel<string>;
     session: Option<string>;
     subscribers: Subscriber
-    // worker:Worker;
-    // key_expr: Array<string>;
-    // ch_runner: 
 
     // private constructor(ws: WebSocket, ch: SimpleChannel<string>, worker:Worker) {
     private constructor(ws: WebSocket, ch: SimpleChannel<string>) {
@@ -179,15 +119,12 @@ export class RemoteSession {
     }
 
     async subscriber(keyexpr: string, handler: ((val: string) => Promise<void>)): Promise<void> {
-        // this.subscribers
         for await (const data of this.ch) { // use async iterator to receive data
             handler(data);
         }
-
     }
 
     private async send_ctrl_message<T>(ctrl_msg: ControlMessage<T>) {
-        // {"Control":{"CreateKeyExpr":"/demo/test"}}
         console.log("Control Message:")
         console.log(ctrl_msg.to_json())
 
@@ -202,8 +139,8 @@ export class RemoteSession {
             let ws_message_like: DataMessageLike = JSON.parse(message) as DataMessageLike;
             let ws_message = new WebSocketMessage(ws_message_like);
 
-            // println("Data Message: -", ws_message);
-            // println("Type : -", typeof ws_message);
+            println("Data Message: -", ws_message);
+            println("Type : -", typeof ws_message);
             if (ws_message.hasOwnProperty('Session')) {
                 console.log("Continue Ignore Session Messages")
                 continue
@@ -230,18 +167,16 @@ export class RemoteSession {
     }
 
     private async handle_data_message(data_msg_like: DataMessageLike) {
-
-        // console.log("DataMessageLike OBJ", data_msg_like)
-        // console.log("DataMessageLike ", JSON.stringify(data_msg_like))
         let data_msg = new DataMessage(data_msg_like)
-        // console.log("DataMessage ", data_msg)
+        for (const sub_id_key of Object.keys(this.subscribers)) {
 
-        for (const key of Object.keys(this.subscribers)) {
-
+            let sub_id_msg: uuidv4 = data_msg.get_subscription_id();
             let sample: Sample = data_msg.get_sample();
-            if (sample.key_expr == key) {
+
+            if (sub_id_msg == sub_id_key) {
                 // TODO : matching logic of keyexpr
-                this.subscribers[key](key, sample.value);
+
+                this.subscribers[sub_id_msg](sample.key_expr, sample.value);
                 break
             }
         }
@@ -255,8 +190,21 @@ export class RemoteSession {
         key_expr: string,
         fn: (keyexpr: String, value: Uint8Array) => void
     ) {
-        this.subscribers[key_expr] = fn;
-        this.send_ctrl_message(new ControlMessage(new DeclareSubscriber(key_expr)));
+        let uuid = uuidv4();
+        this.subscribers[uuid] = fn;
+        this.send_ctrl_message(new ControlMessage(new DeclareSubscriber(key_expr, uuid)));
+    }
+
+    async declare_publisher(
+        key_expr: string,
+    ): Promise<Publisher> {
+        let uuid = uuidv4();
+
+        let publisher = new Publisher(key_expr, uuid, this.ws);
+
+        this.send_ctrl_message(new ControlMessage(new DeclarePublisher(key_expr, uuid)));
+
+        return publisher
     }
 
     static async new(config: string): Promise<RemoteSession> {
@@ -272,10 +220,8 @@ export class RemoteSession {
 
         ws.onmessage = function (event: any) {
             // `this` here is a websocket object
-            // console.log("   1   MSG FROM SVR", event.data);
+            console.log("   MSG FROM SVR", event.data);
             chan.send(event.data)
-            // console.log("   1   AFTER", msg_from_svr);
-
         };
 
         while (ws.readyState != 1) {
@@ -289,8 +235,6 @@ export class RemoteSession {
         return session
     }
 }
-
-
 
 function println(msg: string, obj: any) {
     console.log(msg, JSON.stringify(obj))

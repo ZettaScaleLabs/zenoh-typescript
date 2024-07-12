@@ -3,8 +3,9 @@ import './webpage.ts'
 
 import { subscriber2 } from './remote_api.ts'
 import adze from 'adze';
-import { RemoteSession, SubClass } from './remote_api.ts'
+import { RemoteSession, SubClass, Publisher } from './remote_api.ts'
 import { main_ch } from './experiments.ts'
+
 
 
 function subscriber(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
@@ -29,25 +30,16 @@ async function main() {
     console.log("    cb demo 2 :  Value    ", value);
   }
 
-  // main_ch();
-  // console.log("Calling Function");
-  // subscriber("demo/1",callback)
-  // console.log("===========================");
-  // subscriber2("demo/1",callback)
-
-  //////////////////////////////////////////////////////////////////////////////
   var addr = "ws://127.0.0.1:10000"
   let session = RemoteSession.new(addr);
 
-  // const cb = (keyexpr: String, value: Uint8Array) => {
-  //   console.debug(">> [Subscriber] Received PUT ('" + keyexpr + "': '" + value + "')");
-  // };
+  // (await session).declare_subscriber("demo/1", callback);
+  // (await session).declare_subscriber("demo/2", callback2);
 
-  (await session).declare_subscriber("demo/1", callback);
-
-  (await session).declare_subscriber("demo/2", callback2);
-
-
+  let publisher1: Publisher = await (await session).declare_publisher("demo/pub/1");
+  // let publisher2: Publisher = await (await session).declare_publisher("demo/pub/2");
+  publisher1.put("11111");
+  // publisher2.put("2");
 
   // Loop to spin and keep alive
   var count = 0;
