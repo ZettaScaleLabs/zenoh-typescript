@@ -28,21 +28,31 @@ async function main() {
   var addr = "ws://127.0.0.1:10000"
   let session = RemoteSession.new(addr);
 
-  (await session).declare_subscriber("demo/1", callback);
-  (await session).declare_subscriber("demo/2", callback2);
+  // Session put / del / get
+  (await session).put("demo/put", [65,66,67]);
+  (await session).delete("demo/delete");
 
+  // subscribers
+  (await session).declare_subscriber("demo/1", callback);
+  // (await session).declare_subscriber("demo/2", callback2);
+
+  // publisher
   let publisher1: Publisher = await (await session).declare_publisher("demo/pub/1");
   let publisher2: Publisher = await (await session).declare_publisher("demo/pub/2");
+  publisher1.put([1, 2, 3]);
+  publisher1.undeclare();
+  publisher1.undeclare();
+  publisher2.put([65,66,67,50]);
+  
+  // queryable
+
 
   // Loop to spin and keep alive
   var count = 0;
   while (true) {
-    var seconds = 1;
+    var seconds = 100;
     await sleep(1000 * seconds);
     console.log("Main Loop ? ", count)
-    publisher1.put([1, 2, 3]);
-    publisher2.put([1, 2, 3]);
-    console.log("Publisher 1 and 2 put  ? ", count)
     count = count + 1;
   }
 }
