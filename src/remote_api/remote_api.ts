@@ -1,12 +1,15 @@
-import { Option, some, none, fold } from 'fp-ts/Option';
+import { Option, some, none } from 'fp-ts/Option';
 import { SimpleChannel } from "channel-ts";
-import adze from 'adze';
 import { v4 as uuidv4 } from 'uuid';
+import { Logger, ILogObj } from "tslog";
+
+const log: Logger<ILogObj> = new Logger();
+
 
 // Import interface 
 import { RemoteAPIMsg } from "./interface/RemoteAPIMsg";
 import { SampleWS } from "./interface/SampleWS";
-import { SampleKindWS } from "./interface/SampleKindWS";
+// import { SampleKindWS } from "./interface/SampleKindWS";
 import { DataMsg } from "./interface/DataMsg";
 import { ControlMsg } from "./interface/ControlMsg";
 import { OwnedKeyExprWrapper } from './interface/OwnedKeyExprWrapper';
@@ -26,10 +29,10 @@ export function subscriber2(ke: string, handler: (key_expr: String, value: Uint8
 
 
 type UUID = typeof uuidv4 | string
-export class Publisher {
-    key_expr: String;
-    publisher_id: UUID;
-    session_ref: RemoteSession;
+export class RemotePublisher {
+    private key_expr: String;
+    private publisher_id: UUID;
+    private session_ref: RemoteSession;
     private undeclared: boolean;
 
     constructor(key_expr: String, publisher_id: UUID, session_ref: RemoteSession) {
@@ -45,7 +48,7 @@ export class Publisher {
             console.log(message)
             return
         }
-        let data_msg: DataMsg = { "PublisherPut": [value, this.publisher_id] };
+        let data_msg: DataMsg = { "PublisherPut": [value, this.publisher_id.toString()] };
         this.session_ref.send_data_message(data_msg);
     }
 
@@ -56,22 +59,88 @@ export class Publisher {
             return
         }
         this.undeclared = true;
-        let ctrl_message: ControlMsg = { "UndeclarePublisher": this.publisher_id };
+        let ctrl_message: ControlMsg = { "UndeclarePublisher": this.publisher_id.toString() };
         this.session_ref.send_ctrl_message(ctrl_message)
     }
 }
 
-export type SubCallback = (keyexpr: String, value: Uint8Array) => void;
+// If defined with a Callback, All samples passed to the Callback, 
+// else, must call recieve on the 
+export class RemoteSubscriber {
+    private key_expr: String;
+    private subscriber_id: UUID;
+    private session_ref: RemoteSession;
+    private callback?: (sample: SampleWS) => void
+    private rx: SimpleChannel<SampleWS>;
 
-export class Subscriber {
-    fn: SubCallback;
-    key_expr: String
-    constructor(key_expr: String, fn: SubCallback) {
-        this.fn = fn
-        this.key_expr = key_expr
+    private undeclared: boolean;
+
+    constructor(
+        key_expr: String,
+        subscriber_id: UUID,
+        session_ref: RemoteSession,
+        rx: SimpleChannel<SampleWS>,
+        callback?: (sample: SampleWS) => void
+    ) {
+        this.key_expr = key_expr;
+        this.subscriber_id = subscriber_id;
+        this.session_ref = session_ref;
+        this.rx = rx;
+        this.callback = callback;
+        this.undeclared = false;
+    }
+
+
+    static async new(
+        key_expr: String,
+        subscriber_id: UUID,
+        session_ref: RemoteSession,
+        rx: SimpleChannel<SampleWS>,
+        callback?: (sample: SampleWS) => void
+    ) {
+
+        if (callback != undefined) {
+            console.log("TODO IMPLEMENT CALLBACK CALLING")
+        }
+
+        return new RemoteSubscriber(
+            key_expr,
+            subscriber_id,
+            session_ref,
+            rx,
+            callback
+        );
+    }
+
+    async recieve() {
+        if (this.undeclared == true) {
+            var message = "Subscriber keyexpr:`" + this.key_expr + "` id:`" + this.subscriber_id + "`";
+            console.log(message)
+            return
+        }
+
+        if (this.callback != undefined) {
+            var message = "Cannot Call recieve on Subscriber created with callback:`" + this.key_expr + "` id:`" + this.subscriber_id + "`";
+            console.log(message)
+            return
+        }
+
+        return this.rx.receive();
+    }
+
+    async undeclare() {
+
+        if (this.undeclared == true) {
+            var message = "Subscriber keyexpr:`" + this.key_expr + "` id:`" + this.subscriber_id + "` already closed";
+            console.log(message)
+            return
+        }
+
+        this.undeclared = true;
+        let ctrl_message: ControlMsg = { "UndeclareSubscriber": this.subscriber_id.toString() };
+        this.session_ref.send_ctrl_message(ctrl_message)
     }
 }
-
 
 // ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
 // ██   ██ ██      ████  ████ ██    ██    ██    ██          ██      ██      ██      ██      ██ ██    ██ ████   ██ 
@@ -79,9 +148,9 @@ export class Subscriber {
 // ██   ██ ██      ██  ██  ██ ██    ██    ██    ██               ██ ██           ██      ██ ██ ██    ██ ██  ██ ██ 
 // ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████ ███████ ███████ ███████ ██  ██████  ██   ████ 
 
-interface Subscriber {
-    [subscriber_uuid: string]: (keyexpr: String, value: Uint8Array) => void
-}
+// interface Subscriber {
+//     [subscriber_uuid: string]: (keyexpr: String, value: Uint8Array) => void
+// }
 
 type JSONMessage = string;
 type UUIDv4 = String | string;
@@ -91,22 +160,24 @@ export class RemoteSession {
     ws: WebSocket;
     chan: SimpleChannel<JSONMessage>;
     session: Option<UUIDv4>;
-    subscribers: Subscriber
+    subscribers: Map<UUIDv4, SimpleChannel<SampleWS>>;
 
     private constructor(ws: WebSocket, chan: SimpleChannel<JSONMessage>) {
         this.ws = ws;
         this.chan = chan;
         this.session = none;
-        this.subscribers = {};
+        this.subscribers = new Map<UUIDv4, SimpleChannel<SampleWS>>();
     }
 
     // 
     // Initialize Class
     // 
-    static async new(config: string): Promise<RemoteSession> {
-        adze().info(`New Remote Session`);
+    static async new(url: string): Promise<RemoteSession> {
+        let split = url.split("/");
+        let websocket_endpoint = split[0] + "://"+split[1];
+
         const chan = new SimpleChannel<JSONMessage>(); // creates a new simple channel
-        let ws = new WebSocket(config);
+        let ws = new WebSocket(websocket_endpoint);
 
         ws.onopen = function (_event: any) {
             // `this` here is a websocket object
@@ -122,13 +193,13 @@ export class RemoteSession {
         };
 
         while (ws.readyState != 1) {
-            adze().debug("Websocket Ready State " + ws.readyState)
+            log.debug("Websocket Ready State " + ws.readyState)
             await sleep(100);
         }
 
         var session = new RemoteSession(ws, chan);
         session.channel_receive();
-        adze().info(`Return Session`);
+        log.info(`Return Session`);
         return session
     }
 
@@ -159,6 +230,12 @@ export class RemoteSession {
         this.send_data_message(data_message);
     }
 
+    async close(): Promise<void> {
+        let data_message: ControlMsg = "CloseSession";
+        this.send_ctrl_message(data_message);
+        this.ws.close()
+    }
+
     // async declare_ke(key_expr: string) {
     //     let control_message: ControlMsg = { "CreateKeyExpr": key_expr };
     //     this.send_ctrl_message(control_message);
@@ -166,22 +243,36 @@ export class RemoteSession {
 
     async declare_subscriber(
         key_expr: string,
-        fn: (keyexpr: String, value: Uint8Array) => void
-    ) {
-        //                                                        KeyExpr, Uuid
+        // callback?: (keyexpr: String, value: Uint8Array) => void
+        callback?: ((sample: SampleWS) => Promise<void>)
+    ): Promise<RemoteSubscriber> {
+
         let uuid = uuidv4();
+
         let control_message: ControlMsg = { "DeclareSubscriber": { key_expr: key_expr, id: uuid } };
 
-        this.subscribers[uuid] = fn;
+        let channel: SimpleChannel<SampleWS> = new SimpleChannel<SampleWS>();
+
+        this.subscribers.set(uuid, channel);
+
         this.send_ctrl_message(control_message);
+
+        let subscriber = new RemoteSubscriber(
+            key_expr,
+            uuid,
+            this,
+            channel,
+            callback
+        );
+        return subscriber;
     }
 
     async declare_publisher(
         key_expr: string,
-    ): Promise<Publisher> {
+    ): Promise<RemotePublisher> {
 
         let uuid: string = uuidv4();
-        let publisher = new Publisher(key_expr, uuid, this);
+        let publisher = new RemotePublisher(key_expr, uuid, this);
         let control_message: ControlMsg = { "DeclarePublisher": { key_expr: key_expr, id: uuid } };
         this.send_ctrl_message(control_message);
         return publisher
@@ -236,42 +327,43 @@ export class RemoteSession {
                 continue
             }
             else {
-                adze().error(`RemoteAPIMsg Does not contain known Members`, remote_api_message);
+                log.error(`RemoteAPIMsg Does not contain known Members`, remote_api_message);
             }
         }
         console.log("Closed");
     }
 
     private async handle_control_message(control_msg: ControlMsg) {
-        ///
+
         console.log("ControlMessage ", control_msg)
-        if ('Session' in control_msg) {
-            this.session = some(control_msg["Session"]);
+        if (typeof control_msg === "string") {
+            // TODO : 
+            console.log(control_msg);
+
+        } else if ((typeof control_msg === "object")) {
+            if ('Session' in (control_msg)) {
+                this.session = some(control_msg["Session"]);
+            }
         }
     }
 
     private async handle_data_message(data_msg: DataMsg) {
 
-        for (const sub_id_key of Object.keys(this.subscribers)) {
-            if ('Sample' in data_msg) {
+        if ("Sample" in data_msg) {
 
-                let sample: SampleWS = data_msg[0];
-                let subscription_uuid: UUIDv4 = data_msg[1];
+            let subscription_uuid: UUIDv4 = data_msg["Sample"][1]
 
-                if (subscription_uuid == sub_id_key) {
-                    this.subscribers[subscription_uuid](sample.key_expr, sample.value);
-                    break
-                }
+            let opt_subscriber = this.subscribers.get(subscription_uuid);
+            if (opt_subscriber != undefined) {
+                let channel: SimpleChannel<SampleWS> = opt_subscriber;
+
+                let sample: SampleWS = data_msg["Sample"][0];
+                channel.send(sample);
             }
         }
     }
-
-
 }
 
-function println(msg: string, obj: any) {
-    console.log(msg, JSON.stringify(obj))
-}
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));

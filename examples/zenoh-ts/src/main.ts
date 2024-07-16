@@ -1,10 +1,10 @@
 import './style.css'
 import './webpage.ts'
 
-import { subscriber2 } from './remote_api.ts'
-import adze from 'adze';
-import { RemoteSession, Subscriber, Publisher } from './remote_api.ts'
-import { main_ch } from './experiments.ts'
+
+import * as zenoh from "../../../esm"
+
+
 
 function subscriber(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
   console.log("  SUBSCRIBER");
@@ -25,11 +25,11 @@ async function main() {
     console.log("    cb demo 2 :  Value    ", value);
   }
 
-  var addr = "ws://127.0.0.1:10000"
-  let session = RemoteSession.new(addr);
+  const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"));
 
+  
   // Session put / del / get
-  (await session).put("demo/put", [65,66,67]);
+  (await session).put(new zenoh.KeyExpr("demo/put"), new zenoh.ZBytes([65, 66, 67]));
   (await session).delete("demo/delete");
 
   // subscribers
@@ -42,8 +42,8 @@ async function main() {
   publisher1.put([1, 2, 3]);
   publisher1.undeclare();
   publisher1.undeclare();
-  publisher2.put([65,66,67,50]);
-  
+  publisher2.put([65, 66, 67, 50]);
+
   // queryable
 
 

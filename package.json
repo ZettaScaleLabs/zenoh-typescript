@@ -22,11 +22,13 @@
     "object-inspect": "^1.13.1",
     "request": "^2.79.0",
     "text-encoding": "^0.7.0",
-    "tslog": "^4.9.2"
+    "ts-log": "^2.2.5",
+    "tslog": "^4.9.3"
   },
   "devDependencies": {
     "@types/node": "20.9.1",
     "@types/object-inspect": "^1.13.0",
+    "@types/uuid": "^10.0.0",
     "cpx": "^1.5.0",
     "esbuild": "0.20.1",
     "exports-loader": "^4.0.0",
@@ -36,6 +38,7 @@
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
+    "build": "npm run build:ts",
     "//  FULL BUILD   //": "",
     "clean_build_package": "npm run clean && npm install && npm run build:wasm ",
     "//  CLEAN        //": "",
@@ -46,7 +49,7 @@
     "build:ts": "npm run build:esm && npm run build:copy_artifacts",
     "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json",
     "//  COPY ARTIFACTS //": "",
-    "build:copy_artifacts": "npm run build:copy_zenoh_js && npm run build:copy_wasm",
+    "build:copy_artifacts": "npm run build:copy_zenoh_js",
     "build:copy_zenoh_js": "cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"esm/wasm\" && cpx -v \"src/wasm/**/*.{wasm,js,mjs,}\" \"cjs/wasm\"",
     "build:copy_wasm": "cpx -v \"src/**/*.wasm\" \"./cjs\" && cpx -v \"src/**/*.wasm\" \"./esm\"",
     "//   PACKAGE       //": "",

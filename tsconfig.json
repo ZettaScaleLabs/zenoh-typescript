@@ -23,6 +23,8 @@
 		"noUnusedLocals": true,
 		"sourceMap": true,
 		"outDir": "esm",
+		// "allowImportingTsExtensions": true,
+		"emitDeclarationOnly":false,
 		"baseUrl": ".",
 		"paths": {
 			"*": [

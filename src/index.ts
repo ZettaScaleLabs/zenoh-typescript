@@ -43,66 +43,14 @@
 //     // Misc
 //     zw_version(): number,
 // }
+import { Logger, ILogObj } from "tslog";
+
+const log: Logger<ILogObj> = new Logger();
 
 
-//  */
-// type WasmPtr = number;
-/**
- * Subscriber Callback
- */
-// type SubCallback = (keyexpr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => Promise<void>;
-
-/**
- * Instance of Module
- */
-// let mod_instance: Module;
-
-// import WebSocket from 'ws';
-
-import { SimpleChannel } from "channel-ts";
-
-class WrappedSocket {
-    // 
-    ws_internal: WebSocket;
-    // 
-    // connect(url: string): WebSocket {
-    //     return ws 
-    // }
-    // Indicates that the connection is ready to send and receive data
-    static onOpen(event: any): void {
-        console.log("connected");
-    }
-
-    // An event listener to be called when a message is received from the server
-    static onMessage(event: any): void {
-        console.log("Message from Server", event);
-    }
-    // An event listener to be called when an error occurs. This is a simple event named "error".
-    static onError(event: any): void {
-        console.log(JSON.stringify(event.data));
-    }
-    // An event listener to be called when the WebSocket connection's readyState changes to CLOSED.
-    static onClose(event: any): void {
-        console.log(JSON.stringify(event.data));
-    }
-    //
-    private constructor(wrapped_ws: WebSocket) {
-        this.ws_internal = wrapped_ws
-    }
-
-    static async new(locator: string): Promise<WrappedSocket> {
-        // TODO Check format of string
-        console.log("Open Websocket", locator)
-        // 
-        var ws: WebSocket = new WebSocket(locator);
-        ws.onopen = this.onOpen;
-        ws.onmessage = this.onMessage;
-        ws.onerror = this.onError;
-        ws.onclose = this.onClose;
-        return new WrappedSocket(ws)
-    }
-}
-
+import { SampleWS } from './remote_api/interface/SampleWS.js'
+// import { RemoteSession, RemoteSubscriber, RemotePublisher } from './remote_api/remote_api.ts'
+import { RemoteSession, RemoteSubscriber, RemotePublisher } from './remote_api/remote_api'
 
 
 export const intoSelector = Symbol("intoSelector")
@@ -123,7 +71,9 @@ export interface IntoKeyExpr {
     [intoKeyExpr]: () => Promise<KeyExpr>
 }
 
-export const intoValue = Symbol("intoValue")
+// export const intoValue = Symbol("intoValue")
+
+export const intoZBytes = Symbol("intoZBytes")
 
 /**
  * Something that may be turned into a Value.
@@ -132,8 +82,19 @@ export const intoValue = Symbol("intoValue")
  * - string
  * - Uint8Array
  */
-export interface IntoValue {
-    [intoValue]: () => Promise<Value>
+// export interface IntoValue {
+//     [intoValue]: () => Promise<Value>
+// }
+
+/**
+ * Something that may be turned into a Value.
+ * 
+ * Notable default implementers:
+ * - string
+ * - Uint8Array
+ */
+export interface IntoZBytes {
+    [intoZBytes]: () => Promise<ZBytes>
 }
 
 /**
@@ -163,12 +124,6 @@ export class Config {
         this.locator = locator
     }
     static async new(locator: string): Promise<Config> {
-        // const Zenoh = await zenoh();
-        // const ptr = Zenoh.zw_default_config(locator);
-
-        // if (ptr === 0) {
-        //     throw "Failed to construct zenoh.Config";
-        // }
 
         return new Config(locator)
     }
@@ -183,7 +138,41 @@ export class Config {
 
 // TODO : Add encoding prop later when we need it
 // Default to empty string
-export class Value {
+// export class Value {
+//     /**
+//     * Class to represent an Array of Bytes recieved from Zenoh
+//     */
+//     payload: Uint8Array
+
+//     constructor(payload: Uint8Array) {
+//         this.payload = payload
+//     }
+
+//     arr(): number {
+//         return this.payload.length;
+//     }
+
+//     bytes_per_element(): number {
+//         return this.payload.BYTES_PER_ELEMENT;
+//     }
+
+//     length(): number {
+//         return this.payload.length;
+//     }
+
+//     [intoValue](): Promise<Value> { return Promise.resolve(this) }
+
+//     empty(): Value {
+//         return new Value(new Uint8Array());
+//     }
+
+//     new(payload: Uint8Array): Value {
+//         return new Value(payload);
+//     }
+// }
+
+
+export class ZBytes {
     /**
     * Class to represent an Array of Bytes recieved from Zenoh
     */
@@ -193,29 +182,23 @@ export class Value {
         this.payload = payload
     }
 
-    arr(): number {
+    len(): number {
         return this.payload.length;
     }
 
-    bytes_per_element(): number {
-        return this.payload.BYTES_PER_ELEMENT;
+    [intoZBytes](): Promise<ZBytes> { return Promise.resolve(this) }
+
+    empty(): ZBytes {
+        return new ZBytes(new Uint8Array());
     }
 
-    length(): number {
-        return this.payload.length;
+    new(payload: Uint8Array): ZBytes {
+        return new ZBytes(payload);
     }
-
-    [intoValue](): Promise<Value> { return Promise.resolve(this) }
-
-    empty(): Value {
-        return new Value(new Uint8Array());
-    }
-
-    new(payload: Uint8Array): Value {
-        return new Value(payload);
-    }
-
 }
+
+
+
 
 // ██   ██ ███████ ██    ██     ███████ ██   ██ ██████  ██████  
 // ██  ██  ██       ██  ██      ██       ██ ██  ██   ██ ██   ██ 
@@ -229,34 +212,17 @@ export class KeyExpr implements IntoSelector {
      * Key Expression is Allocated and Managed by Zenoh Pico
      * this class only exists to keep track of pointer to WASM c-instance
      */
-    // TODO: I hate the idea of this being accessible outside the class
-    // __ptr: WasmPtr;
+    inner: string
 
-    // static registry: FinalizationRegistry<number> = new FinalizationRegistry((ptr: WasmPtr) => (new KeyExpr(ptr)).delete());
-
-    // 
     [intoKeyExpr](): Promise<KeyExpr> { return Promise.resolve(this) }
     [intoSelector](): Promise<Selector> { return Promise.resolve(new Selector(this)) }
 
-    constructor() {
-        // this.__ptr = ptr
-        // KeyExpr.registry.register(this, this.__ptr, this);
+    constructor(key_expr: string) {
+        this.inner = key_expr
     }
-    // private async delete() {
-    // const Zenoh = await zenoh();
-    // Zenoh.zw_delete_ke(this.__ptr); // delete the C ptr
-    // KeyExpr.registry.unregister(this); // make sure we aren't called again
-    // }
 
     static async new(keyexpr: string): Promise<KeyExpr> {
-
-        // const Zenoh = await zenoh();
-
-        // const ptr: WasmPtr = await Zenoh.zw_make_ke(keyexpr);
-        // if (ptr === 0) {
-        // throw "Failed to construct zenoh.KeyExpr"
-        // }
-        return new KeyExpr()
+        return new KeyExpr(keyexpr)
     }
 
 }
@@ -273,17 +239,17 @@ Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
 /**
  * Makes sure that string is UTF8, gives you blob and encoding.
  */
-Object.defineProperty(String.prototype, intoValue, function (this: string) {
+Object.defineProperty(String.prototype, intoZBytes, function (this: string) {
     const encoder = new TextEncoder();
     const encoded = encoder.encode(this);
-    return Promise.resolve(new Value(encoded))
+    return Promise.resolve(new ZBytes(encoded))
 })
 
 /**
  * Apply Uint8Array to intoValue
  */
-Object.defineProperty(Uint8Array.prototype, intoValue, function (this: Uint8Array) {
-    return Promise.resolve(new Value(this))
+Object.defineProperty(Uint8Array.prototype, intoZBytes, function (this: Uint8Array) {
+    return Promise.resolve(new ZBytes(this))
 })
 
 Object.defineProperty(Function.prototype, "onEvent", function (this: Function) {
@@ -298,28 +264,57 @@ Object.defineProperty(Function.prototype, "onClose", function (this: Function) {
 //     interface Uint8Array extends IntoValue { }
 // }
 
-// ███████ ██    ██ ██████          ██     ██   ██  █████  ███    ██ ██████  ██      ███████ ██████  
-// ██      ██    ██ ██   ██        ██      ██   ██ ██   ██ ████   ██ ██   ██ ██      ██      ██   ██ 
-// ███████ ██    ██ ██████        ██       ███████ ███████ ██ ██  ██ ██   ██ ██      █████   ██████  
-//      ██ ██    ██ ██   ██      ██        ██   ██ ██   ██ ██  ██ ██ ██   ██ ██      ██      ██   ██ 
-// ███████  ██████  ██████      ██         ██   ██ ██   ██ ██   ████ ██████  ███████ ███████ ██   ██ 
+// ███████ ██    ██ ██████  ███████  ██████ ██████  ██ ██████  ███████ ██████  
+// ██      ██    ██ ██   ██ ██      ██      ██   ██ ██ ██   ██ ██      ██   ██ 
+// ███████ ██    ██ ██████  ███████ ██      ██████  ██ ██████  █████   ██████  
+//      ██ ██    ██ ██   ██      ██ ██      ██   ██ ██ ██   ██ ██      ██   ██ 
+// ███████  ██████  ██████  ███████  ██████ ██   ██ ██ ██████  ███████ ██   ██ 
 
-export class Subscriber<Receiver> {
+export class Subscriber {
 
     /**
      * Class to hold pointer to subscriber in Wasm Memory
      */
-
-    // __sub_ptr: WasmPtr
     // receiver: Receiver
-    // private constructor(sub_ptr: WasmPtr, receiver: Receiver) {
-    constructor() {
-        // this.__sub_ptr = sub_ptr
+    private remote_subscriber: RemoteSubscriber;
 
+    constructor(remote_subscriber: RemoteSubscriber, session: Session) {
+        this.remote_subscriber = remote_subscriber;
     }
 
-    new(): Subscriber<Receiver> {
-        return new Subscriber();
+
+    async recieve() {
+
+        this.remote_subscriber.recieve();
+    }
+
+    async undeclare() {
+        this.remote_subscriber.undeclare();
+    }
+
+
+    static async new(keyexpr: IntoKeyExpr,
+        session: Session,
+        callback?: ((sample: Sample) => Promise<void>)): Promise<Subscriber> {
+
+        let key_expr = await keyexpr[intoKeyExpr]();
+
+        let remote_subscriber: RemoteSubscriber;
+
+        if (callback != undefined) {
+            const callback_conversion = async function (sample_ws: SampleWS): Promise<void> {
+                let key_expr: KeyExpr = new KeyExpr(sample_ws.key_expr);
+                let payload: ZBytes = new ZBytes(Uint8Array.from(sample_ws.value));
+                let sample_kind: SampleKind = SampleKind[sample_ws.kind];
+
+                callback(new Sample(key_expr, payload, sample_kind))
+            }
+            remote_subscriber = await session.remote_session.declare_subscriber(key_expr.inner, callback_conversion);
+        } else {
+            remote_subscriber = await session.remote_session.declare_subscriber(key_expr.inner, callback);
+        }
+
+        return new Subscriber(remote_subscriber, session);
     }
 }
 
@@ -347,35 +342,35 @@ export interface IntoHandler<Event, Receiver> {
 }
 
 /**
- * Kinds of Samples that can be recieved from Zenoh-pico
+ * Kinds of Samples that can be recieved from Zenoh
  */
 export enum SampleKind {
     PUT = "PUT",
     DELETE = "DELETE",
 }
 
-// TODO : Something that has been sent through Put or delete
+
 /**
  * Samples are publication events receieved on the Socket
  */
 export class Sample {
     keyexpr: KeyExpr
-    value: Value
+    payload: ZBytes
     kind: SampleKind
+    // TODO : Add Encoding
     constructor(
         keyexpr: KeyExpr,
-        value: Value,
+        payload: ZBytes,
         kind: SampleKind) {
         this.keyexpr = keyexpr
-        this.value = value
+        this.payload = payload
         this.kind = kind
     }
 
-    new(keyexpr: KeyExpr, payload: Value, kind: SampleKind): Sample {
+    new(keyexpr: KeyExpr, payload: ZBytes, kind: SampleKind): Sample {
         return new Sample(keyexpr, payload, kind);
     }
 }
-
 
 /**
  * Extend String to IntoSelector
@@ -462,7 +457,8 @@ export class Selector {
 export class Query {
     selector: Selector
     async reply(sample: Sample): Promise<void> { }
-    async reply_err(error: IntoValue): Promise<void> { }
+    async reply_err(error: IntoZBytes): Promise<void> { }
+
     constructor(selector: Selector) {
         this.selector = selector
     }
@@ -483,26 +479,12 @@ export class Reply { }
  * methods
  */
 
-function onOpen(event: any): void {
-    console.log("connected");
-
-}
-
 export class Session {
-    // WASM Backend
-    // A FinalizationRegistry object lets you request a callback when a value is garbage-collected.
-    // static registry = new FinalizationRegistry(([ptr, task_ptr]: [number, number]) => (new Session(ptr, task_ptr)).close())
-    //
-    // Websocket Backend
-    // ws: WebSocket
-    // ch: SimpleChannel<string>;
-    // wrapped_ws : WrappedSocket
+    // WebSocket Backend
+    remote_session: RemoteSession
 
-
-    private constructor() {
-        // this.__ptr = ptr
-        // this.__task_ptr = task_ptr
-        // this.wrapped_ws = wrapped_ws;
+    private constructor(remote_session: RemoteSession) {
+        this.remote_session = remote_session;
     }
 
     /**
@@ -520,13 +502,8 @@ export class Session {
 
     static async open(config: Promise<Config> | Config): Promise<Session> {
         const cfg = await config;
-        // let wrapped = await WrappedSocket.new(cfg.locator)
-        // ws.onopen = onOpen;
-        const ws = new WebSocket(cfg.locator);
-        // ws.onmessage = 
-        // const chan = new SimpleChannel<string>(); // creates a new simple channel
-
-        return new Session()
+        let remote_session: RemoteSession = await RemoteSession.new(cfg.locator);
+        return new Session(remote_session);
     }
 
     /**
@@ -536,11 +513,7 @@ export class Session {
      * @returns Nothing
      */
     async close() {
-        // this.ws.send()
-        // TODO: Is this correct ?
-        // const Zenoh: Module = await zenoh();
-        // await Zenoh.zw_close_session(this.__ptr)
-        // Session.registry.unregister(this)
+        this.remote_session.close();
     }
 
     /**
@@ -551,20 +524,19 @@ export class Session {
      * 
      * @returns success: 0, failure : -1
      */
-    async put(keyexpr: IntoKeyExpr, value: IntoValue): Promise<number> {
+    async put(keyexpr: IntoKeyExpr, zbytes: IntoZBytes): Promise<void> {
 
-        // const [Zenoh, key, val]: [Module, KeyExpr, Value] = await Promise.all([zenoh(), keyexpr[intoKeyExpr](), value[intoValue]()]);
-        // const [key, val]: [KeyExpr, Value] = await Promise.all([keyexpr[intoKeyExpr](), value[intoValue]()]);
+        const [key, z_bytes]: [KeyExpr, ZBytes] = await Promise.all([keyexpr[intoKeyExpr](), zbytes[intoZBytes]()]);
 
-        // const ret = Zenoh.zw_put(this.__ptr, key.__ptr, val.payload);
-        // TODO: PUT ON WS
-
-        // if (ret < 0) {
-        //     throw `Error ${ret} while putting`
-        // }
-        // TODO: FIX
-        return -1
+        this.remote_session.put(key.inner, Array.from(z_bytes.payload));
     }
+
+
+    async delete(keyexpr: IntoKeyExpr): Promise<void> {
+        const key: KeyExpr = await keyexpr[intoKeyExpr]();
+        this.remote_session.delete(key.inner);
+    }
+
 
     /**
      * Declares a Key Expression on a session
@@ -573,20 +545,10 @@ export class Session {
      * 
      * @returns success: 0, failure : -1
      */
-    async declare_ke(keyexpr: string): Promise<KeyExpr> {
-
-        // const Zenoh: Module = await zenoh();
-
-        // const ret = Zenoh.zw_declare_ke(this.__ptr, keyexpr);
-
-        // if (ret < 0) {
-        //     throw "An error occured while Declaring Key Expr"
-        // }
-
-        // const key_expr = new KeyExpr(ret);
-        // return key_expr;
-        return new KeyExpr();
-    }
+    // TODO do i want to 
+    // async declare_ke(keyexpr: string): Promise<KeyExpr> {
+    // return new KeyExpr();
+    // }
 
     // TODO:  Implement get
     // async get(into_selector: IntoSelector, query: Query, callback: () => void): Promise<number> {
@@ -596,119 +558,16 @@ export class Session {
     // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
     // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
     // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
-    //     const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
-
-    //     const ret = await Zenoh.zw_declare_subscriber(this.__ptr, key.__ptr, handler);
-
-    //     if (ret < 0) {
-    //         throw `Error ${ret} while declaring Subscriber`
-    //     }
-    //     return ret
-    // }
-
-    // TODO : Support Sync as well ? 
-    // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (keyexpr: String, value: Uint8Array) => void): Promise<Subscriber<void>> {
-    //     const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
-
-    //     const ret = await Zenoh.zw_declare_subscriber(
-    //         this.__ptr,
-    //         key.__ptr,
-    //         (keyexpr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => {
-    //             handler(Zenoh.UTF8ToString(keyexpr), Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len))
-    //         });
-
-    //     if (ret < 0) {
-    //         throw `Error ${ret} while declaring Subscriber`
-    //     }
-    //     return ret
-    // }
-
-    /**
-     * Declares a Subscriber handler on a Session
-     *
-     * @remarks
-     *  The handler function will be passed to the Wasm Module and executed when a new sample arrives on the socket
-     * @param keyexpr - Something that implements IntoKeyExpr
-     * @param handler -  A callback function that takes a Sample and returns a Void
-     * 
-     * @returns success: 0, failure : -1
-     */
-    async declare_subscriber_handler(keyexpr: IntoKeyExpr, handler: (sample: Sample) => void): Promise<Subscriber<void>> {
-        // const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
-        // const [key]: [KeyExpr] = await Promise.all([keyexpr[intoKeyExpr]()]);
-
-        // const ret = await Zenoh.zw_declare_subscriber(
-        //     this.__ptr,
-        //     key.__ptr,
-        //     async (keyexpr_ptr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => {
-        //         // Looks into WASM Memory
-        //         let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
-
-        //         // Copies value from WASM to Javascript
-        //         let uint8_array_cloned = new Uint8Array(uint8_array_view)
-        //         // 
-        //         let value = new Value(uint8_array_cloned);
-        //         // TODO : Actually get the Sample kind from the Sample
-        //         let kind = SampleKind.PUT;
-
-        //         handler(new Sample(key, value, kind))
-        //     });
-
-        // if (ret < 0) {
-        //     throw `Error ${ret} while declaring Subscriber`
-        // }
-        // return new Subscriber<void>(ret);
-
-        return new Subscriber<void>();
+    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler?: ((sample: Sample) => Promise<void>)): Promise<Subscriber> {
+        let subscriber = Subscriber.new(keyexpr, this, undefined);
+        return subscriber
     }
 
-    /**
-     * Declares a Subscriber handler on a Session
-     *
-     * @remarks
-     *  The handler function will be passed to the Wasm Module and executed when a new sample arrives on the socket
-     * @param keyexpr - Something that implements IntoKeyExpr
-     * @param handler -  A callback function that takes a Sample and returns a Void
-     * 
-     * @returns success: 0, failure : -1
-     */
-    async declare_subscriber_handler_async(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>> {
-        // const [Zenoh, key]: [Module, KeyExpr] = await Promise.all([zenoh(), keyexpr[intoKeyExpr]()]);
-        // const [key]: [ KeyExpr] = await Promise.all([ keyexpr[intoKeyExpr]()]);
-
-        // TODO: Get KeyExpr from Sample, 
-        // Therefore internally get KeyExpr from Resource Pool managed by Zenoh-pico/Zenoh-cpp WASM
-        // const ret = await Zenoh.zw_declare_subscriber(
-        //     this.__ptr,
-        //     key.__ptr,
-        //     async (keyexpr_ptr: WasmPtr, pl_start: WasmPtr, pl_len: WasmPtr) => {
-        //         // console.log("Sub Before Sub Array ", pl_start, " : ", pl_start + pl_len)
-        //         let uint8_array_view: Uint8Array = Zenoh.HEAPU8.subarray(pl_start, pl_start + pl_len);
-        //         // console.log("After Sub Array")
-        //         let uint8_array_cloned = new Uint8Array(uint8_array_view)
-        //         // console.log("After Sub Array Clone to TS")
-
-        //         let value = new Value(uint8_array_cloned);
-
-        //         let key_expr: KeyExpr = await KeyExpr.new(Zenoh.UTF8ToString(keyexpr_ptr));
-        //         let kind = SampleKind.PUT;
-
-        //         handler(new Sample(key_expr, value, kind))
-        //     });
-
-        // if (ret < 0) {
-        //     throw `Error ${ret} while declaring Subscriber`
-        // }
-
-        // TODO implement Proper Reciever
-        return new Subscriber<void>();
-        // return new Subscriber<void>(ret);
-    }
 
     async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
-
-        // TODO Test this  
-        var publisher: Publisher = await Publisher.new(keyexpr, this);
+        log.debug("TEST LOGGIN", keyexpr)
+        let key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
+        var publisher: Publisher = await Publisher.new(key_expr, this);
         return publisher
     }
 
@@ -723,12 +582,10 @@ export class Publisher {
     /**
      * Class that creates and keeps a reference to a publisher inside the WASM memory
      */
+    publisher: RemotePublisher;
 
-    // private __publisher_ptr: WasmPtr;
-
-    private constructor() {
-
-        // this.__publisher_ptr = publisher_ptr;
+    private constructor(publisher: RemotePublisher) {
+        this.publisher = publisher;
     }
 
     /**
@@ -738,17 +595,12 @@ export class Publisher {
      * 
      * @returns success: 0, failure : -1
      */
-    async put(value: IntoValue): Promise<void> {
+    async put(payload: IntoZBytes): Promise<void> {
+        let zbytes: ZBytes = await payload[intoZBytes]();
 
-        // const val: Value = await value[intoValue]();
-        // const Zenoh: Module = await zenoh();
-        // const ret = Zenoh.zw_publisher_put(this.__publisher_ptr, val.payload);
-        // if (ret < 0) {
-        // throw `Error ${ret} while putting`
-        // }
-        // return ret
+        this.publisher.put(Array.from(zbytes.payload))
+
         return await new Promise(resolve => resolve());
-        // return void;
     }
 
     /**
@@ -760,41 +612,10 @@ export class Publisher {
      * @returns a new Publisher instance
      */
     static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
+        let key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
 
-        // const Zenoh: Module = await zenoh();
+        let remote_publisher: RemotePublisher = await session.remote_session.declare_publisher(key_expr.inner);
 
-        // const key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
-
-        console.log("Start declare_publisher");
-
-        // let publisher_ptr: WasmPtr = Zenoh.zw_declare_publisher(session.__ptr, key_expr.__ptr);
-        // return new Publisher(publisher_ptr)
-
-        return new Publisher()
+        return new Publisher(remote_publisher)
     }
 }
-
-// TODO: Should this be part of some other class ? 
-// Kind of like the idea of leaving it here so that the user can decide what they want decoded and how it works
-// export class Utils {
-//     // static decoder = new TextDecoder()
-//     private decoder = new TextDecoder();
-
-//     decodeFromSharedBuffer(sharedBuffer: SharedArrayBuffer) {
-//         const copyLength = Math.min(sharedBuffer.byteLength)
-
-//         // Create a temporary ArrayBuffer and copy the contents of the shared buffer
-//         // into it.
-//         const tempBuffer = new ArrayBuffer(copyLength)
-//         const tempView = new Uint8Array(tempBuffer)
-
-//         let sharedView = new Uint8Array(sharedBuffer)
-//         if (sharedBuffer.byteLength != copyLength) {
-//             sharedView = sharedView.subarray(0, copyLength)
-//         }
-//         tempView.set(sharedView)
-
-//         return this.decoder.decode(tempBuffer)
-//     }
-
-// }
