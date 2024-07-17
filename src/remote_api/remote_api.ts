@@ -14,11 +14,9 @@ import { DataMsg } from "./interface/DataMsg";
 import { ControlMsg } from "./interface/ControlMsg";
 import { OwnedKeyExprWrapper } from './interface/OwnedKeyExprWrapper';
 
-export function subscriber2(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
-    console.log("  SUBSCRIBER 2");
-    console.log("  key_expr ", ke)
-    console.log("  handler ", handler)
-    console.log("  Calling Handler ", handler(ke, new Uint8Array([1, 2, 3])))
+
+function executeAsync(func: any) {
+    setTimeout(func, 0);
 }
 
 // ██████  ██    ██ ██████  ██      ██ ███████ ██   ██ ███████ ██████  
@@ -27,8 +25,8 @@ export function subscriber2(ke: string, handler: (key_expr: String, value: Uint8
 // ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██ 
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██ 
 
-
 type UUID = typeof uuidv4 | string
+
 export class RemotePublisher {
     private key_expr: String;
     private publisher_id: UUID;
@@ -64,6 +62,12 @@ export class RemotePublisher {
     }
 }
 
+// ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ██    ██ ██████  ███████  ██████ ██████  ██ ██████  ███████ ██████  
+// ██   ██ ██      ████  ████ ██    ██    ██    ██          ██      ██    ██ ██   ██ ██      ██      ██   ██ ██ ██   ██ ██      ██   ██ 
+// ██████  █████   ██ ████ ██ ██    ██    ██    █████       ███████ ██    ██ ██████  ███████ ██      ██████  ██ ██████  █████   ██████  
+// ██   ██ ██      ██  ██  ██ ██    ██    ██    ██               ██ ██    ██ ██   ██      ██ ██      ██   ██ ██ ██   ██ ██      ██   ██ 
+// ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████  ██████  ██████  ███████  ██████ ██   ██ ██ ██████  ███████ ██   ██ 
+
 // If defined with a Callback, All samples passed to the Callback, 
 // else, must call recieve on the 
 export class RemoteSubscriber {
@@ -75,7 +79,7 @@ export class RemoteSubscriber {
 
     private undeclared: boolean;
 
-    constructor(
+    private constructor(
         key_expr: String,
         subscriber_id: UUID,
         session_ref: RemoteSession,
@@ -90,7 +94,6 @@ export class RemoteSubscriber {
         this.undeclared = false;
     }
 
-
     static async new(
         key_expr: String,
         subscriber_id: UUID,
@@ -99,8 +102,13 @@ export class RemoteSubscriber {
         callback?: (sample: SampleWS) => void
     ) {
 
+        // Note this will run this callback listenning for messages indefinitely
         if (callback != undefined) {
-            console.log("TODO IMPLEMENT CALLBACK CALLING")
+            executeAsync(async () => {
+                for await (const message of rx) {
+                    callback(message)
+                }
+            })
         }
 
         return new RemoteSubscriber(
@@ -112,7 +120,7 @@ export class RemoteSubscriber {
         );
     }
 
-    async recieve() {
+    async recieve(): Promise<SampleWS | void> {
         if (this.undeclared == true) {
             var message = "Subscriber keyexpr:`" + this.key_expr + "` id:`" + this.subscriber_id + "`";
             console.log(message)
@@ -174,7 +182,7 @@ export class RemoteSession {
     // 
     static async new(url: string): Promise<RemoteSession> {
         let split = url.split("/");
-        let websocket_endpoint = split[0] + "://"+split[1];
+        let websocket_endpoint = split[0] + "://" + split[1];
 
         const chan = new SimpleChannel<JSONMessage>(); // creates a new simple channel
         let ws = new WebSocket(websocket_endpoint);
@@ -208,11 +216,8 @@ export class RemoteSession {
     // 
     // Put 
     async put(key_expr: string, payload: Array<number>): Promise<void> {
-        console.log(payload);
         let owned_keyexpr: OwnedKeyExprWrapper = key_expr;
         let data_message: DataMsg = { "Put": { key_expr: owned_keyexpr, payload: payload } };
-
-        // let 
         this.send_data_message(data_message)
     }
 
@@ -257,7 +262,7 @@ export class RemoteSession {
 
         this.send_ctrl_message(control_message);
 
-        let subscriber = new RemoteSubscriber(
+        let subscriber = RemoteSubscriber.new(
             key_expr,
             uuid,
             this,
@@ -348,17 +353,19 @@ export class RemoteSession {
     }
 
     private async handle_data_message(data_msg: DataMsg) {
-
+        // console.log("handle_data_message",data_msg)
         if ("Sample" in data_msg) {
 
             let subscription_uuid: UUIDv4 = data_msg["Sample"][1]
 
             let opt_subscriber = this.subscribers.get(subscription_uuid);
             if (opt_subscriber != undefined) {
-                let channel: SimpleChannel<SampleWS> = opt_subscriber;
 
+                let channel: SimpleChannel<SampleWS> = opt_subscriber;
                 let sample: SampleWS = data_msg["Sample"][0];
                 channel.send(sample);
+            } else {
+                console.log("SubscrptionUUID not in map", subscription_uuid)
             }
         }
     }

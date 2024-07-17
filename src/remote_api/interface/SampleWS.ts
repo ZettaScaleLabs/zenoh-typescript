@@ -2,4 +2,4 @@
 import type { OwnedKeyExprWrapper } from "./OwnedKeyExprWrapper";
 import type { SampleKindWS } from "./SampleKindWS";
 
-export type SampleWS = { key_expr: OwnedKeyExprWrapper, value: Array<number>, kind: SampleKindWS, };
+export type SampleWS = { key_expr: OwnedKeyExprWrapper, value: Array<number>, kind: SampleKindWS };

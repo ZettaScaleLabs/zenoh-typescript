@@ -3,7 +3,7 @@ import './webpage.ts'
 
 
 import * as zenoh from "../../../esm"
-
+import { Sample, KeyExpr, Subscriber } from "../../../esm"
 
 
 function subscriber(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
@@ -15,34 +15,36 @@ function subscriber(ke: string, handler: (key_expr: String, value: Uint8Array) =
 
 async function main() {
 
-  const callback = function (key_expr: String, value: Uint8Array): void {
-    console.log("    cb demo 1 :  Key_expr ", key_expr);
-    console.log("    cb demo 1 :  Value    ", value);
-  }
-
-  const callback2 = function (key_expr: String, value: Uint8Array): void {
-    console.log("    cb demo 2 :  Key_expr ", key_expr);
-    console.log("    cb demo 2 :  Value    ", value);
+  const callback = async function (sample: Sample): Promise<void> {
+    console.log("    cb demo 1 :  Key_expr ", sample.keyexpr);
+    console.log("    cb demo 1 :  Value    ", sample.payload);
   }
 
   const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"));
+  // KeyExpr
+  let key_exp = KeyExpr.new("demo/put");
 
-  
   // Session put / del / get
-  (await session).put(new zenoh.KeyExpr("demo/put"), new zenoh.ZBytes([65, 66, 67]));
-  (await session).delete("demo/delete");
+  await session.put("demo/put", [65, 66, 67, 49]);
+  await session.put(key_exp, [65, 66, 67, 50]);
+  await session.delete("demo/delete");
 
   // subscribers
-  (await session).declare_subscriber("demo/1", callback);
-  // (await session).declare_subscriber("demo/2", callback2);
+  // let subscriber: Subscriber = await session.declare_subscriber("demo/pub", callback);
+  let subscriber = await session.declare_subscriber("demo/pub");
+  console.log("subscriber", subscriber);
+
+  let value = await subscriber.recieve();
+  console.log(value);
+
 
   // publisher
-  let publisher1: Publisher = await (await session).declare_publisher("demo/pub/1");
-  let publisher2: Publisher = await (await session).declare_publisher("demo/pub/2");
-  publisher1.put([1, 2, 3]);
-  publisher1.undeclare();
-  publisher1.undeclare();
-  publisher2.put([65, 66, 67, 50]);
+  // let publisher1: Publisher = await (await session).declare_publisher("demo/pub/1");
+  // let publisher2: Publisher = await (await session).declare_publisher("demo/pub/2");
+  // publisher1.put([1, 2, 3]);
+  // publisher1.undeclare();
+  // publisher1.undeclare();
+  // publisher2.put([65, 66, 67, 50]);
 
   // queryable
 

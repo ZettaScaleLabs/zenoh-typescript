@@ -12,100 +12,12 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
-// import Module from "./wasm/zenoh-wasm.js"
+// import { Logger, ILogObj } from "tslog";
+// const log: Logger<ILogObj> = new Logger();
 
-// TODO : Clean up Any's with proper types
-/**
- * Interface for Module, overwriting Module from zenoh-wasm.js
- * and manually exposing only what we want to use in the bindings 
- */
-// interface Module {
-//     HEAPU8: any;
-//     UTF8ToString(x: any): string,
-
-//     // Config
-//     zw_default_config(clocator: string): WasmPtr,
-//     // Session
-//     zw_open_session(config_ptr: WasmPtr): WasmPtr,
-//     zw_start_tasks(session_ptr: WasmPtr): number,
-//     zw_put(session_ptr: WasmPtr, key_expr_ptr: WasmPtr, value: Uint8Array): number,
-//     zw_close_session(session_ptr: WasmPtr): number,
-//     // Key Expr
-//     zw_declare_ke(session_ptr: WasmPtr, key_expr_str: string): number,
-//     zw_delete_ke(key_expr_ptr: WasmPtr): number,
-//     zw_make_ke(keyexpr_str: string): WasmPtr,
-//     // Subscruber
-//     zw_declare_subscriber(session_ptr: WasmPtr, key_expr_ptr: WasmPtr, fn: SubCallback): number,
-//     //  Publisher  
-//     zw_declare_publisher(session_ptr: WasmPtr, key_expr_ptr: WasmPtr): number,
-//     zw_publisher_put(publisher_ptr: WasmPtr, value: Uint8Array): number,
-//     zw_undeclare_publisher(publisher_ptr: WasmPtr): number,
-//     // Misc
-//     zw_version(): number,
-// }
-import { Logger, ILogObj } from "tslog";
-
-const log: Logger<ILogObj> = new Logger();
-
-
-import { SampleWS } from './remote_api/interface/SampleWS.js'
-// import { RemoteSession, RemoteSubscriber, RemotePublisher } from './remote_api/remote_api.ts'
+import { SampleWS } from './remote_api/interface/SampleWS'
 import { RemoteSession, RemoteSubscriber, RemotePublisher } from './remote_api/remote_api'
 
-
-export const intoSelector = Symbol("intoSelector")
-
-export interface IntoSelector {
-    [intoSelector]: () => Promise<Selector>
-}
-
-export const intoKeyExpr = Symbol("intoKeyExpr")
-/**
- * Something that may be turned into a Key Expression.
- * 
- * Notable default implementers:
- * - String
- * - KeyExpr
- */
-export interface IntoKeyExpr {
-    [intoKeyExpr]: () => Promise<KeyExpr>
-}
-
-// export const intoValue = Symbol("intoValue")
-
-export const intoZBytes = Symbol("intoZBytes")
-
-/**
- * Something that may be turned into a Value.
- * 
- * Notable default implementers:
- * - string
- * - Uint8Array
- */
-// export interface IntoValue {
-//     [intoValue]: () => Promise<Value>
-// }
-
-/**
- * Something that may be turned into a Value.
- * 
- * Notable default implementers:
- * - string
- * - Uint8Array
- */
-export interface IntoZBytes {
-    [intoZBytes]: () => Promise<ZBytes>
-}
-
-/**
- * Function to Initialize zenoh interface to WASM binary
- */
-// export async function zenoh(): Promise<Module> {
-//     if (!mod_instance) {
-//         mod_instance = await Module();
-//     }
-//     return mod_instance
-// }
 
 //  ██████  ██████  ███    ██ ███████ ██  ██████  
 // ██      ██    ██ ████   ██ ██      ██ ██       
@@ -117,7 +29,6 @@ export class Config {
     /**
      * The configuration for a Zenoh Session.
      */
-    // __ptr: WasmPtr = 0
     locator: string
 
     private constructor(locator: string) {
@@ -129,76 +40,41 @@ export class Config {
     }
 }
 
-
-// ██    ██  █████  ██      ██    ██ ███████ 
-// ██    ██ ██   ██ ██      ██    ██ ██      
-// ██    ██ ███████ ██      ██    ██ █████   
-//  ██  ██  ██   ██ ██      ██    ██ ██      
-//   ████   ██   ██ ███████  ██████  ███████ 
-
-// TODO : Add encoding prop later when we need it
-// Default to empty string
-// export class Value {
-//     /**
-//     * Class to represent an Array of Bytes recieved from Zenoh
-//     */
-//     payload: Uint8Array
-
-//     constructor(payload: Uint8Array) {
-//         this.payload = payload
-//     }
-
-//     arr(): number {
-//         return this.payload.length;
-//     }
-
-//     bytes_per_element(): number {
-//         return this.payload.BYTES_PER_ELEMENT;
-//     }
-
-//     length(): number {
-//         return this.payload.length;
-//     }
-
-//     [intoValue](): Promise<Value> { return Promise.resolve(this) }
-
-//     empty(): Value {
-//         return new Value(new Uint8Array());
-//     }
-
-//     new(payload: Uint8Array): Value {
-//         return new Value(payload);
-//     }
-// }
-
-
+export type IntoZBytes = ZBytes | Uint8Array | number[] | Array<number> | String;
 export class ZBytes {
     /**
     * Class to represent an Array of Bytes recieved from Zenoh
     */
-    payload: Uint8Array
+    private buffer: Uint8Array
 
-    constructor(payload: Uint8Array) {
-        this.payload = payload
+    private constructor(buffer: Uint8Array) {
+        this.buffer = buffer
     }
 
     len(): number {
-        return this.payload.length;
+        return this.buffer.length;
     }
-
-    [intoZBytes](): Promise<ZBytes> { return Promise.resolve(this) }
 
     empty(): ZBytes {
         return new ZBytes(new Uint8Array());
     }
 
-    new(payload: Uint8Array): ZBytes {
-        return new ZBytes(payload);
+    payload(): Uint8Array {
+        return this.buffer;
+    }
+
+    static new(bytes: IntoZBytes): ZBytes {
+        if (bytes instanceof ZBytes) {
+            return bytes;
+        } else if (bytes instanceof String) {
+            const encoder = new TextEncoder();
+            const encoded = encoder.encode(bytes.toString());
+            return new ZBytes(encoded)
+        } else {
+            return new ZBytes(Uint8Array.from(bytes))
+        }
     }
 }
-
-
-
 
 // ██   ██ ███████ ██    ██     ███████ ██   ██ ██████  ██████  
 // ██  ██  ██       ██  ██      ██       ██ ██  ██   ██ ██   ██ 
@@ -206,63 +82,34 @@ export class ZBytes {
 // ██  ██  ██         ██        ██       ██ ██  ██      ██   ██ 
 // ██   ██ ███████    ██        ███████ ██   ██ ██      ██   ██ 
 
-export class KeyExpr implements IntoSelector {
+export type IntoKeyExpr = KeyExpr | String | string;
+export class KeyExpr {
     /**
      * Class to represent a Key Expression in Zenoh
      * Key Expression is Allocated and Managed by Zenoh Pico
      * this class only exists to keep track of pointer to WASM c-instance
      */
-    inner: string
+    private _inner: string
+    // RemoteKeyExpr
 
-    [intoKeyExpr](): Promise<KeyExpr> { return Promise.resolve(this) }
-    [intoSelector](): Promise<Selector> { return Promise.resolve(new Selector(this)) }
-
-    constructor(key_expr: string) {
-        this.inner = key_expr
+    private constructor(key_expr: string) {
+        this._inner = key_expr
     }
 
-    static async new(keyexpr: string): Promise<KeyExpr> {
-        return new KeyExpr(keyexpr)
+    inner(): string {
+        return this._inner
     }
 
+    static new(keyexpr: IntoKeyExpr): KeyExpr {
+        if (keyexpr instanceof KeyExpr) {
+            return keyexpr;
+        } else if (keyexpr instanceof String) {
+            return new KeyExpr(keyexpr.toString());
+        } else {
+            return new KeyExpr(keyexpr);
+        }
+    }
 }
-
-/**
- * Mutate global Types String, Uint8Array to implement interfaces:
- * Notable default implementers: 
- *    IntoKeyExpr, IntoValue,
- */
-Object.defineProperty(String.prototype, intoKeyExpr, function (this: string) {
-    return KeyExpr.new(this)
-})
-
-/**
- * Makes sure that string is UTF8, gives you blob and encoding.
- */
-Object.defineProperty(String.prototype, intoZBytes, function (this: string) {
-    const encoder = new TextEncoder();
-    const encoded = encoder.encode(this);
-    return Promise.resolve(new ZBytes(encoded))
-})
-
-/**
- * Apply Uint8Array to intoValue
- */
-Object.defineProperty(Uint8Array.prototype, intoZBytes, function (this: Uint8Array) {
-    return Promise.resolve(new ZBytes(this))
-})
-
-Object.defineProperty(Function.prototype, "onEvent", function (this: Function) {
-    return this;
-})
-
-Object.defineProperty(Function.prototype, "onClose", function (this: Function) { })
-
-// Applies Globally Interface Extension for  String,Uint8Array
-// declare global {
-//     interface String extends IntoKeyExpr, IntoValue { }
-//     interface Uint8Array extends IntoValue { }
-// }
 
 // ███████ ██    ██ ██████  ███████  ██████ ██████  ██ ██████  ███████ ██████  
 // ██      ██    ██ ██   ██ ██      ██      ██   ██ ██ ██   ██ ██      ██   ██ 
@@ -277,15 +124,31 @@ export class Subscriber {
      */
     // receiver: Receiver
     private remote_subscriber: RemoteSubscriber;
+    private callback_subscriber: boolean;
 
-    constructor(remote_subscriber: RemoteSubscriber, session: Session) {
+    constructor(remote_subscriber: RemoteSubscriber, callback_subscriber: boolean) {
         this.remote_subscriber = remote_subscriber;
+        this.callback_subscriber = callback_subscriber;
     }
 
+    async recieve(): Promise<Sample | void> {
+        if (this.callback_subscriber === true) {
+            var message = "Cannot call `recieve()` on Subscriber created with callback:";
+            console.log(message);
+            return
+        }
 
-    async recieve() {
-
-        this.remote_subscriber.recieve();
+        let opt_sample_ws = await this.remote_subscriber.recieve();
+        if (opt_sample_ws != undefined) {
+            let sample_ws: SampleWS = opt_sample_ws;
+            let key_expr: KeyExpr = KeyExpr.new(sample_ws.key_expr);
+            let payload: ZBytes = ZBytes.new(sample_ws.value);
+            let sample_kind: SampleKind = SampleKind[sample_ws.kind];
+            return Sample.new(key_expr, payload, sample_kind);
+        } else {
+            console.log("Receieve returned unexpected void from RemoteSubscriber")
+            return
+        }
     }
 
     async undeclare() {
@@ -293,28 +156,30 @@ export class Subscriber {
     }
 
 
-    static async new(keyexpr: IntoKeyExpr,
+    static async new(
+        into_key_expr: IntoKeyExpr,
         session: Session,
         callback?: ((sample: Sample) => Promise<void>)): Promise<Subscriber> {
+        console.log("   new remote subscriber", callback)
 
-        let key_expr = await keyexpr[intoKeyExpr]();
+        let key_expr = KeyExpr.new(into_key_expr);
 
         let remote_subscriber: RemoteSubscriber;
-
+        let callback_subscriber = false;
         if (callback != undefined) {
+            callback_subscriber = true;
             const callback_conversion = async function (sample_ws: SampleWS): Promise<void> {
-                let key_expr: KeyExpr = new KeyExpr(sample_ws.key_expr);
-                let payload: ZBytes = new ZBytes(Uint8Array.from(sample_ws.value));
+                let key_expr: KeyExpr = KeyExpr.new(sample_ws.key_expr);
+                let payload: ZBytes = ZBytes.new(sample_ws.value);
                 let sample_kind: SampleKind = SampleKind[sample_ws.kind];
-
                 callback(new Sample(key_expr, payload, sample_kind))
             }
-            remote_subscriber = await session.remote_session.declare_subscriber(key_expr.inner, callback_conversion);
+            remote_subscriber = await session.remote_session.declare_subscriber(key_expr.inner(), callback_conversion);
         } else {
-            remote_subscriber = await session.remote_session.declare_subscriber(key_expr.inner, callback);
+            remote_subscriber = await session.remote_session.declare_subscriber(key_expr.inner());
         }
 
-        return new Subscriber(remote_subscriber, session);
+        return new Subscriber(remote_subscriber, callback_subscriber);
     }
 }
 
@@ -349,10 +214,11 @@ export enum SampleKind {
     DELETE = "DELETE",
 }
 
-
 /**
  * Samples are publication events receieved on the Socket
  */
+
+// type IntoSample = SampleWS | [KeyExpr, ZBytes, SampleKind];
 export class Sample {
     keyexpr: KeyExpr
     payload: ZBytes
@@ -367,19 +233,10 @@ export class Sample {
         this.kind = kind
     }
 
-    new(keyexpr: KeyExpr, payload: ZBytes, kind: SampleKind): Sample {
+    static new(keyexpr: KeyExpr, payload: ZBytes, kind: SampleKind): Sample {
+
         return new Sample(keyexpr, payload, kind);
     }
-}
-
-/**
- * Extend String to IntoSelector
- */
-declare global {
-    // interface for KeyExpr?params to selector
-    interface String extends IntoSelector { }
-    // interface for [KeyExpr, params] to selector
-    // interface [String, Map<String, String>] extends IntoSelector {  } // this doesn't work, will need an overload :(
 }
 
 
@@ -389,9 +246,10 @@ declare global {
 //      ██ ██      ██      ██      ██         ██    ██    ██ ██   ██ 
 // ███████ ███████ ███████ ███████  ██████    ██     ██████  ██   ██ 
 
-// TODO: Internals of selector need to be handled in Zenoh rather than JS
-// TODO: TEST
 // Selector : High level <keyexpr>?arg1=lol&arg2=hi
+
+
+type IntoSelector = Selector | KeyExpr | String | string;
 export class Selector {
 
     // TODO clear memory of selector using FinalizationRegistry
@@ -438,8 +296,8 @@ export class Selector {
         this._parameters = parameters;
     }
 
-    static new(keyexpr: IntoKeyExpr, parameter: Map<string, string>): Promise<Selector>;
-    static new(selector: IntoSelector): Promise<Selector>;
+    // static new(keyexpr: IntoKeyExpr, parameter: Map<string, string>): Promise<Selector>;
+    // static new(selector: IntoSelector): Promise<Selector>;
     static async new(selector: IntoSelector | IntoKeyExpr, parameters?: Map<string, string>): Promise<Selector> {
         // TODO implement 
         throw "Unimplemented";
@@ -524,20 +382,20 @@ export class Session {
      * 
      * @returns success: 0, failure : -1
      */
-    async put(keyexpr: IntoKeyExpr, zbytes: IntoZBytes): Promise<void> {
+    async put(into_key_expr: IntoKeyExpr,
+        into_zbytes: IntoZBytes): Promise<void> {
 
-        const [key, z_bytes]: [KeyExpr, ZBytes] = await Promise.all([keyexpr[intoKeyExpr](), zbytes[intoZBytes]()]);
+        let key_expr = KeyExpr.new(into_key_expr);
+        let z_bytes = ZBytes.new(into_zbytes);
 
-        this.remote_session.put(key.inner, Array.from(z_bytes.payload));
+        this.remote_session.put(key_expr.inner(), Array.from(z_bytes.payload()));
     }
 
+    async delete(into_key_expr: IntoKeyExpr): Promise<void> {
+        let key_expr = KeyExpr.new(into_key_expr);
 
-    async delete(keyexpr: IntoKeyExpr): Promise<void> {
-        const key: KeyExpr = await keyexpr[intoKeyExpr]();
-        this.remote_session.delete(key.inner);
+        this.remote_session.delete(key_expr.inner());
     }
-
-
     /**
      * Declares a Key Expression on a session
      *
@@ -555,18 +413,13 @@ export class Session {
     //     throw "TODO"
     // }
 
-    // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver>): Promise<Subscriber<Receiver>>;
-    // async declare_subscriber(keyexpr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber<void>>;
-    // async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler: IntoHandler<Sample, Receiver> | ((sample: Sample) => Promise<void>)): Promise<Subscriber<Receiver | void>> {
-    async declare_subscriber<Receiver>(keyexpr: IntoKeyExpr, handler?: ((sample: Sample) => Promise<void>)): Promise<Subscriber> {
-        let subscriber = Subscriber.new(keyexpr, this, undefined);
+    async declare_subscriber(keyexpr: IntoKeyExpr, handler?: ((sample: Sample) => Promise<void>)): Promise<Subscriber> {
+        let subscriber = await Subscriber.new(keyexpr, this, handler);
         return subscriber
     }
 
-
     async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
-        log.debug("TEST LOGGIN", keyexpr)
-        let key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
+        let key_expr: KeyExpr = KeyExpr.new(keyexpr)
         var publisher: Publisher = await Publisher.new(key_expr, this);
         return publisher
     }
@@ -596,9 +449,9 @@ export class Publisher {
      * @returns success: 0, failure : -1
      */
     async put(payload: IntoZBytes): Promise<void> {
-        let zbytes: ZBytes = await payload[intoZBytes]();
+        let zbytes: ZBytes = ZBytes.new(payload);
 
-        this.publisher.put(Array.from(zbytes.payload))
+        this.publisher.put(Array.from(zbytes.payload()))
 
         return await new Promise(resolve => resolve());
     }
@@ -611,11 +464,17 @@ export class Publisher {
      * 
      * @returns a new Publisher instance
      */
-    static async new(keyexpr: IntoKeyExpr, session: Session): Promise<Publisher> {
-        let key_expr: KeyExpr = await keyexpr[intoKeyExpr]();
+    static async new(into_key_expr: IntoKeyExpr, session: Session): Promise<Publisher> {
+        const key_expr = KeyExpr.new(into_key_expr);
 
-        let remote_publisher: RemotePublisher = await session.remote_session.declare_publisher(key_expr.inner);
+        let remote_publisher: RemotePublisher = await session.remote_session.declare_publisher(key_expr.inner());
 
         return new Publisher(remote_publisher)
     }
+}
+
+
+export function open(config: Config): Promise<Session> {
+
+    return Session.open(config)
 }
