@@ -40,7 +40,7 @@ export class Config {
     }
 }
 
-export type IntoZBytes = ZBytes | Uint8Array | number[] | Array<number> | String;
+export type IntoZBytes = ZBytes | Uint8Array | number[] | Array<number> | String | string;
 export class ZBytes {
     /**
     * Class to represent an Array of Bytes recieved from Zenoh
@@ -66,7 +66,7 @@ export class ZBytes {
     static new(bytes: IntoZBytes): ZBytes {
         if (bytes instanceof ZBytes) {
             return bytes;
-        } else if (bytes instanceof String) {
+        } else if( bytes instanceof String || typeof bytes === "string" ){
             const encoder = new TextEncoder();
             const encoded = encoder.encode(bytes.toString());
             return new ZBytes(encoded)
@@ -435,10 +435,10 @@ export class Publisher {
     /**
      * Class that creates and keeps a reference to a publisher inside the WASM memory
      */
-    publisher: RemotePublisher;
+    private remote_publisher: RemotePublisher;
 
     private constructor(publisher: RemotePublisher) {
-        this.publisher = publisher;
+        this.remote_publisher = publisher;
     }
 
     /**
@@ -451,9 +451,11 @@ export class Publisher {
     async put(payload: IntoZBytes): Promise<void> {
         let zbytes: ZBytes = ZBytes.new(payload);
 
-        this.publisher.put(Array.from(zbytes.payload()))
+        return this.remote_publisher.put(Array.from(zbytes.payload()))
+    }
 
-        return await new Promise(resolve => resolve());
+    async undeclare() {
+        await this.remote_publisher.undeclare()
     }
 
     /**
@@ -475,6 +477,5 @@ export class Publisher {
 
 
 export function open(config: Config): Promise<Session> {
-
     return Session.open(config)
 }

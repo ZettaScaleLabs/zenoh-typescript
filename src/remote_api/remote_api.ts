@@ -40,9 +40,9 @@ export class RemotePublisher {
         this.undeclared = false;
     }
 
-    put(value: Array<number>) {
+    async put(value: Array<number>) {
         if (this.undeclared == true) {
-            var message = "Publisher keyexpr:`" + this.key_expr + "` id:`" + this.publisher_id + "`";
+            var message = "Publisher keyexpr:`" + this.key_expr + "` id:`" + this.publisher_id + "` already undeclared";
             console.log(message)
             return
         }
@@ -52,7 +52,7 @@ export class RemotePublisher {
 
     async undeclare() {
         if (this.undeclared == true) {
-            var message = "Publisher keyexpr:`" + this.key_expr + "` id:`" + this.publisher_id + "` already closed";
+            var message = "Publisher keyexpr:`" + this.key_expr + "` id:`" + this.publisher_id + "` already undeclared";
             console.log(message)
             return
         }
@@ -137,7 +137,6 @@ export class RemoteSubscriber {
     }
 
     async undeclare() {
-
         if (this.undeclared == true) {
             var message = "Subscriber keyexpr:`" + this.key_expr + "` id:`" + this.subscriber_id + "` already closed";
             console.log(message)
@@ -147,6 +146,7 @@ export class RemoteSubscriber {
         this.undeclared = true;
         let ctrl_message: ControlMsg = { "UndeclareSubscriber": this.subscriber_id.toString() };
         this.session_ref.send_ctrl_message(ctrl_message)
+        this.rx.close();
     }
 }
 
