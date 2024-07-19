@@ -14,6 +14,8 @@
     "vite": "^5.2.12"
   },
   "dependencies": {
-    "tslog": "^4.9.3"
+    "adze": "^1.9.1",
+    "ts-results": "^3.3.0",
+    "uuid": "^10.0.0"
   }
 }

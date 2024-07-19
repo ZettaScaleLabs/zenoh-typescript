@@ -3,7 +3,7 @@ import './webpage.ts'
 
 
 import * as zenoh from "../../../esm"
-import { Sample, KeyExpr, Subscriber, Publisher} from "../../../esm"
+import { Sample, KeyExpr, Subscriber, Publisher } from "../../../esm"
 
 
 function subscriber(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
@@ -25,30 +25,31 @@ async function main() {
   let key_exp = KeyExpr.new("demo/put");
 
   // Session put / del / get
-  await session.put("demo/put", [65, 66, 67, 49]);
-  await session.put(key_exp, [65, 66, 67, 50]);
-  await session.delete("demo/delete");
+  // await session.put("demo/put", [65, 66, 67, 49]);
+  // await session.put(key_exp, [65, 66, 67, 50]);
+  // await session.delete("demo/delete");
 
   // subscribers
-  let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", callback);
-  await sleep(1000 * 3);
-  callback_subscriber.undeclare()
+  // let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", callback);
+  // await sleep(1000 * 3);
+  // callback_subscriber.undeclare()
 
-  let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub");
-  let value = await poll_subscriber.recieve();
-  console.log("poll_subscriber", value);
-  console.log(await poll_subscriber.recieve());
-  poll_subscriber.undeclare()
+  // let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub");
+  // let value = await poll_subscriber.recieve();
+  // console.log("poll_subscriber", value);
+  // console.log(await poll_subscriber.recieve());
+  // poll_subscriber.undeclare()
 
   // publisher
-  let publisher: Publisher = await session.declare_publisher("demo/pub/1");
-  await publisher.put("This is rust string");
-  await publisher.put(new String("This is rust"));
-  await publisher.put([65, 66, 67, 49]);
-  await publisher.undeclare();
-  await publisher.put([65, 66, 67, 49]);
+  // let publisher: Publisher = await session.declare_publisher("demo/pub/1");
+  // await publisher.put("This is rust string");
+  // await publisher.put(new String("This is rust"));
+  // await publisher.put([65, 66, 67, 49]);
+  // await publisher.undeclare();
 
   // queryable
+  let queryable = session.dec
+
 
   // Loop to spin and keep alive
   var count = 0;
