@@ -12,14 +12,20 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
-
+// Interface Files
 import { SampleWS } from './remote_api/interface/SampleWS'
 import { QueryWS } from './remote_api/interface/QueryWS'
+import { SampleKindWS } from './remote_api/interface/SampleKindWS'
+
+// Remote API
 import { RemoteSubscriber, RemotePublisher } from './remote_api/pubsub'
 import { RemoteSession } from './remote_api/session'
 import { RemoteQueryable } from './remote_api/query'
+import { SimpleChannel } from 'channel-ts'
+import { ReplyWS } from './remote_api/interface/ReplyWS'
+import { OwnedKeyExprWrapper } from './remote_api/interface/OwnedKeyExprWrapper'
 
-
+// 
 type Option<T> = T | null;
 
 
@@ -79,6 +85,7 @@ export class ZBytes {
         }
     }
 }
+
 
 // ██   ██ ███████ ██    ██     ███████ ██   ██ ██████  ██████  
 // ██  ██  ██       ██  ██      ██       ██ ██  ██   ██ ██   ██ 
@@ -148,7 +155,16 @@ export class Subscriber {
             let sample_ws: SampleWS = opt_sample_ws;
             let key_expr: KeyExpr = KeyExpr.new(sample_ws.key_expr);
             let payload: ZBytes = ZBytes.new(sample_ws.value);
-            let sample_kind: SampleKind = SampleKind[sample_ws.kind];
+            let sample_kind: SampleKind;
+
+            if (sample_ws.kind = "Put") {
+                sample_kind = SampleKind.PUT;
+            } else if (sample_ws.kind = "Delete") {
+                sample_kind = SampleKind.PUT;
+            } else {
+                console.log("Recieved Unknown SampleKind Variant from Websocket, Defaulting to PUT");
+                sample_kind = SampleKind.PUT;
+            }
             return Sample.new(key_expr, payload, sample_kind);
         } else {
             console.log("Receieve returned unexpected void from RemoteSubscriber")
@@ -159,7 +175,6 @@ export class Subscriber {
     async undeclare() {
         this.remote_subscriber.undeclare();
     }
-
 
     static async new(
         remote_subscriber: RemoteSubscriber,
@@ -184,11 +199,11 @@ export class Queryable {
      */
     // receiver: Receiver
     private remote_queryable: RemoteQueryable;
-    // private callback_queryable: boolean;
+    private reply_tx: SimpleChannel<ReplyWS>;
 
-    constructor(remote_queryable: RemoteQueryable, callback_queryable: boolean) {
+    constructor(remote_queryable: RemoteQueryable, reply_tx: SimpleChannel<ReplyWS>) {
         this.remote_queryable = remote_queryable;
-        // this.callback_queryable = callback_queryable;
+        this.reply_tx = reply_tx;
     }
 
     async recieve(): Promise<Query | void> {
@@ -234,8 +249,9 @@ export class Queryable {
 
     static async new(
         remote_queryable: RemoteQueryable,
+        reply_tx: SimpleChannel<ReplyWS>,
     ): Promise<Subscriber> {
-        return new Queryable(remote_queryable);
+        return new Queryable(remote_queryable, reply_tx);
     }
 }
 
@@ -391,7 +407,7 @@ export class Query {
     private _payload: Option<ZBytes>;
     private _attachment: Option<ZBytes>;
     private _encoding: string | null;
-    private _remote_session: RemoteSession;
+    private reply_tx: SimpleChannel<ReplyWS>;
 
     selector() {
         // return new Selector
@@ -413,9 +429,34 @@ export class Query {
         return this._attachment
     }
 
-    async reply(sample: Sample): Promise<void> { }
-    async reply_err(error: IntoZBytes): Promise<void> { }
-    async reply_del(error: IntoZBytes): Promise<void> { }
+    // Send Reply here.
+    async reply_sample(sample: Sample): Promise<void> {
+        let key_expr :OwnedKeyExprWrapper = sample.keyexpr.toString();
+        let value :Array<number> = Array.from(sample.payload().payload());
+        let sample_kind: SampleKindWS;
+        if (sample.kind() == SampleKind.PUT){
+            sample_kind = "Put"
+        } else  if (sample.kind() == SampleKind.DELETE){
+            sample_kind = "Delete"
+        }
+
+        // let kind : SampleKindWS = sample.kind;
+        // handler(new Sample(key_expr, payload, sample_kind))
+
+        let sample: SampleWS = { key_expr: key_expr, value: value, kind: sample_kind};
+        let reply :ReplyWS = { result: { "Ok" : sample } };
+    }
+    async reply(keyexpr: IntoKeyExpr, payload: IntoZBytes): Promise<void> {
+        // TODO
+    }
+    async reply_err(payload: IntoZBytes): Promise<void> { 
+        // TODO 
+        let reply :ReplyWS = { result: { Ok : sample } | { Err : ReplyErrorWS }, };;
+    }
+    async reply_del(payload: IntoZBytes): Promise<void> {
+        // TODO ADd delete type
+        let reply :ReplyWS = { result: { Ok : sample } | { Err : ReplyErrorWS }, };;
+     }
 
     private constructor(
         key_expr: KeyExpr,
@@ -423,14 +464,14 @@ export class Query {
         payload: Option<ZBytes>,
         attachment: Option<ZBytes>,
         encoding: string | null,
-        remote_sesison: RemoteSession,
+        reply_tx: SimpleChannel<ReplyWS>,
     ) {
         this._key_expr = key_expr;
         this._parameters = parameters;
         this._payload = payload;
         this._attachment = attachment;
         this._encoding = encoding;
-        this._remote_session = remote_sesison;
+        this.reply_tx = reply_tx;
     }
 
     static new(
@@ -439,8 +480,7 @@ export class Query {
         payload: Option<ZBytes>,
         attachment: Option<ZBytes>,
         encoding: string | null,
-        // 
-        remote_sesison: RemoteQueryable
+        reply_tx: SimpleChannel<ReplyWS>
     ) {
 
         return new Query(
@@ -449,13 +489,17 @@ export class Query {
             payload,
             attachment,
             encoding,
-            remote_sesison,
+            reply_tx,
         );
     }
 }
 
 // TODO Implement Reply API
-export class Reply { }
+export class Reply {
+
+
+
+}
 
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
 // ██      ██      ██      ██      ██ ██    ██ ████   ██ 
@@ -571,7 +615,7 @@ export class Session {
     }
 
 
-    async declare_queryable(into_key_expr: IntoKeyExpr, complete: boolean, handler?: ((query: Query) => Promise<void>)): Promise<Subscriber> {
+    async declare_queryable(into_key_expr: IntoKeyExpr, complete: boolean, handler?: ((query: Query) => Promise<void>)): Promise<Queryable> {
 
         let key_expr = KeyExpr.new(into_key_expr);
         let remote_queryable: RemoteQueryable;
@@ -605,6 +649,7 @@ export class Session {
         } else {
             remote_queryable = await this.remote_session.declare_queryable(key_expr.inner(), complete);
         }
+
 
         let queryable = await Queryable.new(remote_queryable);
         return queryable

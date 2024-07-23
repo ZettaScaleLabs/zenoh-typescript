@@ -48,7 +48,8 @@ async function main() {
   // await publisher.undeclare();
 
   // queryable
-  let queryable = session.dec
+  // let queryable = session.declare_queryable(into_key_expr: IntoKeyExpr, complete: boolean, handler?: ((query: Query) => Promise<void>)): Promise<Subscriber>;
+
 
 
   // Loop to spin and keep alive

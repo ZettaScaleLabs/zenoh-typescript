@@ -16,6 +16,7 @@ import { OwnedKeyExprWrapper } from './interface/OwnedKeyExprWrapper';
 import { QueryWS } from './interface/QueryWS';
 import { RemotePublisher, RemoteSubscriber } from './pubsub';
 import { RemoteQueryable } from './query';
+import { ReplyWS } from './interface/ReplyWS';
 
 
 // ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
@@ -153,9 +154,10 @@ export class RemoteSession {
 
         let control_message: ControlMsg = { "DeclareQueryable": { key_expr: key_expr, complete: complete, id: uuid } };
 
-        let channel: SimpleChannel<QueryWS> = new SimpleChannel<QueryWS>();
+        let query_rx: SimpleChannel<QueryWS> = new SimpleChannel<QueryWS>();
+        let reply_tx: SimpleChannel<ReplyWS> = new SimpleChannel<ReplyWS>();
 
-        this.queryables.set(uuid, channel);
+        this.queryables.set(uuid, query_rx);
 
         this.send_ctrl_message(control_message);
 
@@ -163,7 +165,8 @@ export class RemoteSession {
             key_expr,
             uuid,
             this,
-            channel,
+            query_rx,
+            reply_tx,
             callback
         );
 

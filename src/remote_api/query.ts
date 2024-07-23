@@ -31,10 +31,12 @@ export class RemoteQueryable {
     private queryable_id: UUIDv4;
     private session_ref: RemoteSession;
     private callback?: (sample: QueryWS) => void
-    // 
+
+    // To receieve Queries on the Websocket Channel 
     private rx: SimpleChannel<QueryWS>;
-    //
-    private tx: SimpleChannel<ReplyWS>;
+    
+    // To Send Query Replies on Websocket Channel
+    reply_tx: SimpleChannel<ReplyWS>;
 
     private undeclared: boolean;
 
@@ -43,6 +45,8 @@ export class RemoteQueryable {
         queryable_id: UUIDv4,
         session_ref: RemoteSession,
         rx: SimpleChannel<QueryWS>,
+        reply_tx: SimpleChannel<ReplyWS>,
+        // 
         callback?: (sample: QueryWS) => void
     ) {
         this.key_expr = key_expr;
@@ -51,6 +55,7 @@ export class RemoteQueryable {
         this.rx = rx;
         this.callback = callback;
         this.undeclared = false;
+
     }
 
     static async new(
@@ -76,6 +81,7 @@ export class RemoteQueryable {
             queryable_id,
             session_ref,
             rx,
+            tx,
             callback
         );
     }
