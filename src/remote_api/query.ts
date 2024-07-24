@@ -1,9 +1,6 @@
 import { SimpleChannel } from "channel-ts";
-import { Logger } from "tslog";
 
 // Import interface 
-import { SampleWS } from "./interface/SampleWS";
-import { DataMsg } from "./interface/DataMsg";
 import { ControlMsg } from "./interface/ControlMsg";
 
 // Remote Api

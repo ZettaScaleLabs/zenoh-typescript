@@ -1,6 +1,5 @@
 import { SimpleChannel } from "channel-ts";
 import { v4 as uuidv4 } from 'uuid';
-import { Logger } from "tslog";
 
 // Import interface 
 import { SampleWS } from "./interface/SampleWS";

@@ -15,19 +15,21 @@
 // Interface Files
 import { SampleWS } from './remote_api/interface/SampleWS'
 import { QueryWS } from './remote_api/interface/QueryWS'
-import { SampleKindWS } from './remote_api/interface/SampleKindWS'
+
 
 // Remote API
-import { RemoteSubscriber, RemotePublisher } from './remote_api/pubsub'
 import { RemoteSession } from './remote_api/session'
 import { RemoteQueryable } from './remote_api/query'
-import { SimpleChannel } from 'channel-ts'
-import { ReplyWS } from './remote_api/interface/ReplyWS'
-import { OwnedKeyExprWrapper } from './remote_api/interface/OwnedKeyExprWrapper'
 
-// 
-type Option<T> = T | null;
+// API Layer Files
+import { KeyExpr, IntoKeyExpr } from './key_expr'
+import { ZBytes, IntoZBytes} from './z_bytes'
+import { Sample, SampleKind } from './sample'
+import { RemoteSubscriber } from './remote_api/pubsub'
+import { Publisher, Subscriber } from './pubsub'
+// import { Query } from './query'
 
+export type Option<T> = T | null;
 
 //  ██████  ██████  ███    ██ ███████ ██  ██████  
 // ██      ██    ██ ████   ██ ██      ██ ██       
@@ -50,281 +52,6 @@ export class Config {
     }
 }
 
-export type IntoZBytes = ZBytes | Uint8Array | number[] | Array<number> | String | string;
-export class ZBytes {
-    /**
-    * Class to represent an Array of Bytes recieved from Zenoh
-    */
-    private buffer: Uint8Array
-
-    private constructor(buffer: Uint8Array) {
-        this.buffer = buffer
-    }
-
-    len(): number {
-        return this.buffer.length;
-    }
-
-    empty(): ZBytes {
-        return new ZBytes(new Uint8Array());
-    }
-
-    payload(): Uint8Array {
-        return this.buffer;
-    }
-
-    static new(bytes: IntoZBytes): ZBytes {
-        if (bytes instanceof ZBytes) {
-            return bytes;
-        } else if (bytes instanceof String || typeof bytes === "string") {
-            const encoder = new TextEncoder();
-            const encoded = encoder.encode(bytes.toString());
-            return new ZBytes(encoded)
-        } else {
-            return new ZBytes(Uint8Array.from(bytes))
-        }
-    }
-}
-
-
-// ██   ██ ███████ ██    ██     ███████ ██   ██ ██████  ██████  
-// ██  ██  ██       ██  ██      ██       ██ ██  ██   ██ ██   ██ 
-// █████   █████     ████       █████     ███   ██████  ██████  
-// ██  ██  ██         ██        ██       ██ ██  ██      ██   ██ 
-// ██   ██ ███████    ██        ███████ ██   ██ ██      ██   ██ 
-
-export type IntoKeyExpr = KeyExpr | String | string;
-export class KeyExpr {
-    /**
-     * Class to represent a Key Expression in Zenoh
-     * Key Expression is Allocated and Managed by Zenoh Pico
-     * this class only exists to keep track of pointer to WASM c-instance
-     */
-    private _inner: string
-    // RemoteKeyExpr
-
-    private constructor(key_expr: string) {
-        this._inner = key_expr
-    }
-
-    inner(): string {
-        return this._inner
-    }
-
-    static new(keyexpr: IntoKeyExpr): KeyExpr {
-        if (keyexpr instanceof KeyExpr) {
-            return keyexpr;
-        } else if (keyexpr instanceof String) {
-            return new KeyExpr(keyexpr.toString());
-        } else {
-            return new KeyExpr(keyexpr);
-        }
-    }
-}
-
-// ███████ ██    ██ ██████  ███████  ██████ ██████  ██ ██████  ███████ ██████  
-// ██      ██    ██ ██   ██ ██      ██      ██   ██ ██ ██   ██ ██      ██   ██ 
-// ███████ ██    ██ ██████  ███████ ██      ██████  ██ ██████  █████   ██████  
-//      ██ ██    ██ ██   ██      ██ ██      ██   ██ ██ ██   ██ ██      ██   ██ 
-// ███████  ██████  ██████  ███████  ██████ ██   ██ ██ ██████  ███████ ██   ██ 
-
-export class Subscriber {
-
-    /**
-     * Class to hold pointer to subscriber in Wasm Memory
-     */
-    // receiver: Receiver
-    private remote_subscriber: RemoteSubscriber;
-    private callback_subscriber: boolean;
-
-    constructor(remote_subscriber: RemoteSubscriber, callback_subscriber: boolean) {
-        this.remote_subscriber = remote_subscriber;
-        this.callback_subscriber = callback_subscriber;
-    }
-
-    async recieve(): Promise<Sample | void> {
-        if (this.callback_subscriber === true) {
-            var message = "Cannot call `recieve()` on Subscriber created with callback:";
-            console.log(message);
-            return
-        }
-
-        // from SampleWS -> Sample
-        let opt_sample_ws = await this.remote_subscriber.recieve();
-        if (opt_sample_ws != undefined) {
-            let sample_ws: SampleWS = opt_sample_ws;
-            let key_expr: KeyExpr = KeyExpr.new(sample_ws.key_expr);
-            let payload: ZBytes = ZBytes.new(sample_ws.value);
-            let sample_kind: SampleKind;
-
-            if (sample_ws.kind = "Put") {
-                sample_kind = SampleKind.PUT;
-            } else if (sample_ws.kind = "Delete") {
-                sample_kind = SampleKind.PUT;
-            } else {
-                console.log("Recieved Unknown SampleKind Variant from Websocket, Defaulting to PUT");
-                sample_kind = SampleKind.PUT;
-            }
-            return Sample.new(key_expr, payload, sample_kind);
-        } else {
-            console.log("Receieve returned unexpected void from RemoteSubscriber")
-            return
-        }
-    }
-
-    async undeclare() {
-        this.remote_subscriber.undeclare();
-    }
-
-    static async new(
-        remote_subscriber: RemoteSubscriber,
-        callback_subscriber: boolean
-    ): Promise<Subscriber> {
-        return new Subscriber(remote_subscriber, callback_subscriber);
-    }
-}
-
-
-//  ██████  ██    ██ ███████ ██████  ██    ██  █████  ██████  ██      ███████ 
-// ██    ██ ██    ██ ██      ██   ██  ██  ██  ██   ██ ██   ██ ██      ██      
-// ██    ██ ██    ██ █████   ██████    ████   ███████ ██████  ██      █████   
-// ██ ▄▄ ██ ██    ██ ██      ██   ██    ██    ██   ██ ██   ██ ██      ██      
-//  ██████   ██████  ███████ ██   ██    ██    ██   ██ ██████  ███████ ███████ 
-//     ▀▀                                                                     
-
-export class Queryable {
-
-    /**
-     * Class to hold pointer to subscriber in Wasm Memory
-     */
-    // receiver: Receiver
-    private remote_queryable: RemoteQueryable;
-    private reply_tx: SimpleChannel<ReplyWS>;
-
-    constructor(remote_queryable: RemoteQueryable, reply_tx: SimpleChannel<ReplyWS>) {
-        this.remote_queryable = remote_queryable;
-        this.reply_tx = reply_tx;
-    }
-
-    async recieve(): Promise<Query | void> {
-        // if (this.callback_queryable === true) {
-        //     var message = "Cannot call `recieve()` on Subscriber created with callback:";
-        //     console.log(message);
-        //     return
-        // }
-
-        // QueryWS -> Query
-        let opt_query_ws = await this.remote_queryable.recieve();
-        if (opt_query_ws != undefined) {
-
-            let query_ws = opt_query_ws[0];
-            let reply_tx = opt_query_ws[1];
-
-            let key_expr: KeyExpr = KeyExpr.new(query_ws.key_expr);
-            let payload: Option<ZBytes> = null;
-            let attachment: Option<ZBytes> = null;
-            if (query_ws.payload != null) {
-                payload = ZBytes.new(query_ws.payload)
-            }
-            if (query_ws.attachment != null) {
-                attachment = ZBytes.new(query_ws.attachment);
-            }
-            return Query.new(
-                key_expr,
-                query_ws.parameters,
-                payload,
-                attachment,
-                query_ws.encoding,
-                remote_queryable,
-            );
-        } else {
-            console.log("Receieve returned unexpected void from RemoteQueryable")
-            return
-        }
-    }
-
-    async undeclare() {
-        this.remote_queryable.undeclare();
-    }
-
-    static async new(
-        remote_queryable: RemoteQueryable,
-        reply_tx: SimpleChannel<ReplyWS>,
-    ): Promise<Subscriber> {
-        return new Queryable(remote_queryable, reply_tx);
-    }
-}
-
-
-
-
-// TODO: Mimic Rust Channels 
-/**
- * Interface to mimic Rust Channels from the WASM -> Typescript 
- * Meant for use in Subscribers, with Events being receiving a new sample on the socket
- */
-export interface Handler<Event, Receiver> {
-    onEvent: (event: Event) => Promise<void>
-    onClose?: () => Promise<void>
-    receiver?: Receiver
-}
-
-/**
- * Something that may be turned into a Handler.
- * 
- * Notable default implementers: 
- *  -   None
- */
-export const intoHandler = Symbol("intoHandler")
-
-export interface IntoHandler<Event, Receiver> {
-    [intoHandler]: () => Promise<Handler<Event, Receiver>>
-}
-
-/**
- * Kinds of Samples that can be recieved from Zenoh
- */
-export enum SampleKind {
-    PUT = "PUT",
-    DELETE = "DELETE",
-}
-
-/**
- * Samples are publication events receieved on the Socket
- */
-
-// type IntoSample = SampleWS | [KeyExpr, ZBytes, SampleKind];
-export class Sample {
-    private _keyexpr: KeyExpr
-    private _payload: ZBytes
-    private _kind: SampleKind
-    // TODO : Add Encoding
-
-    keyexpr(): KeyExpr {
-        return this._keyexpr;
-    }
-    payload(): ZBytes {
-        return this._payload;
-    }
-    kind(): SampleKind {
-        return this._kind;
-    }
-    constructor(
-        keyexpr: KeyExpr,
-        payload: ZBytes,
-        kind: SampleKind) {
-        this._keyexpr = keyexpr
-        this._payload = payload
-        this._kind = kind
-    }
-
-    static new(keyexpr: KeyExpr, payload: ZBytes, kind: SampleKind): Sample {
-
-        return new Sample(keyexpr, payload, kind);
-    }
-}
-
-
 // ███████ ███████ ██      ███████  ██████ ████████  ██████  ██████  
 // ██      ██      ██      ██      ██         ██    ██    ██ ██   ██ 
 // ███████ █████   ██      █████   ██         ██    ██    ██ ██████  
@@ -332,7 +59,6 @@ export class Sample {
 // ███████ ███████ ███████ ███████  ██████    ██     ██████  ██   ██ 
 
 // Selector : High level <keyexpr>?arg1=lol&arg2=hi
-
 
 type IntoSelector = Selector | KeyExpr | String | string;
 export class Selector {
@@ -396,110 +122,7 @@ export class Selector {
 }
 
 
-export class Parameters { }
-// export class Selector { }
 
-
-// TODO replace encoding with Proper Type
-export class Query {
-    private _key_expr: KeyExpr;
-    private _parameters: Parameters;
-    private _payload: Option<ZBytes>;
-    private _attachment: Option<ZBytes>;
-    private _encoding: string | null;
-    private reply_tx: SimpleChannel<ReplyWS>;
-
-    selector() {
-        // return new Selector
-    }
-
-    key_expr(): KeyExpr {
-        return this._key_expr
-    }
-    parameters(): Parameters {
-        return this._parameters
-    }
-    payload(): Option<ZBytes> {
-        return this._payload;
-    }
-    encoding(): string | null {
-        return this._encoding
-    }
-    attachment(): Option<ZBytes> {
-        return this._attachment
-    }
-
-    // Send Reply here.
-    async reply_sample(sample: Sample): Promise<void> {
-        let key_expr :OwnedKeyExprWrapper = sample.keyexpr.toString();
-        let value :Array<number> = Array.from(sample.payload().payload());
-        let sample_kind: SampleKindWS;
-        if (sample.kind() == SampleKind.PUT){
-            sample_kind = "Put"
-        } else  if (sample.kind() == SampleKind.DELETE){
-            sample_kind = "Delete"
-        }
-
-        // let kind : SampleKindWS = sample.kind;
-        // handler(new Sample(key_expr, payload, sample_kind))
-
-        let sample: SampleWS = { key_expr: key_expr, value: value, kind: sample_kind};
-        let reply :ReplyWS = { result: { "Ok" : sample } };
-    }
-    async reply(keyexpr: IntoKeyExpr, payload: IntoZBytes): Promise<void> {
-        // TODO
-    }
-    async reply_err(payload: IntoZBytes): Promise<void> { 
-        // TODO 
-        let reply :ReplyWS = { result: { Ok : sample } | { Err : ReplyErrorWS }, };;
-    }
-    async reply_del(payload: IntoZBytes): Promise<void> {
-        // TODO ADd delete type
-        let reply :ReplyWS = { result: { Ok : sample } | { Err : ReplyErrorWS }, };;
-     }
-
-    private constructor(
-        key_expr: KeyExpr,
-        parameters: Parameters,
-        payload: Option<ZBytes>,
-        attachment: Option<ZBytes>,
-        encoding: string | null,
-        reply_tx: SimpleChannel<ReplyWS>,
-    ) {
-        this._key_expr = key_expr;
-        this._parameters = parameters;
-        this._payload = payload;
-        this._attachment = attachment;
-        this._encoding = encoding;
-        this.reply_tx = reply_tx;
-    }
-
-    static new(
-        key_expr: KeyExpr,
-        parameters: Parameters,
-        payload: Option<ZBytes>,
-        attachment: Option<ZBytes>,
-        encoding: string | null,
-        reply_tx: SimpleChannel<ReplyWS>
-    ) {
-
-        return new Query(
-            key_expr,
-            parameters,
-            payload,
-            attachment,
-            encoding,
-            reply_tx,
-        );
-    }
-}
-
-// TODO Implement Reply API
-export class Reply {
-
-
-
-}
 
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
 // ██      ██      ██      ██      ██ ██    ██ ████   ██ 
@@ -614,9 +237,7 @@ export class Session {
         return subscriber
     }
 
-
     async declare_queryable(into_key_expr: IntoKeyExpr, complete: boolean, handler?: ((query: Query) => Promise<void>)): Promise<Queryable> {
-
         let key_expr = KeyExpr.new(into_key_expr);
         let remote_queryable: RemoteQueryable;
         let callback_queryable = false;
@@ -650,7 +271,7 @@ export class Session {
             remote_queryable = await this.remote_session.declare_queryable(key_expr.inner(), complete);
         }
 
-
+        // remote_queryable
         let queryable = await Queryable.new(remote_queryable);
         return queryable
     }
@@ -666,54 +287,6 @@ export class Session {
 
 }
 
-// ██████  ██    ██ ██████  ██      ██ ███████ ██   ██ ███████ ██████  
-// ██   ██ ██    ██ ██   ██ ██      ██ ██      ██   ██ ██      ██   ██ 
-// ██████  ██    ██ ██████  ██      ██ ███████ ███████ █████   ██████  
-// ██      ██    ██ ██   ██ ██      ██      ██ ██   ██ ██      ██   ██ 
-// ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██ 
-export class Publisher {
-    /**
-     * Class that creates and keeps a reference to a publisher inside the WASM memory
-     */
-    private remote_publisher: RemotePublisher;
-
-    private constructor(publisher: RemotePublisher) {
-        this.remote_publisher = publisher;
-    }
-
-    /**
-     * Puts a value on the publisher associated with this class instance
-     *
-     * @param value -  something that can bec converted into a Value
-     * 
-     * @returns success: 0, failure : -1
-     */
-    async put(payload: IntoZBytes): Promise<void> {
-        let zbytes: ZBytes = ZBytes.new(payload);
-
-        return this.remote_publisher.put(Array.from(zbytes.payload()))
-    }
-
-    async undeclare() {
-        await this.remote_publisher.undeclare()
-    }
-
-    /**
-     * Creates a new Publisher on a session
-     * @param keyexpr -  something that can be converted into a Key Expression
-    *
-     * @param session -  A Session to create the publisher on
-     * 
-     * @returns a new Publisher instance
-     */
-    static async new(into_key_expr: IntoKeyExpr, remote_session: RemoteSession): Promise<Publisher> {
-        const key_expr = KeyExpr.new(into_key_expr);
-
-        let remote_publisher: RemotePublisher = await remote_session.declare_publisher(key_expr.inner());
-
-        return new Publisher(remote_publisher)
-    }
-}
 
 
 export function open(config: Config): Promise<Session> {
