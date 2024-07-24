@@ -7,6 +7,7 @@ import { ControlMsg } from "./interface/ControlMsg";
 import { RemoteSession, UUIDv4 } from './session';
 import { QueryWS } from "./interface/QueryWS";
 import { ReplyWS } from "./interface/ReplyWS";
+import { DataMsg } from "./interface/DataMsg";
 
 // const log = new Logger({ stylePrettyLogs: false });
 
@@ -30,10 +31,10 @@ export class RemoteQueryable {
     private callback?: (sample: QueryWS) => void
 
     // To receieve Queries on the Websocket Channel 
-    private rx: SimpleChannel<QueryWS>;
+    private query_rx: SimpleChannel<QueryWS>;
     
     // To Send Query Replies on Websocket Channel
-    reply_tx: SimpleChannel<ReplyWS>;
+    private reply_tx: SimpleChannel<ReplyWS>;
 
     private undeclared: boolean;
 
@@ -43,7 +44,6 @@ export class RemoteQueryable {
         session_ref: RemoteSession,
         rx: SimpleChannel<QueryWS>,
         reply_tx: SimpleChannel<ReplyWS>,
-        // 
         callback?: (sample: QueryWS) => void
     ) {
         this.key_expr = key_expr;
@@ -52,23 +52,36 @@ export class RemoteQueryable {
         this.rx = rx;
         this.callback = callback;
         this.undeclared = false;
-
+        this.reply_tx = reply_tx;
     }
+
+    
 
     static async new(
         key_expr: String,
         queryable_id: UUIDv4,
         session_ref: RemoteSession,
-        rx: SimpleChannel<QueryWS>,
-        tx: SimpleChannel<ReplyWS>,
+        query_rx: SimpleChannel<QueryWS>,
+        reply_tx: SimpleChannel<ReplyWS>,
         callback?: (sample: QueryWS) => void
     ) {
 
         // Note this will run this callback listenning for messages indefinitely
+        // TODO Cleanup when undeclared ? 
         if (callback != undefined) {
             executeAsync(async () => {
-                for await (const message of rx) {
+                for await (const message of query_rx) {
                     callback(message)
+                }
+            })
+        }
+
+        if (callback != undefined) {
+            executeAsync(async () => {
+                for await (const message of reply_tx) {
+                    let data_msg: DataMsg = { "Queryable": message };
+
+                    session_ref.send_data_message(message)
                 }
             })
         }
@@ -77,8 +90,8 @@ export class RemoteQueryable {
             key_expr,
             queryable_id,
             session_ref,
-            rx,
-            tx,
+            query_rx,
+            reply_tx,
             callback
         );
     }

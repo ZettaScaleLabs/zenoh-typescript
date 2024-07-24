@@ -27,6 +27,7 @@ import { ZBytes, IntoZBytes} from './z_bytes'
 import { Sample, SampleKind } from './sample'
 import { RemoteSubscriber } from './remote_api/pubsub'
 import { Publisher, Subscriber } from './pubsub'
+import { Query, Queryable } from './query'
 // import { Query } from './query'
 
 export type Option<T> = T | null;
@@ -238,6 +239,7 @@ export class Session {
     }
 
     async declare_queryable(into_key_expr: IntoKeyExpr, complete: boolean, handler?: ((query: Query) => Promise<void>)): Promise<Queryable> {
+        console.log("declare_queryable")
         let key_expr = KeyExpr.new(into_key_expr);
         let remote_queryable: RemoteQueryable;
         let callback_queryable = false;
@@ -277,7 +279,6 @@ export class Session {
     }
 
 
-
     async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
         let key_expr: KeyExpr = KeyExpr.new(keyexpr)
 
@@ -286,7 +287,6 @@ export class Session {
     }
 
 }
-
 
 
 export function open(config: Config): Promise<Session> {

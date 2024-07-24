@@ -1,21 +1,27 @@
 import './style.css'
 import './webpage.ts'
 
-
 import * as zenoh from "../../../esm"
-import { Sample, KeyExpr, Subscriber, Publisher } from "../../../esm"
+// import { Sample, KeyExpr, Subscriber, Publisher } from "../../../esm"
+import { Subscriber, Publisher } from "../../../esm/pubsub"
+import { KeyExpr } from "../../../esm/key_expr"
+import { Sample } from "../../../esm/sample"
+import { Query, Queryable } from "../../../esm/query"
 
 
-function subscriber(ke: string, handler: (key_expr: String, value: Uint8Array) => void) {
-  console.log("  SUBSCRIBER");
-  console.log("  key_expr ", ke)
-  console.log("  handler ", handler)
-  console.log("  Calling Handler ", handler(ke, new Uint8Array([1, 2, 3])))
+function queryable_callback(query: Query ) : Promise<void> {
+    console.log("  Query Receieved");
+
+    query.reply(
+      query.key_expr() ,
+      [65, 66, 67, 50]
+    );
+    console.log("  ");
 }
 
 async function main() {
 
-  const callback = async function (sample: Sample): Promise<void> {
+  const subscriber_callback = async function (sample: Sample): Promise<void> {
     console.log("    cb demo 1 :  Key_expr ", sample.keyexpr());
     console.log("    cb demo 1 :  Value    ", sample.payload());
   }
@@ -25,31 +31,30 @@ async function main() {
   let key_exp = KeyExpr.new("demo/put");
 
   // Session put / del / get
-  await session.put("demo/put", [65, 66, 67, 49]);
-  await session.put(key_exp, [65, 66, 67, 50]);
-  await session.delete("demo/delete");
+  // await session.put("demo/put", [65, 66, 67, 49]);
+  // await session.put(key_exp, [65, 66, 67, 50]);
+  // await session.delete("demo/delete");
 
   // subscribers
-  let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", callback);
-  await sleep(1000 * 3);
-  callback_subscriber.undeclare()
+  // let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", callback);
+  // await sleep(1000 * 3);
+  // callback_subscriber.undeclare()
 
-  let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub");
-  let value = await poll_subscriber.recieve();
-  console.log("poll_subscriber", value);
-  console.log(await poll_subscriber.recieve());
-  poll_subscriber.undeclare()
+  // let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub");
+  // let value = await poll_subscriber.recieve();
+  // console.log("poll_subscriber", value);
+  // console.log(await poll_subscriber.recieve());
+  // poll_subscriber.undeclare()
 
   // publisher
-  let publisher: Publisher = await session.declare_publisher("demo/pub/1");
-  await publisher.put("This is typescript string");
-  await publisher.put(new String("This is typescript String (Wrapper)"));
-  await publisher.put([65, 66, 67, 49]);
-  await publisher.undeclare();
+  // let publisher: Publisher = await session.declare_publisher("demo/pub/1");
+  // await publisher.put("This is typescript string");
+  // await publisher.put(new String("This is typescript String ()"));
+  // await publisher.put([65, 66, 67, 49]);
+  // await publisher.undeclare();
 
   // queryable
-  // let queryable = session.declare_queryable(into_key_expr: IntoKeyExpr, complete: boolean, handler?: ((query: Query) => Promise<void>)): Promise<Subscriber>;
-
+  let queryable: Queryable = await session.declare_queryable("demo/test/queryable", true, queryable_callback );
 
 
   // Loop to spin and keep alive

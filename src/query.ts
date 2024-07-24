@@ -38,7 +38,7 @@ export class Queryable {
     }
 
     async recieve(): Promise<Query | void> {
-
+        // TODO: Make this Callback Subscriber ?
         // if (this.callback_queryable === true) {
         //     var message = "Cannot call `recieve()` on Subscriber created with callback:";
         //     console.log(message);
@@ -82,7 +82,7 @@ export class Queryable {
     static async new(
         remote_queryable: RemoteQueryable,
     ): Promise<Subscriber> {
-        
+
         return new Queryable(remote_queryable, remote_queryable.reply_tx);
     }
 }
@@ -165,10 +165,10 @@ export class Query {
     }
 
     async reply_del(payload: IntoZBytes): Promise<void> {
+        console.log("TODO reply_del")
         // let key_expr: KeyExpr = KeyExpr.new(keyexpr);
         // let z_bytes: ZBytes = ZBytes.new(payload);
         // this.reply_sample(Sample.new(key_expr, z_bytes, SampleKind.PUT))
-
         // TODO Add delete type
         // let reply: ReplyWS = { result: { Ok: sample } | { Err: ReplyErrorWS }, };
     }
@@ -209,10 +209,17 @@ export class Query {
 }
 
 
-export class Parameters { }
+export class Parameters {
+    private _params: String;
+
+
+    private constructor(p: string) {
+        this._params = p;
+    }
+}
 // export class Selector { }
 
 // TODO Implement Reply API
-export class Reply {
+// export class Reply {
 
-}
+// }
