@@ -47,30 +47,37 @@ export class Sample {
     }
 }
 
-// function Sample_from_SampleWS(sample: SampleWS) {
+export function Sample_from_SampleWS(sample_ws: SampleWS) {
 
-//     if (sample.kind() == SampleKind.DELETE) {
-//         sample_kind = "Delete"
-//     } else if (sample.kind() == SampleKind.PUT) {
-//         sample_kind = "Put"
-//     } else {
-//         console.log("Sample Kind not PUT | DELETE, defaulting to PUT: ", sample.kind());
-//         sample_kind = "Put"
-//     };
-// }
+    let sample_kind: SampleKind;
+    if (sample_ws.kind == "Delete") {
+        sample_kind = SampleKind.DELETE
+    } else {
+        sample_kind = SampleKind.PUT
+    };
 
-// function SampleWS_from_Sample(sample: SampleWS) {
-//     let key_expr: OwnedKeyExprWrapper = sample.key_expr;
-//     let value: Array<number> = Array.from(sample.value);
-//     let sample_kind: SampleKindWS;
-//     if (sample.kind() == SampleKind.DELETE) {
-//         sample_kind = "Delete"
-//     } else if (sample.kind() == SampleKind.PUT) {
-//         sample_kind = "Put"
-//     } else {
-//         console.log("Sample Kind not PUT | DELETE, defaulting to PUT: ", sample.kind());
-//         sample_kind = "Put"
-//     };
-//     let sample_ws: SampleWS = { key_expr: key_expr, value: value, kind: sample_kind };
-//     let reply: ReplyWS = { result: { Ok: sample_ws } };
-// }
+    let payload = ZBytes.new(sample_ws.value);
+
+    let key_exr = KeyExpr.new(sample_ws.key_expr);
+
+    return Sample.new(key_exr, payload, sample_kind);
+}
+
+export function SampleWS_from_Sample(sample: Sample) : SampleWS {
+
+    let key_expr: OwnedKeyExprWrapper = sample.keyexpr().toString();
+    let value: Array<number> = Array.from(sample.payload().payload());
+
+    let sample_kind: SampleKindWS;
+    if (sample.kind() == SampleKind.DELETE) {
+        sample_kind = "Delete"
+    } else if (sample.kind() == SampleKind.PUT) {
+        sample_kind = "Put"
+    } else {
+        console.log("Sample Kind not PUT | DELETE, defaulting to PUT: ", sample.kind());
+        sample_kind = "Put"
+    };
+
+    let sample_ws: SampleWS = { key_expr: key_expr, value: value, kind: sample_kind };
+    return sample_ws
+}

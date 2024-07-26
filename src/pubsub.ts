@@ -1,6 +1,6 @@
 
 // Remote API
-import { RemoteSubscriber, RemotePublisher, RemoteSession } from './remote_api/pubsub'
+import { RemoteSubscriber, RemotePublisher } from './remote_api/pubsub'
 import { SampleWS } from './remote_api/interface/SampleWS';
 
 // API
@@ -114,7 +114,7 @@ export class Publisher {
     static async new(into_key_expr: IntoKeyExpr, remote_session: RemoteSession): Promise<Publisher> {
         const key_expr = KeyExpr.new(into_key_expr);
 
-        let remote_publisher: RemotePublisher = await remote_session.declare_publisher(key_expr.inner());
+        let remote_publisher: RemotePublisher = await remote_session.declare_publisher(key_expr.toString());
 
         return new Publisher(remote_publisher)
     }

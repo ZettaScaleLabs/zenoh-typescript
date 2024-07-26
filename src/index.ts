@@ -16,19 +16,20 @@
 import { SampleWS } from './remote_api/interface/SampleWS'
 import { QueryWS } from './remote_api/interface/QueryWS'
 
-
 // Remote API
-import { RemoteSession } from './remote_api/session'
+import { RemoteRecvErr as GetChannelClose, RemoteSession } from './remote_api/session'
 import { RemoteQueryable } from './remote_api/query'
 
 // API Layer Files
 import { KeyExpr, IntoKeyExpr } from './key_expr'
-import { ZBytes, IntoZBytes} from './z_bytes'
-import { Sample, SampleKind } from './sample'
+import { ZBytes, IntoZBytes } from './z_bytes'
+import { Sample, Sample_from_SampleWS } from './sample'
 import { RemoteSubscriber } from './remote_api/pubsub'
 import { Publisher, Subscriber } from './pubsub'
-import { Query, Queryable } from './query'
-// import { Query } from './query'
+import { IntoSelector, Query, QueryWS_to_Query, Queryable, Reply, Selector } from './query'
+import { SimpleChannel } from 'channel-ts'
+import { ReplyWS } from './remote_api/interface/ReplyWS'
+import { State } from 'channel-ts/lib/channel'
 
 export type Option<T> = T | null;
 
@@ -53,77 +54,52 @@ export class Config {
     }
 }
 
-// ███████ ███████ ██      ███████  ██████ ████████  ██████  ██████  
-// ██      ██      ██      ██      ██         ██    ██    ██ ██   ██ 
-// ███████ █████   ██      █████   ██         ██    ██    ██ ██████  
-//      ██ ██      ██      ██      ██         ██    ██    ██ ██   ██ 
-// ███████ ███████ ███████ ███████  ██████    ██     ██████  ██   ██ 
-
-// Selector : High level <keyexpr>?arg1=lol&arg2=hi
-
-type IntoSelector = Selector | KeyExpr | String | string;
-export class Selector {
-
-    // TODO clear memory of selector using FinalizationRegistry
-    // static registry = new FinalizationRegistry(([ptr, task_ptr]: [number, number]) => (new Session(ptr, task_ptr)).close())
-
-    // KeyExpr object
-    key_expr: KeyExpr
-
-    // Optional : parameter field
-    _parameters?: string;
-
-    // Returns the key expression
-    async get_keyepxr(): Promise<KeyExpr> {
-        return this.key_expr
-    }
-
-    // Returns the parameters of the selector
-    /// Note: Keep this async incase in the future we want to call C code
-    async parameters(): Promise<Map<string, string>> {
-
-        const params = new Map<string, string>();
-        for (const pair of this._parameters?.split("&") || []) {
-            const [key, value] = pair.split("=");
-            params.set(key, value);
-        }
-
-        return params; // If parameter does not exist, then returns undefined
-    }
-
-    async parameter(param_key: string): Promise<string | undefined> {
-
-        for (const pair of this._parameters?.split("&") || []) {
-            const [key, value] = pair.split("=");
-            if (key === param_key) {
-                return value
-            }
-        }
-        return undefined; // If parameter does not exist, then returns undefined
-    }
-
-    // TODO comment
-    constructor(keyexpr: KeyExpr, parameters?: string) {
-        this.key_expr = keyexpr;
-        this._parameters = parameters;
-    }
-
-    // static new(keyexpr: IntoKeyExpr, parameter: Map<string, string>): Promise<Selector>;
-    // static new(selector: IntoSelector): Promise<Selector>;
-    static async new(selector: IntoSelector | IntoKeyExpr, parameters?: Map<string, string>): Promise<Selector> {
-        // TODO implement 
-        throw "Unimplemented";
-        // If selector intoKeyExpr, take parameters if available. 
-
-        // Attempt IntoSelector (intoKeyExpr might be lossy)
-        // if not, do IntoKeyExpr, then IntoSelector (KeyExpr MUST IntoSelector)
-        // append parameters regardless of existing ones.
-
-    }
+function isGetChannelClose(msg: any): msg is GetChannelClose {
+    return msg === GetChannelClose.Disconnected;
 }
 
+// Type guard to check if channel_msg is of type ReplyWS
+function isReplyWS(msg: any): msg is ReplyWS {
+    return typeof msg === 'object' && msg !== null && 'query_uuid' in msg && 'result' in msg;
+}
 
+export enum RecvErr {
+    Disconnected,
+    MalformedReply
+}
+export class Receiver {
+    private receiver: SimpleChannel<ReplyWS | RecvErr>;
 
+    private constructor(receiver: SimpleChannel<ReplyWS | RecvErr>) {
+        this.receiver = receiver;
+    }
+
+    async receive(): Promise<Reply | RecvErr> {
+
+        if (this.receiver.state == State.close) {
+            return RecvErr.Disconnected
+        } else {
+
+            let channel_msg: ReplyWS | RecvErr = await this.receiver.receive();
+
+            if (isGetChannelClose(channel_msg)) {
+                return RecvErr.Disconnected
+            } else if (isReplyWS(channel_msg)) {
+                // Handle the ReplyWS case
+                let opt_reply = Reply.new(channel_msg);
+                if (opt_reply == undefined) {
+                    return RecvErr.MalformedReply
+                } else {
+                    return opt_reply
+                }
+            }
+            return RecvErr.MalformedReply
+        }
+    }
+    static new(reply_tx: SimpleChannel<ReplyWS>) {
+        return new Receiver(reply_tx);
+    }
+}
 
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
 // ██      ██      ██      ██      ██ ██    ██ ████   ██ 
@@ -188,13 +164,13 @@ export class Session {
         let key_expr = KeyExpr.new(into_key_expr);
         let z_bytes = ZBytes.new(into_zbytes);
 
-        this.remote_session.put(key_expr.inner(), Array.from(z_bytes.payload()));
+        this.remote_session.put(key_expr.toString(), Array.from(z_bytes.payload()));
     }
 
     async delete(into_key_expr: IntoKeyExpr): Promise<void> {
         let key_expr = KeyExpr.new(into_key_expr);
 
-        this.remote_session.delete(key_expr.inner());
+        this.remote_session.delete(key_expr.toString());
     }
     /**
      * Declares a Key Expression on a session
@@ -203,37 +179,32 @@ export class Session {
      * 
      * @returns success: 0, failure : -1
      */
-    // TODO do i want to 
+    // TODO Do i need a Declare Key_Expression
     // async declare_ke(keyexpr: string): Promise<KeyExpr> {
-    // return new KeyExpr();
+    //     return new KeyExpr();
     // }
 
-    // TODO:  Implement get
-    // async get(into_selector: IntoSelector, query: Query, callback: () => void): Promise<number> {
-    //     throw "TODO"
-    // }
-
-    // private map_sample_ws()
+    async get(into_selector: IntoSelector): Promise<Receiver> {
+        let selector: Selector = Selector.new(into_selector);
+        let chan: SimpleChannel<ReplyWS> = await this.remote_session.get(selector.get_key_expr().toString(), selector.parameters().toString());
+        let receiver = Receiver.new(chan);
+        return receiver
+    }
 
     async declare_subscriber(into_key_expr: IntoKeyExpr, handler?: ((sample: Sample) => Promise<void>)): Promise<Subscriber> {
-
         let key_expr = KeyExpr.new(into_key_expr);
         let remote_subscriber: RemoteSubscriber;
         let callback_subscriber = false;
         if (handler != undefined) {
             callback_subscriber = true;
             const callback_conversion = async function (sample_ws: SampleWS): Promise<void> {
-                let key_expr: KeyExpr = KeyExpr.new(sample_ws.key_expr);
-                let payload: ZBytes = ZBytes.new(sample_ws.value);
-                let sample_kind: SampleKind = SampleKind[sample_ws.kind];
-                handler(new Sample(key_expr, payload, sample_kind))
+                let sample: Sample = Sample_from_SampleWS(sample_ws);
+                handler(sample)
             }
-            remote_subscriber = await this.remote_session.declare_subscriber(key_expr.inner(), callback_conversion);
+            remote_subscriber = await this.remote_session.declare_subscriber(key_expr.toString(), callback_conversion);
         } else {
-            remote_subscriber = await this.remote_session.declare_subscriber(key_expr.inner());
+            remote_subscriber = await this.remote_session.declare_subscriber(key_expr.toString());
         }
-
-
         let subscriber = await Subscriber.new(remote_subscriber, callback_subscriber);
         return subscriber
     }
@@ -242,35 +213,19 @@ export class Session {
         console.log("declare_queryable")
         let key_expr = KeyExpr.new(into_key_expr);
         let remote_queryable: RemoteQueryable;
-        let callback_queryable = false;
+        let reply_tx: SimpleChannel<ReplyWS> = new SimpleChannel<ReplyWS>();
+
         if (handler != undefined) {
-            callback_queryable = true;
-            let remote_session = this.remote_session;
+
             const callback_conversion = async function (query_ws: QueryWS): Promise<void> {
-                console.log("Handle Query Conversion")
-                let key_expr: KeyExpr = KeyExpr.new(query_ws.key_expr);
-                let payload: Option<ZBytes> = null;
-                let attachment: Option<ZBytes> = null;
 
-                if (query_ws.payload != null) {
-                    payload = ZBytes.new(query_ws.payload)
-                }
-                if (query_ws.attachment != null) {
-                    attachment = ZBytes.new(query_ws.attachment);
-                }
+                let query: Query = QueryWS_to_Query(query_ws, reply_tx);
 
-                handler(Query.new(
-                    key_expr,
-                    query_ws.parameters,
-                    payload,
-                    attachment,
-                    query_ws.encoding,
-                    remote_session,
-                ))
+                handler(query)
             }
-            remote_queryable = await this.remote_session.declare_queryable(key_expr.inner(), complete, callback_conversion);
+            remote_queryable = await this.remote_session.declare_queryable(key_expr.toString(), complete, reply_tx, callback_conversion);
         } else {
-            remote_queryable = await this.remote_session.declare_queryable(key_expr.inner(), complete);
+            remote_queryable = await this.remote_session.declare_queryable(key_expr.toString(), complete, reply_tx);
         }
 
         // remote_queryable
@@ -287,7 +242,6 @@ export class Session {
     }
 
 }
-
 
 export function open(config: Config): Promise<Session> {
     return Session.open(config)

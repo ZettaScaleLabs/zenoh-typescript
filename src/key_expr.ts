@@ -20,7 +20,7 @@ export class KeyExpr {
         this._inner = key_expr
     }
 
-    inner(): string {
+    toString(): string {
         return this._inner
     }
 

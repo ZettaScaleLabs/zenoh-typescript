@@ -8,6 +8,7 @@ import { RemoteSession, UUIDv4 } from './session';
 import { QueryWS } from "./interface/QueryWS";
 import { ReplyWS } from "./interface/ReplyWS";
 import { DataMsg } from "./interface/DataMsg";
+import { QueryableMsg } from "./interface/QueryableMsg";
 
 // const log = new Logger({ stylePrettyLogs: false });
 
@@ -32,9 +33,9 @@ export class RemoteQueryable {
 
     // To receieve Queries on the Websocket Channel 
     private query_rx: SimpleChannel<QueryWS>;
-    
+
     // To Send Query Replies on Websocket Channel
-    private reply_tx: SimpleChannel<ReplyWS>;
+    reply_tx: SimpleChannel<ReplyWS>;
 
     private undeclared: boolean;
 
@@ -49,13 +50,11 @@ export class RemoteQueryable {
         this.key_expr = key_expr;
         this.queryable_id = queryable_id;
         this.session_ref = session_ref;
-        this.rx = rx;
+        this.query_rx = rx;
         this.callback = callback;
         this.undeclared = false;
         this.reply_tx = reply_tx;
     }
-
-    
 
     static async new(
         key_expr: String,
@@ -67,7 +66,7 @@ export class RemoteQueryable {
     ) {
 
         // Note this will run this callback listenning for messages indefinitely
-        // TODO Cleanup when undeclared ? 
+        // Async Function to handle Incoming Query's from Server
         if (callback != undefined) {
             executeAsync(async () => {
                 for await (const message of query_rx) {
@@ -76,12 +75,14 @@ export class RemoteQueryable {
             })
         }
 
+        // Async Function to sending Reply's to Server
         if (callback != undefined) {
             executeAsync(async () => {
                 for await (const message of reply_tx) {
-                    let data_msg: DataMsg = { "Queryable": message };
-
-                    session_ref.send_data_message(message)
+                    let reply_ws: ReplyWS = message;
+                    let queryable_msg: QueryableMsg = { "Reply": { reply: reply_ws, } };
+                    let data_msg: DataMsg = { "Queryable": queryable_msg };
+                    session_ref.send_data_message(data_msg)
                 }
             })
         }
@@ -109,7 +110,7 @@ export class RemoteQueryable {
             return
         }
 
-        return [await this.rx.receive(), this.tx];
+        return [await this.query_rx.receive(), this.reply_tx];
     }
 
     async undeclare() {
@@ -120,8 +121,8 @@ export class RemoteQueryable {
         }
 
         this.undeclared = true;
-        let ctrl_message: ControlMsg = { "UndeclareSubscriber": this.queryable_id.toString() };
+        let ctrl_message: ControlMsg = { "UndeclareQueryable": this.queryable_id.toString() };
         this.session_ref.send_ctrl_message(ctrl_message)
-        this.rx.close();
+        this.query_rx.close();
     }
 }

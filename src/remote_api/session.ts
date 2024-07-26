@@ -9,7 +9,6 @@ const log = new Logger({ stylePrettyLogs: false });
 // Import interface 
 import { RemoteAPIMsg } from "./interface/RemoteAPIMsg";
 import { SampleWS } from "./interface/SampleWS";
-// import { SampleKindWS } from "./interface/SampleKindWS";
 import { DataMsg } from "./interface/DataMsg";
 import { ControlMsg } from "./interface/ControlMsg";
 import { OwnedKeyExprWrapper } from './interface/OwnedKeyExprWrapper';
@@ -17,6 +16,7 @@ import { QueryWS } from './interface/QueryWS';
 import { RemotePublisher, RemoteSubscriber } from './pubsub';
 import { RemoteQueryable } from './query';
 import { ReplyWS } from './interface/ReplyWS';
+import { QueryableMsg } from './interface/QueryableMsg';
 
 
 // ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
@@ -25,9 +25,9 @@ import { ReplyWS } from './interface/ReplyWS';
 // ██   ██ ██      ██  ██  ██ ██    ██    ██    ██               ██ ██           ██      ██ ██ ██    ██ ██  ██ ██ 
 // ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████ ███████ ███████ ███████ ██  ██████  ██   ████ 
 
-// interface Subscriber {
-//     [subscriber_uuid: string]: (keyexpr: String, value: Uint8Array) => void
-// }
+export enum RemoteRecvErr {
+    Disconnected,
+}
 
 type JSONMessage = string;
 export type UUIDv4 = String | string;
@@ -37,8 +37,10 @@ export class RemoteSession {
     ws: WebSocket;
     chan: SimpleChannel<JSONMessage>;
     session: Option<UUIDv4>;
+    // 
     subscribers: Map<UUIDv4, SimpleChannel<SampleWS>>;
     queryables: Map<UUIDv4, SimpleChannel<QueryWS>>;
+    get_reciever: Map<UUIDv4, SimpleChannel<ReplyWS | RemoteRecvErr>>;
 
     private constructor(ws: WebSocket, chan: SimpleChannel<JSONMessage>) {
         this.ws = ws;
@@ -46,6 +48,7 @@ export class RemoteSession {
         this.session = none;
         this.subscribers = new Map<UUIDv4, SimpleChannel<SampleWS>>();
         this.queryables = new Map<UUIDv4, SimpleChannel<QueryWS>>();
+        this.get_reciever = new Map<UUIDv4, SimpleChannel<ReplyWS>>;
     }
 
     // 
@@ -88,22 +91,27 @@ export class RemoteSession {
     // Put 
     async put(key_expr: string, payload: Array<number>): Promise<void> {
         let owned_keyexpr: OwnedKeyExprWrapper = key_expr;
-        let data_message: DataMsg = { "Put": { key_expr: owned_keyexpr, payload: payload } };
-        this.send_data_message(data_message)
+        let data_message: ControlMsg = { "Put": { key_expr: owned_keyexpr, payload: payload } };
+        this.send_ctrl_message(data_message)
     }
 
     // get 
-    async get(selector: string): Promise<void> {
-        // TODO GET 
-        // let control_message: ControlMsg = { "Put": { key_expr: OwnedKeyExprWrapper, payload: Array<number>, } };
-        // this.ws.send(JSON.stringify(json));
+    async get(key_expr: string, parameters: string | null): Promise<SimpleChannel<ReplyWS>> {
+
+        let uuid = uuidv4();
+        let channel: SimpleChannel<ReplyWS> = new SimpleChannel<ReplyWS>();
+        this.get_reciever.set(uuid, channel);
+
+        let control_message: ControlMsg = { "Get": { key_expr: key_expr, parameters: parameters, id: uuid } };
+        this.send_ctrl_message(control_message);
+        return channel
     }
 
     // delete 
     async delete(key_expr: string): Promise<void> {
         let owned_keyexpr: OwnedKeyExprWrapper = key_expr;
-        let data_message: DataMsg = { "Delete": { key_expr: owned_keyexpr } };
-        this.send_data_message(data_message);
+        let data_message: ControlMsg = { "Delete": { key_expr: owned_keyexpr } };
+        this.send_ctrl_message(data_message);
     }
 
     async close(): Promise<void> {
@@ -147,6 +155,7 @@ export class RemoteSession {
         key_expr: string,
         complete: boolean,
         // callback?: (keyexpr: String, value: Uint8Array) => void
+        reply_tx: SimpleChannel<ReplyWS>,
         callback?: ((sample: QueryWS) => Promise<void>)
     ): Promise<RemoteQueryable> {
 
@@ -155,7 +164,6 @@ export class RemoteSession {
         let control_message: ControlMsg = { "DeclareQueryable": { key_expr: key_expr, complete: complete, id: uuid } };
 
         let query_rx: SimpleChannel<QueryWS> = new SimpleChannel<QueryWS>();
-        let reply_tx: SimpleChannel<ReplyWS> = new SimpleChannel<ReplyWS>();
 
         this.queryables.set(uuid, query_rx);
 
@@ -243,34 +251,71 @@ export class RemoteSession {
 
     private async handle_control_message(control_msg: ControlMsg) {
 
-        console.log("ControlMessage ", control_msg)
         if (typeof control_msg === "string") {
-            // TODO : 
-            console.log(control_msg);
-
+            console.log("unhandled Control Message:", control_msg);
         } else if ((typeof control_msg === "object")) {
             if ('Session' in (control_msg)) {
                 this.session = some(control_msg["Session"]);
+            } else if ('GetFinished' in (control_msg)) {
+                let channel = this.get_reciever.get(control_msg["GetFinished"].id)
+                channel?.send(RemoteRecvErr.Disconnected)
             }
         }
     }
 
     private async handle_data_message(data_msg: DataMsg) {
-        // console.log("handle_data_message",data_msg)
+
         if ("Sample" in data_msg) {
 
             let subscription_uuid: UUIDv4 = data_msg["Sample"][1]
 
             let opt_subscriber = this.subscribers.get(subscription_uuid);
+
             if (opt_subscriber != undefined) {
 
                 let channel: SimpleChannel<SampleWS> = opt_subscriber;
                 let sample: SampleWS = data_msg["Sample"][0];
                 channel.send(sample);
             } else {
-                console.log("SubscrptionUUID not in map", subscription_uuid)
+                console.log("Subscrption UUID not in map", subscription_uuid)
             }
+        } else if ("GetReply" in data_msg) {
+            let get_reply: ReplyWS = data_msg["GetReply"];
+
+            let opt_receiver = this.get_reciever.get(get_reply.query_uuid);
+            if (opt_receiver != undefined) {
+                let channel: SimpleChannel<ReplyWS | RemoteRecvErr> = opt_receiver;
+                channel.send(get_reply);
+            }
+
+        } else if ("Queryable" in data_msg) {
+
+            let queryable_msg: QueryableMsg = data_msg["Queryable"];
+            if ("Query" in queryable_msg) {
+
+                let queryable_uuid: UUIDv4 = queryable_msg.Query.queryable_uuid;
+                let opt_queryable = this.queryables.get(queryable_uuid);
+
+                if (opt_queryable != undefined) {
+                    let channel: SimpleChannel<QueryWS> = opt_queryable;
+                    let query = queryable_msg.Query.query;
+                    channel.send(query);
+                } else {
+                    console.log("Queryable Message UUID not in map", queryable_uuid)
+                }
+            } else if ("Reply" in queryable_msg) {
+                // Server 
+                console.log("Client should not recieve Reply in Queryable Message")
+                console.log("Replies to get queries should come via Get Reply")
+            } else {
+                console.log("Queryable message Variant not recognized")
+            }
+
         }
+        else {
+            console.log("Data Message not recognized Expected Variant", data_msg)
+        }
+
     }
 }
 
