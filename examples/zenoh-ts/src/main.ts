@@ -56,7 +56,6 @@ async function main() {
     };
   }
 
-
   // subscribers
   // let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", subscriber_callback);
   // await sleep(1000 * 3);

@@ -24,7 +24,7 @@ import { RemoteQueryable } from './remote_api/query'
 import { KeyExpr, IntoKeyExpr } from './key_expr'
 import { ZBytes, IntoZBytes } from './z_bytes'
 import { Sample, Sample_from_SampleWS } from './sample'
-import { RemoteSubscriber } from './remote_api/pubsub'
+import { RemotePublisher, RemoteSubscriber } from './remote_api/pubsub'
 import { Publisher, Subscriber } from './pubsub'
 import { IntoSelector, Query, QueryWS_to_Query, Queryable, Reply, Selector } from './query'
 import { SimpleChannel } from 'channel-ts'
@@ -237,7 +237,9 @@ export class Session {
     async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
         let key_expr: KeyExpr = KeyExpr.new(keyexpr)
 
-        var publisher: Publisher = await Publisher.new(key_expr, this.remote_session);
+        let remote_publisher: RemotePublisher = await this.remote_session.declare_publisher(key_expr.toString());
+
+        var publisher: Publisher = await Publisher.new(key_expr, remote_publisher);
         return publisher
     }
 

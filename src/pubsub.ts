@@ -4,9 +4,10 @@ import { RemoteSubscriber, RemotePublisher } from './remote_api/pubsub'
 import { SampleWS } from './remote_api/interface/SampleWS';
 
 // API
-import { IntoKeyExpr, KeyExpr } from './key_expr'
+import { KeyExpr } from './key_expr'
 import { IntoZBytes, ZBytes } from './z_bytes'
 import { Sample, SampleKind } from './sample';
+
 
 // ███████ ██    ██ ██████  ███████  ██████ ██████  ██ ██████  ███████ ██████  
 // ██      ██    ██ ██   ██ ██      ██      ██   ██ ██ ██   ██ ██      ██   ██ 
@@ -80,10 +81,12 @@ export class Publisher {
     /**
      * Class that creates and keeps a reference to a publisher inside the WASM memory
      */
-    private remote_publisher: RemotePublisher;
+    private _remote_publisher: RemotePublisher;
+    private _key_expr: KeyExpr;
 
-    private constructor(publisher: RemotePublisher) {
-        this.remote_publisher = publisher;
+    private constructor(publisher: RemotePublisher, _key_expr: KeyExpr) {
+        this._remote_publisher = publisher;
+        this._key_expr = _key_expr;
     }
 
     /**
@@ -93,14 +96,18 @@ export class Publisher {
      * 
      * @returns success: 0, failure : -1
      */
+
+    key_expr(): KeyExpr {
+        return this._key_expr;
+    }
     async put(payload: IntoZBytes): Promise<void> {
         let zbytes: ZBytes = ZBytes.new(payload);
 
-        return this.remote_publisher.put(Array.from(zbytes.payload()))
+        return this._remote_publisher.put(Array.from(zbytes.payload()))
     }
 
     async undeclare() {
-        await this.remote_publisher.undeclare()
+        await this._remote_publisher.undeclare()
     }
 
     /**
@@ -111,11 +118,8 @@ export class Publisher {
      * 
      * @returns a new Publisher instance
      */
-    static async new(into_key_expr: IntoKeyExpr, remote_session: RemoteSession): Promise<Publisher> {
-        const key_expr = KeyExpr.new(into_key_expr);
+    static async new(key_expr: KeyExpr, remote_publisher: RemotePublisher): Promise<Publisher> {
 
-        let remote_publisher: RemotePublisher = await remote_session.declare_publisher(key_expr.toString());
-
-        return new Publisher(remote_publisher)
+        return new Publisher(remote_publisher, key_expr)
     }
 }
