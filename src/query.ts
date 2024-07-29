@@ -74,19 +74,27 @@ export function QueryWS_to_Query(query_ws: QueryWS, reply_tx: SimpleChannel<Repl
     let key_expr: KeyExpr = KeyExpr.new(query_ws.key_expr);
     let payload: Option<ZBytes> = null;
     let attachment: Option<ZBytes> = null;
+    let parameters: Parameters = Parameters.new(query_ws.parameters);
+    let encoding: Option<Encoding> = null;
+
     if (query_ws.payload != null) {
         payload = ZBytes.new(query_ws.payload)
     }
     if (query_ws.attachment != null) {
         attachment = ZBytes.new(query_ws.attachment);
     }
+    if (query_ws.encoding != null) {
+        encoding = Encoding.from_str(query_ws.encoding);
+    }
+
+
     return Query.new(
         query_ws.query_uuid,
         key_expr,
-        query_ws.parameters,
+        parameters,
         payload,
         attachment,
-        query_ws.encoding,
+        encoding,
         reply_tx
     );
 }
@@ -199,7 +207,6 @@ export class Query {
 
     static new(
         query_id: UUIDv4,
-        // 
         key_expr: KeyExpr,
         parameters: Parameters,
         payload: Option<ZBytes>,
@@ -220,10 +227,18 @@ export class Query {
 }
 
 export class Parameters {
-    private _params: String;
+    private _params: string;
 
     private constructor(p: string) {
         this._params = p;
+    }
+
+    toString(): string {
+        return this._params
+    }
+
+    static new(p: string): Parameters {
+        return new Parameters(p)
     }
 }
 

@@ -1,24 +1,14 @@
+
 import './style.css'
 import './webpage.ts'
 
-import * as zenoh from "../../../esm"
-// import { Sample, KeyExpr, Subscriber, Publisher } from "../../../esm"
-import { KeyExpr } from "../../../esm/key_expr"
-import { Sample } from "../../../esm/sample"
-import { Query, Queryable } from "../../../esm/query"
-import { SimpleChannel } from 'channel-ts'
-// 
-import { RecvErr } from '../../../esm/index'
-import { Publisher, Subscriber } from '../../../esm/pubsub'
-// 
+import { Session, Config, Query, Sample, KeyExpr, Publisher, Subscriber, Receiver, RecvErr } from "zenoh"
 
-
-
-function queryable_callback(query: Query): Promise<void> {
+function queryable_callback(query: Query) {
   console.log("  Query Receieved", query);
 
   query.reply(
-    "safasf",
+    query.key_expr(),
     [65, 66, 67, 50]
   );
   console.log("  ");
@@ -31,7 +21,7 @@ async function main() {
     console.log("    cb demo 1 :  Value    ", sample.payload());
   }
 
-  const session = await zenoh.Session.open(zenoh.Config.new("ws/127.0.0.1:10000"));
+  const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
   // KeyExpr
   let key_exp = KeyExpr.new("demo/put");
 
@@ -40,16 +30,16 @@ async function main() {
   await session.put(key_exp, [65, 66, 67, 50]);
   await session.delete("demo/delete");
 
-  console.log("Get");
-  let receiver: zenoh.Receiver = await session.get("test/queryable/**");
+  // console.log("Get");
+  let receiver: Receiver = await session.get("test/queryable/**");
   let stop = false;
   while (!stop) {
     let reply = await receiver.receive();
-    RecvErr
-    if (reply == zenoh.RecvErr.Disconnected) {
+
+    if (reply == RecvErr.Disconnected) {
       console.log("All Replies Receved");
       stop = true;
-    } else if (reply == zenoh.RecvErr.MalformedReply) {
+    } else if (reply == RecvErr.MalformedReply) {
       console.log("MalformedReply");
     } else {
       console.log("Reply Value ", reply.result());

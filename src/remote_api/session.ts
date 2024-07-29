@@ -35,16 +35,15 @@ export type UUIDv4 = String | string;
 export class RemoteSession {
 
     ws: WebSocket;
-    chan: SimpleChannel<JSONMessage>;
+    ws_channel: SimpleChannel<JSONMessage>;
     session: Option<UUIDv4>;
-    // 
     subscribers: Map<UUIDv4, SimpleChannel<SampleWS>>;
     queryables: Map<UUIDv4, SimpleChannel<QueryWS>>;
     get_reciever: Map<UUIDv4, SimpleChannel<ReplyWS | RemoteRecvErr>>;
 
-    private constructor(ws: WebSocket, chan: SimpleChannel<JSONMessage>) {
+    private constructor(ws: WebSocket, ws_channel: SimpleChannel<JSONMessage>) {
         this.ws = ws;
-        this.chan = chan;
+        this.ws_channel = ws_channel;
         this.session = none;
         this.subscribers = new Map<UUIDv4, SimpleChannel<SampleWS>>();
         this.queryables = new Map<UUIDv4, SimpleChannel<QueryWS>>();
@@ -81,7 +80,6 @@ export class RemoteSession {
 
         var session = new RemoteSession(ws, chan);
         session.channel_receive();
-        log.info(`Return Session`);
         return session
     }
 
@@ -127,7 +125,6 @@ export class RemoteSession {
 
     async declare_subscriber(
         key_expr: string,
-        // callback?: (keyexpr: String, value: Uint8Array) => void
         callback?: ((sample: SampleWS) => Promise<void>)
     ): Promise<RemoteSubscriber> {
 
@@ -154,7 +151,6 @@ export class RemoteSession {
     async declare_queryable(
         key_expr: string,
         complete: boolean,
-        // callback?: (keyexpr: String, value: Uint8Array) => void
         reply_tx: SimpleChannel<ReplyWS>,
         callback?: ((sample: QueryWS) => Promise<void>)
     ): Promise<RemoteQueryable> {
@@ -195,7 +191,7 @@ export class RemoteSession {
 
 
     async subscriber(key_expr: string, handler: ((val: string) => Promise<void>)): Promise<void> {
-        for await (const data of this.chan) { // use async iterator to receive data
+        for await (const data of this.ws_channel) { // use async iterator to receive data
             handler(data);
         }
     }
@@ -221,16 +217,9 @@ export class RemoteSession {
     // Manager Session and handle messages
     // 
     private async channel_receive() {
-        // use async iterator to receive data
-        for await (const message of this.chan) {
+        for await (const message of this.ws_channel) {
 
             let remote_api_message: RemoteAPIMsg = JSON.parse(message) as RemoteAPIMsg;
-            // println("         Parsed Remote API message ", remote_api_message);
-            // println("Type : -", typeof remote_api_message);
-            // println("Message : -", remote_api_message);
-            // println("Session : -", remote_api_message.hasOwnProperty('Session'));
-            // println("Control : -", remote_api_message.hasOwnProperty('Control'));
-            // println("Data : -", remote_api_message.hasOwnProperty('Data'));
 
             if ('Session' in remote_api_message) {
                 console.log("Continue Ignore Session Messages")

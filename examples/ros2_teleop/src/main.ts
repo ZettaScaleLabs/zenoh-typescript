@@ -1,18 +1,7 @@
 import './style.css'
 import './webpage.ts'
 
-import * as zenoh from "../../../esm/index"
-// import { Sample, KeyExpr, Subscriber, Publisher } from "../../../esm"
-import { KeyExpr } from "../../../esm/key_expr"
-import { Sample } from "../../../esm/sample"
-import { Query, Queryable } from "../../../esm/query"
-import { SimpleChannel } from 'channel-ts'
-// 
-import { RecvErr } from '../../../esm/index'
-import { Publisher, Subscriber } from '../../../esm/pubsub'
-// 
-
-
+import { Session, Config, Query, Sample, KeyExpr, Publisher, Subscriber, Receiver, RecvErr } from "zenoh"
 
 const TOPIC_DRIVE = "cmd_vel";
 const TOPIC_LIDAR = "scan";

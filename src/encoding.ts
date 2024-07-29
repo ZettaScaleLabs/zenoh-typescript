@@ -6,7 +6,6 @@ export class Encoding {
         this._schema = str_rep;
     }
 
-
     static default() :Encoding{
         return new Encoding(encoding.ZENOH_BYTES);
     }

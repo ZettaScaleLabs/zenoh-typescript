@@ -137,3 +137,6 @@ vite@^5.2.12:
     rollup "^4.13.0"
   optionalDependencies:
     fsevents "~2.3.3"
+
+"zenoh@file:../../esm/":
+  resolved "file:../../esm"
