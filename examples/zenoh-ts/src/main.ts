@@ -9,7 +9,7 @@ import { Query, Queryable } from "../../../esm/query"
 import { SimpleChannel } from 'channel-ts'
 // 
 import { RecvErr } from '../../../esm/index'
-import { Subscriber } from '../../../esm/pubsub'
+import { Publisher, Subscriber } from '../../../esm/pubsub'
 // 
 
 
@@ -40,7 +40,7 @@ async function main() {
   await session.put(key_exp, [65, 66, 67, 50]);
   await session.delete("demo/delete");
 
-  console.log("get");
+  console.log("Get");
   let receiver: zenoh.Receiver = await session.get("test/queryable/**");
   let stop = false;
   while (!stop) {
@@ -57,26 +57,29 @@ async function main() {
   }
 
   // subscribers
-  // let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", subscriber_callback);
-  // await sleep(1000 * 3);
-  // callback_subscriber.undeclare()
+  let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", subscriber_callback);
+  await sleep(1000 * 3);
+  callback_subscriber.undeclare()
 
-  // let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub");
-  // let value = await poll_subscriber.recieve();
-  // console.log("poll_subscriber", value);
-  // console.log(await poll_subscriber.recieve());
-  // poll_subscriber.undeclare()
+  let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub");
+  let value = await poll_subscriber.recieve();
+  console.log("poll_subscriber", value);
+  console.log(await poll_subscriber.recieve());
+  poll_subscriber.undeclare()
 
   // // publisher
-  // let publisher: Publisher = await session.declare_publisher("demo/pub/1");
-  // await publisher.put("This is typescript string");
-  // await publisher.put(new String("This is typescript String ()"));
-  // await publisher.put([65, 66, 67, 49]);
-  // await publisher.undeclare();
+  let publisher: Publisher = await session.declare_publisher("demo/pub/1");
+  await publisher.put("This is typescript string");
+  await publisher.put(new String("This is typescript String ()"));
+  await publisher.put([65, 66, 67, 49]);
+  await publisher.undeclare();
 
   // // queryable
-  // let queryable: Queryable = await session.declare_queryable("demo/test/queryable", true, queryable_callback );
-
+  // let queryable: Queryable = await session.declare_queryable("demo/test/queryable", true, queryable_callback);
+  // let query = await queryable.recieve();
+  // if (query instanceof Query) {
+  //   query.reply("demo/test/queryable", "Demo Test 1234")
+  // }
 
   // Loop to spin and keep alive
   var count = 0;
