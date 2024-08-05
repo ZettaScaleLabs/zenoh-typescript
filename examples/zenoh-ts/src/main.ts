@@ -30,7 +30,7 @@ async function main() {
   await session.put(key_exp, [65, 66, 67, 50]);
   await session.delete("demo/delete");
 
-  // console.log("Get");
+  console.log("Issue Get");
   let receiver: Receiver = await session.get("test/queryable/**");
   let stop = false;
   while (!stop) {
