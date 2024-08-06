@@ -4,6 +4,7 @@ import * as bytebuffer from 'bytebuffer';
 import { Session, Config, Sample, } from "zenoh"
 
 import { BatteryState, LaserScan, Twist, Vector3 } from "./ros2_types";
+import ByteBuffer from "bytebuffer";
 
 const TOPIC_DRIVE = "cmd_vel";
 const TOPIC_BATTERY = "battery_state";
@@ -97,16 +98,8 @@ document.onkeyup = onkeyup;
 var key_expr = sub_scope + TOPIC_BATTERY;
 console.log("battery Topic:", key_expr)
 const battery_subscriber = async function (sample: Sample): Promise<void> {
-  console.log("Received sample: " + sample);
-  // console.log(sample);
-  // 
-  // var encodedStringBtoA = btoa();
-  // var u8 = new Uint8Array([65, 66, 67, 68]);
-  // var decoder = new TextDecoder('utf8');
-  // var b64encoded = btoa(decoder.decode(sample.payload().payload()));
-  // TODO: Continue parsing out payload
-
-  let reader = new CDRReader(bytebuffer.default.fromBase64(sample.payload().payload()));
+  // console.log("Received sample: ",sample);
+  let reader = new CDRReader(ByteBuffer.wrap(sample.payload().payload()));
   // Decode the buffer as a BatteryState message
   let battery = BatteryState.decode(reader);
   // Set it to "battery" HTML element
