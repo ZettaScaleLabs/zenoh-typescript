@@ -1,4 +1,4 @@
-import {CDRReader,CDRWriter}  from "jscdr";
+import { CDRReader, CDRWriter } from "jscdr";
 
 
 /////////////////////////////////////////////////////////////
@@ -8,14 +8,14 @@ import {CDRReader,CDRWriter}  from "jscdr";
 // ROS2 Time type
 export class Time {
     sec: number;
-    nsec:number;
+    nsec: number;
 
-    constructor(sec:number, nsec:number) {
+    constructor(sec: number, nsec: number) {
         this.sec = sec;
         this.nsec = nsec;
     }
 
-    static decode(cdrReader:any) {
+    static decode(cdrReader: any) {
         let sec = cdrReader.readInt32();
         let nsec = cdrReader.readUint32();
         return new Time(sec, nsec);
@@ -24,8 +24,15 @@ export class Time {
 
 // ROS2 Log type (received in 'rosout' topic)
 export class Log {
+    time: Time;
+    level: number;
+    name: string;
+    msg: string;
+    file: string;
+    fn: string;
+    line: number;
 
-    constructor(time, level, name, msg, file, fn, line) {
+    constructor(time: Time, level: number, name: string, msg: string, file: string, fn: string, line: number) {
         this.time = time;
         this.level = level;
         this.name = name;
@@ -35,7 +42,7 @@ export class Log {
         this.line = line;
     }
 
-    static decode(cdrReader:CDRReader) {
+    static decode(cdrReader: CDRReader) {
         let time = Time.decode(cdrReader);
         let level = cdrReader.readByte();
         let name = cdrReader.readString();
@@ -49,11 +56,11 @@ export class Log {
 
 // ROS2 Vector3 type
 export class Vector3 {
-    x:number;
-    y:number;
-    z:number;
+    x: number;
+    y: number;
+    z: number;
 
-    constructor(x:number, y:number, z:number) {
+    constructor(x: number, y: number, z: number) {
         this.x = x;
         this.y = y;
         this.z = z;
@@ -65,7 +72,7 @@ export class Vector3 {
         cdrWriter.writeFloat64(this.z);
     }
 
-    static decode(cdrReader:CDRReader) {
+    static decode(cdrReader: CDRReader) {
         let x = cdrReader.readFloat64();
         let y = cdrReader.readFloat64();
         let z = cdrReader.readFloat64();
@@ -75,19 +82,19 @@ export class Vector3 {
 
 // ROS2 Quaternion type
 export class Quaternion {
-    x : number;
-    y : number;
-    z : number;
-    w : number;
+    x: number;
+    y: number;
+    z: number;
+    w: number;
 
-    constructor(x:number, y:number, z:number, w:number) {
+    constructor(x: number, y: number, z: number, w: number) {
         this.x = x;
         this.y = y;
         this.z = z;
         this.w = w;
     }
 
-    static decode(cdrReader:CDRReader) {
+    static decode(cdrReader: CDRReader) {
         let x = cdrReader.readFloat64();
         let y = cdrReader.readFloat64();
         let z = cdrReader.readFloat64();
@@ -98,15 +105,15 @@ export class Quaternion {
 
 // ROS2 Twist type (published in 'cmd_vel' topic)
 export class Twist {
-    linear:Vector3; 
-    angular:Vector3;
+    linear: Vector3;
+    angular: Vector3;
 
-    constructor(linear:Vector3, angular:Vector3) {
+    constructor(linear: Vector3, angular: Vector3) {
         this.linear = linear;
         this.angular = angular;
     }
 
-    encode(cdrWriter:CDRWriter) {
+    encode(cdrWriter: CDRWriter) {
         this.linear.encode(cdrWriter);
         this.angular.encode(cdrWriter);
     }
@@ -114,14 +121,17 @@ export class Twist {
 
 // ROS2 Header type
 export class Header {
-    constructor(time, frame_id) {
+    time: Time;
+    frame_id: string;
+    constructor(time: Time, frame_id: string) {
         this.time = time;
         this.frame_id = frame_id;
     }
 
-    static decode(cdrReader:CDRReader) {
+    static decode(cdrReader: CDRReader): Header {
         let time = Time.decode(cdrReader);
         let frame_id = cdrReader.readString();
+        return new Header(time, frame_id)
     }
 }
 
@@ -129,7 +139,7 @@ export class Header {
 // ROS2 BatteryState type (received in 'battery_state' topic)
 // Warning: not complete, since we only need to decode up-to 'percentage'
 export class BatteryState {
-    header: number;
+    header: Header;
     voltage: number;
     temperature: number;
     current: number;
@@ -139,7 +149,7 @@ export class BatteryState {
     percentage: number;
 
 
-    constructor(header, voltage, temperature, current, charge, capacity, design_capacity, percentage) {
+    constructor(header: Header, voltage: number, temperature: number, current: number, charge: number, capacity: number, design_capacity: number, percentage: number) {
         this.header = header;
         this.voltage = voltage;
         this.temperature = temperature;
@@ -150,7 +160,7 @@ export class BatteryState {
         this.percentage = percentage;
     }
 
-    static decode(cdrReader:CDRReader) {
+    static decode(cdrReader: CDRReader) {
         let header = Header.decode(cdrReader);
         let voltage = cdrReader.readFloat32();
         let temperature = cdrReader.readFloat32();
@@ -165,7 +175,18 @@ export class BatteryState {
 
 // ROS2 LaserScan type (received in 'scan' topic)
 export class LaserScan {
-    constructor(header, angle_min, angle_max, angle_increment, time_increment, scan_time, range_min, range_max, ranges, intensities) {
+    header: Header;
+    angle_min: number;
+    angle_max: number;
+    angle_increment: number;
+    time_increment: number;
+    scan_time: number;
+    range_min: number;
+    range_max: number;
+    ranges: Array<number>;
+    intensities: Array<number>;
+
+    constructor(header: Header, angle_min: number, angle_max: number, angle_increment: number, time_increment: number, scan_time: number, range_min: number, range_max: number, ranges: Array<number>, intensities: Array<number>) {
         this.header = header;
         this.angle_min = angle_min;
         this.angle_max = angle_max;
@@ -178,7 +199,7 @@ export class LaserScan {
         this.intensities = intensities;
     }
 
-    static decode(cdrReader:CDRReader) {
+    static decode(cdrReader: CDRReader) {
         let header = Header.decode(cdrReader);
         let angle_min = cdrReader.readFloat32();
         let angle_max = cdrReader.readFloat32();

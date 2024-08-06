@@ -57,25 +57,41 @@ export class RemoteSession {
         let split = url.split("/");
         let websocket_endpoint = split[0] + "://" + split[1];
 
+        let websocket_connected = false;
+        let retry_timeout_ms = 3000;
         const chan = new SimpleChannel<JSONMessage>(); // creates a new simple channel
         let ws = new WebSocket(websocket_endpoint);
+        while (websocket_connected == false) {
+            ws.onopen = function (_event: any) {
+                // `this` here is a websocket object
+                let control_message: ControlMsg = "OpenSession";
+                let remote_api_message: RemoteAPIMsg = { "Control": control_message };
+                this.send(JSON.stringify(remote_api_message));
+            };
 
-        ws.onopen = function (_event: any) {
-            // `this` here is a websocket object
-            let control_message: ControlMsg = "OpenSession";
-            let remote_api_message: RemoteAPIMsg = { "Control": control_message };
-            this.send(JSON.stringify(remote_api_message));
-        };
+            ws.onmessage = function (event: any) {
+                // `this` here is a websocket object
+                // console.log("   MSG FROM SVR", event.data);
+                chan.send(event.data)
+            };
 
-        ws.onmessage = function (event: any) {
-            // `this` here is a websocket object
-            // console.log("   MSG FROM SVR", event.data);
-            chan.send(event.data)
-        };
+            let wait = 0;
+            while (ws.readyState != 1) {
+                log.debug("Websocket Ready State " + ws.readyState)
+                await sleep(100);
+                wait += 100;
+                if (wait > retry_timeout_ms) {
+                    ws.close()
+                    break
+                }
+            }
 
-        while (ws.readyState != 1) {
-            log.debug("Websocket Ready State " + ws.readyState)
-            await sleep(100);
+            if (ws.readyState == 1) {
+                websocket_connected = true;
+            } else {
+                ws = new WebSocket(websocket_endpoint);
+                console.log("Restart connection")
+            }
         }
 
         var session = new RemoteSession(ws, chan);
@@ -210,6 +226,7 @@ export class RemoteSession {
     }
 
     private async send_remote_api_message(remote_api_message: RemoteAPIMsg) {
+
         this.ws.send(JSON.stringify(remote_api_message));
     }
 
@@ -219,6 +236,7 @@ export class RemoteSession {
     private async channel_receive() {
         for await (const message of this.ws_channel) {
 
+           
             let remote_api_message: RemoteAPIMsg = JSON.parse(message) as RemoteAPIMsg;
 
             if ('Session' in remote_api_message) {
