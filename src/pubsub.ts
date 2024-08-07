@@ -1,13 +1,12 @@
 
 // Remote API
 import { RemoteSubscriber, RemotePublisher } from './remote_api/pubsub'
-import { SampleWS } from './remote_api/interface/SampleWS';
 
 // API
 import { KeyExpr } from './key_expr'
 import { IntoZBytes, ZBytes } from './z_bytes'
-import { Sample, SampleKind } from './sample';
-
+import { CongestionControl, Priority, Sample, Sample_from_SampleWS } from './sample';
+import { Encoding, IntoEncoding } from './encoding';
 
 // ███████ ██    ██ ██████  ███████  ██████ ██████  ██ ██████  ███████ ██████  
 // ██      ██    ██ ██   ██ ██      ██      ██   ██ ██ ██   ██ ██      ██   ██ 
@@ -39,20 +38,7 @@ export class Subscriber {
         // from SampleWS -> Sample
         let opt_sample_ws = await this.remote_subscriber.recieve();
         if (opt_sample_ws != undefined) {
-            let sample_ws: SampleWS = opt_sample_ws;
-            let key_expr: KeyExpr = KeyExpr.new(sample_ws.key_expr);
-            let payload: ZBytes = ZBytes.new(sample_ws.value);
-            let sample_kind: SampleKind;
-
-            if (sample_ws.kind = "Put") {
-                sample_kind = SampleKind.PUT;
-            } else if (sample_ws.kind = "Delete") {
-                sample_kind = SampleKind.PUT;
-            } else {
-                console.log("Recieved Unknown SampleKind Variant from Websocket, Defaulting to PUT");
-                sample_kind = SampleKind.PUT;
-            }
-            return Sample.new(key_expr, payload, sample_kind);
+            return Sample_from_SampleWS(opt_sample_ws)
         } else {
             console.log("Receieve returned unexpected void from RemoteSubscriber")
             return
@@ -81,12 +67,16 @@ export class Publisher {
     /**
      * Class that creates and keeps a reference to a publisher inside the WASM memory
      */
-    private _remote_publisher: RemotePublisher;
-    private _key_expr: KeyExpr;
+    private _remote_publisher: RemotePublisher
+    private _key_expr: KeyExpr
+    private _congestion_control: CongestionControl
+    private _priority: Priority
 
-    private constructor(publisher: RemotePublisher, _key_expr: KeyExpr) {
+    private constructor(publisher: RemotePublisher, key_expr: KeyExpr, congestion_control: CongestionControl, priority: Priority) {
         this._remote_publisher = publisher;
-        this._key_expr = _key_expr;
+        this._key_expr = key_expr;
+        this._congestion_control = congestion_control;
+        this._priority = priority;
     }
 
     /**
@@ -100,15 +90,53 @@ export class Publisher {
     key_expr(): KeyExpr {
         return this._key_expr;
     }
-    async put(payload: IntoZBytes): Promise<void> {
-        let zbytes: ZBytes = ZBytes.new(payload);
 
-        return this._remote_publisher.put(Array.from(zbytes.payload()))
+    put(payload: IntoZBytes,
+        encoding?: IntoEncoding,
+        attachment?: IntoZBytes,
+    ): Promise<void> {
+        let zbytes: ZBytes = ZBytes.new(payload);
+        let _encoding;
+        if (encoding != null) {
+            _encoding = Encoding.into_Encoding(encoding);
+        } else {
+            _encoding = Encoding.default();
+        }
+
+        let _attachment = null;
+        if (attachment != null) {
+            let att_bytes = ZBytes.new(attachment);
+            _attachment = Array.from(att_bytes.payload());
+        }
+
+        // payload, encoding, attachment, congestion_control, priority
+        return this._remote_publisher.put(Array.from(zbytes.payload()), _attachment, _encoding.toString());
+    }
+
+    priority(): Priority {
+        return this._priority
+    }
+
+    set_priority(prio: Priority) {
+        this._priority = prio;
+        // TODO after merge of dev/1.0.0 into plugin-remote-api
+        // this._remote_publisher.set_priority();
+    }
+
+    congestion_control(): CongestionControl {
+        return this._congestion_control
+    }
+
+    set_congestion_control(congestion_control: CongestionControl) {
+        this._congestion_control = congestion_control;
+        // TODO after merge of dev/1.0.0 into plugin-remote-api
+        // this._remote_publisher.set_congestion();
     }
 
     async undeclare() {
         await this._remote_publisher.undeclare()
     }
+
 
     /**
      * Creates a new Publisher on a session
@@ -118,8 +146,8 @@ export class Publisher {
      * 
      * @returns a new Publisher instance
      */
-    static async new(key_expr: KeyExpr, remote_publisher: RemotePublisher): Promise<Publisher> {
+    static async new(key_expr: KeyExpr, remote_publisher: RemotePublisher, congestion_control: CongestionControl, priority: Priority): Promise<Publisher> {
 
-        return new Publisher(remote_publisher, key_expr)
+        return new Publisher(remote_publisher, key_expr, congestion_control, priority)
     }
 }

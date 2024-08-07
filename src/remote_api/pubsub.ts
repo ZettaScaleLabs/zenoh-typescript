@@ -34,13 +34,14 @@ export class RemotePublisher {
         this.undeclared = false;
     }
 
-    async put(value: Array<number>) {
+    async put(payload: Array<number>, attachment: Array<number> | null, encoding: string | null) {
         if (this.undeclared == true) {
             var message = "Publisher keyexpr:`" + this.key_expr + "` id:`" + this.publisher_id + "` already undeclared";
             console.log(message)
             return
         }
-        let data_msg: DataMsg = { "PublisherPut": [value, this.publisher_id.toString()] };
+
+        let data_msg: DataMsg = { "PublisherPut": { id: this.publisher_id.toString(), payload: payload, attachment: attachment, encoding: encoding } };
         this.session_ref.send_data_message(data_msg);
     }
 

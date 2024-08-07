@@ -17,6 +17,7 @@ import { RemotePublisher, RemoteSubscriber } from './pubsub';
 import { RemoteQueryable } from './query';
 import { ReplyWS } from './interface/ReplyWS';
 import { QueryableMsg } from './interface/QueryableMsg';
+import { QueryReplyWS } from './interface/QueryReplyWS';
 
 
 // ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ███████ ███████ ███████ ██  ██████  ███    ██ 
@@ -167,7 +168,7 @@ export class RemoteSession {
     async declare_queryable(
         key_expr: string,
         complete: boolean,
-        reply_tx: SimpleChannel<ReplyWS>,
+        reply_tx: SimpleChannel<QueryReplyWS>,
         callback?: ((sample: QueryWS) => Promise<void>)
     ): Promise<RemoteQueryable> {
 
@@ -195,16 +196,18 @@ export class RemoteSession {
 
     async declare_publisher(
         key_expr: string,
+        encoding: string,
+        congestion_control: number,
+        priority: number,
+        express: boolean,
     ): Promise<RemotePublisher> {
 
         let uuid: string = uuidv4();
         let publisher = new RemotePublisher(key_expr, uuid, this);
-        let control_message: ControlMsg = { "DeclarePublisher": { key_expr: key_expr, id: uuid } };
+        let control_message: ControlMsg = { "DeclarePublisher": { key_expr: key_expr, encoding: encoding, congestion_control: congestion_control, priority: priority, express: express, id: uuid, } };
         this.send_ctrl_message(control_message);
         return publisher
     }
-
-
 
     async subscriber(key_expr: string, handler: ((val: string) => Promise<void>)): Promise<void> {
         for await (const data of this.ws_channel) { // use async iterator to receive data
@@ -226,7 +229,6 @@ export class RemoteSession {
     }
 
     private async send_remote_api_message(remote_api_message: RemoteAPIMsg) {
-
         this.ws.send(JSON.stringify(remote_api_message));
     }
 
@@ -236,7 +238,7 @@ export class RemoteSession {
     private async channel_receive() {
         for await (const message of this.ws_channel) {
 
-           
+
             let remote_api_message: RemoteAPIMsg = JSON.parse(message) as RemoteAPIMsg;
 
             if ('Session' in remote_api_message) {
@@ -327,7 +329,6 @@ export class RemoteSession {
 }
 
 
-// TODO: Debug Remove 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }

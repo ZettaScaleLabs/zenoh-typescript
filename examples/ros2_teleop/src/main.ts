@@ -147,7 +147,7 @@ const height = canvas.height;
 ctx.clearRect(0, 0, width, height);
 
 const lidar_callback = async function (sample: Sample): Promise<void> {
-  // console.log("Received sample: " + sample);
+  console.log("Received sample: " + sample);
   let reader = new CDRReader(ByteBuffer.wrap(sample.payload().payload()));
   // Decode the buffer as an LaserScan message
   let scan = LaserScan.decode(reader);

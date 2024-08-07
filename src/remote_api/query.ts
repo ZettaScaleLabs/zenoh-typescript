@@ -6,9 +6,9 @@ import { ControlMsg } from "./interface/ControlMsg";
 // Remote Api
 import { RemoteSession, UUIDv4 } from './session';
 import { QueryWS } from "./interface/QueryWS";
-import { ReplyWS } from "./interface/ReplyWS";
 import { DataMsg } from "./interface/DataMsg";
 import { QueryableMsg } from "./interface/QueryableMsg";
+import { QueryReplyWS } from "./interface/QueryReplyWS";
 
 // const log = new Logger({ stylePrettyLogs: false });
 
@@ -35,7 +35,7 @@ export class RemoteQueryable {
     private query_rx: SimpleChannel<QueryWS>;
 
     // To Send Query Replies on Websocket Channel
-    reply_tx: SimpleChannel<ReplyWS>;
+    reply_tx: SimpleChannel<QueryReplyWS>;
 
     private undeclared: boolean;
 
@@ -44,7 +44,7 @@ export class RemoteQueryable {
         queryable_id: UUIDv4,
         session_ref: RemoteSession,
         rx: SimpleChannel<QueryWS>,
-        reply_tx: SimpleChannel<ReplyWS>,
+        reply_tx: SimpleChannel<QueryReplyWS>,
         callback?: (sample: QueryWS) => void
     ) {
         this.key_expr = key_expr;
@@ -61,7 +61,7 @@ export class RemoteQueryable {
         queryable_id: UUIDv4,
         session_ref: RemoteSession,
         query_rx: SimpleChannel<QueryWS>,
-        reply_tx: SimpleChannel<ReplyWS>,
+        reply_tx: SimpleChannel<QueryReplyWS>,
         callback?: (sample: QueryWS) => void
     ) {
 
@@ -76,16 +76,13 @@ export class RemoteQueryable {
         }
 
         // Async Function to sending Reply's to Server
-        if (callback != undefined) {
-            executeAsync(async () => {
-                for await (const message of reply_tx) {
-                    let reply_ws: ReplyWS = message;
-                    let queryable_msg: QueryableMsg = { "Reply": { reply: reply_ws, } };
-                    let data_msg: DataMsg = { "Queryable": queryable_msg };
-                    session_ref.send_data_message(data_msg)
-                }
-            })
-        }
+        executeAsync(async () => {
+            for await (const message of reply_tx) {
+                let queryable_msg: QueryableMsg = { "Reply": { reply: message } };
+                let data_msg: DataMsg = { "Queryable": queryable_msg };
+                session_ref.send_data_message(data_msg)
+            }
+        })
 
         return new RemoteQueryable(
             key_expr,
@@ -97,17 +94,17 @@ export class RemoteQueryable {
         );
     }
 
-    async recieve(): Promise<[QueryWS, SimpleChannel<ReplyWS>] | void> {
+    async recieve(): Promise<[QueryWS, SimpleChannel<QueryReplyWS>] | void> {
         if (this.undeclared == true) {
-            var message = "Subscriber keyexpr:`" + this.key_expr + "` id:`" + this.queryable_id + "`";
+            var message = "Queryable keyexpr:`" + this.key_expr + "` id:`" + this.queryable_id + "` undeclared";
             console.log(message)
-            return
+            return undefined
         }
 
         if (this.callback != undefined) {
-            var message = "Cannot Call recieve on Subscriber created with callback:`" + this.key_expr + "` id:`" + this.queryable_id + "`";
+            var message = "Cannot Call recieve on Queryable created with callback:`" + this.key_expr + "` id:`" + this.queryable_id + "`";
             console.log(message)
-            return
+            return undefined
         }
 
         return [await this.query_rx.receive(), this.reply_tx];
@@ -115,7 +112,7 @@ export class RemoteQueryable {
 
     async undeclare() {
         if (this.undeclared == true) {
-            var message = "Subscriber keyexpr:`" + this.key_expr + "` id:`" + this.queryable_id + "` already closed";
+            var message = "Queryable keyexpr:`" + this.key_expr + "` id:`" + this.queryable_id + "` already closed";
             console.log(message)
             return
         }

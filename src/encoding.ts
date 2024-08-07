@@ -1,4 +1,6 @@
 
+export type IntoEncoding = Encoding | String | string;
+
 export class Encoding {
     private _schema: string;
 
@@ -6,16 +8,26 @@ export class Encoding {
         this._schema = str_rep;
     }
 
-    static default() :Encoding{
+    static into_Encoding(input: IntoEncoding): Encoding {
+        if (input instanceof Encoding) {
+            return input
+        } else {
+            return new Encoding(input.toString())
+        }
+    }
+
+    static default(): Encoding {
         return new Encoding(encoding.ZENOH_BYTES);
     }
-    tostring() : string{
+
+    toString(): string {
         return this._schema
     }
     static from_str(input: string): Encoding {
         return new Encoding(input);
     }
-    // Enum Varians
+
+    // Enum Variants
     static ZENOH_BYTES(): Encoding {
         return new Encoding(encoding.ZENOH_BYTES)
     }
@@ -216,7 +228,6 @@ export class Encoding {
     }
 }
 
-/// let encoding
 enum encoding {
     ZENOH_BYTES = "zenoh/bytes"
     , ZENOH_INT8 = "zenoh/int8"

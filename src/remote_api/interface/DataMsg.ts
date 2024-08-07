@@ -3,4 +3,4 @@ import type { QueryableMsg } from "./QueryableMsg";
 import type { ReplyWS } from "./ReplyWS";
 import type { SampleWS } from "./SampleWS";
 
-export type DataMsg = { "PublisherPut": [Array<number>, string] } | { "Sample": [SampleWS, string] } | { "GetReply": ReplyWS } | { "Queryable": QueryableMsg };
+export type DataMsg = { "PublisherPut": { id: string, payload: Array<number>, attachment: Array<number> | null, encoding: string | null, } } | { "Sample": [SampleWS, string] } | { "GetReply": ReplyWS } | { "Queryable": QueryableMsg };

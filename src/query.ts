@@ -5,17 +5,16 @@ import { SimpleChannel } from "channel-ts";
 // Remote API
 import { RemoteQueryable } from "./remote_api/query";
 import { ReplyWS } from "./remote_api/interface/ReplyWS";
-import { SampleWS } from "./remote_api/interface/SampleWS";
-import { SampleKindWS } from "./remote_api/interface/SampleKindWS";
-import { OwnedKeyExprWrapper } from "./remote_api/interface/OwnedKeyExprWrapper";
+import { QueryReplyVariant } from "./remote_api/interface/QueryReplyVariant";
 import { ReplyErrorWS } from "./remote_api/interface/ReplyErrorWS";
 // Remote API
 import { IntoKeyExpr, KeyExpr } from "./key_expr";
 import { IntoZBytes, ZBytes } from "./z_bytes";
-import { Sample, SampleKind, Sample_from_SampleWS } from "./sample";
+import { Sample, Sample_from_SampleWS } from "./sample";
 import { UUIDv4 } from "./remote_api/session";
 import { QueryWS } from "./remote_api/interface/QueryWS";
 import { Encoding } from "./encoding";
+import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
 
 //  ██████  ██    ██ ███████ ██████  ██    ██  █████  ██████  ██      ███████ 
 // ██    ██ ██    ██ ██      ██   ██  ██  ██  ██   ██ ██   ██ ██      ██      
@@ -25,7 +24,6 @@ import { Encoding } from "./encoding";
 //     ▀▀                                                                     
 
 export type Option<T> = T | null;
-
 export class Queryable {
 
     /**
@@ -38,6 +36,7 @@ export class Queryable {
     }
 
     async recieve(): Promise<Query | void> {
+
         // TODO: Make this Callback Subscriber ?
         // if (this.callback_queryable === true) {
         //     var message = "Cannot call `recieve()` on Subscriber created with callback:";
@@ -46,6 +45,7 @@ export class Queryable {
         // }
 
         // QueryWS -> Query
+        console
         let opt_query_ws = await this._remote_queryable.recieve();
         if (opt_query_ws != undefined) {
 
@@ -70,7 +70,7 @@ export class Queryable {
     }
 }
 
-export function QueryWS_to_Query(query_ws: QueryWS, reply_tx: SimpleChannel<ReplyWS>): Query {
+export function QueryWS_to_Query(query_ws: QueryWS, reply_tx: SimpleChannel<QueryReplyWS>): Query {
     let key_expr: KeyExpr = KeyExpr.new(query_ws.key_expr);
     let payload: Option<ZBytes> = null;
     let attachment: Option<ZBytes> = null;
@@ -115,7 +115,7 @@ export class Query {
     private _payload: Option<ZBytes>;
     private _attachment: Option<ZBytes>;
     private _encoding: Option<Encoding>;
-    private _reply_tx: SimpleChannel<ReplyWS>;
+    private _reply_tx: SimpleChannel<QueryReplyWS>;
 
     selector() {
         // return new Selector
@@ -137,54 +137,32 @@ export class Query {
         return this._attachment
     }
 
+    // QueryReplyVariant = { "Reply": { key_expr: OwnedKeyExprWrapper, payload: Array<number>, } } | 
+    //                     { "ReplyErr": { payload: Array<number>, } } | 
+    //                     { "ReplyDelete": { key_expr: OwnedKeyExprWrapper, } };
+
     // Send Reply here.
-    private async reply_sample(sample: Sample): Promise<void> {
-        let key_expr: OwnedKeyExprWrapper = sample.keyexpr.toString();
-        let value: Array<number> = Array.from(sample.payload().payload());
-        let sample_kind: SampleKindWS;
-        if (sample.kind() == SampleKind.DELETE) {
-            sample_kind = "Delete"
-        } else if (sample.kind() == SampleKind.PUT) {
-            sample_kind = "Put"
-        } else {
-            console.log("Sample Kind not PUT | DELETE, defaulting to PUT: ", sample.kind());
-            sample_kind = "Put"
-        };
-        let sample_ws: SampleWS = { key_expr: key_expr, value: value, kind: sample_kind };
-        let reply: ReplyWS = { query_uuid: this._query_id as string, result: { Ok: sample_ws } };
-
+    private reply_ws(variant: QueryReplyVariant): void {
+        let reply: QueryReplyWS = { query_uuid: this._query_id as string, result: variant  };
         this._reply_tx.send(reply)
     }
 
-    async reply(keyexpr: IntoKeyExpr, payload: IntoZBytes): Promise<void> {
-        let key_expr: KeyExpr = KeyExpr.new(keyexpr);
+    reply(key_expr: IntoKeyExpr, payload: IntoZBytes): void {
+        let _key_expr: KeyExpr = KeyExpr.new(key_expr);
         let z_bytes: ZBytes = ZBytes.new(payload);
-
-        this.reply_sample(Sample.new(key_expr, z_bytes, SampleKind.PUT))
+        let qr_variant : QueryReplyVariant = { "Reply": { key_expr: _key_expr.toString(), payload: Array.from(z_bytes.payload()), } };
+        this.reply_ws(qr_variant)
     }
-    async reply_err(payload: IntoZBytes): Promise<void> {
+    reply_err(payload: IntoZBytes): void {
         let z_bytes: ZBytes = ZBytes.new(payload);
-        let encoding: Encoding;
-
-        if (this._encoding == null) {
-            // TODO :What kind of encoding ? Default Value
-            encoding = Encoding.default()
-        } else {
-            encoding = this._encoding
-        };
-
-        let err: ReplyErrorWS = { payload: Array.from(z_bytes.payload()), encoding: encoding.tostring() };
-        let reply: ReplyWS = { query_uuid: this._query_id as string, result: { Err: err } };
-        this._reply_tx.send(reply)
+        let qr_variant : QueryReplyVariant = { "ReplyErr": { payload: Array.from(z_bytes.payload()), } };
+        this.reply_ws(qr_variant)
     }
 
-    async reply_del(payload: IntoZBytes): Promise<void> {
-        console.log("TODO reply_del")
-        // let key_expr: KeyExpr = KeyExpr.new(keyexpr);
-        // let z_bytes: ZBytes = ZBytes.new(payload);
-        // this.reply_sample(Sample.new(key_expr, z_bytes, SampleKind.PUT))
-        // TODO Add delete type
-        // let reply: ReplyWS = { result: { Ok: sample } | { Err: ReplyErrorWS }, };
+    reply_del(key_expr: IntoKeyExpr): void {
+        let _key_expr: KeyExpr = KeyExpr.new(key_expr);
+        let qr_variant : QueryReplyVariant = { "ReplyDelete": { key_expr: _key_expr.toString(), } };
+        this.reply_ws(qr_variant)
     }
 
     private constructor(
@@ -194,7 +172,7 @@ export class Query {
         payload: Option<ZBytes>,
         attachment: Option<ZBytes>,
         encoding: Encoding | null,
-        reply_tx: SimpleChannel<ReplyWS>,
+        reply_tx: SimpleChannel<QueryReplyWS>,
     ) {
         this._query_id = query_id;
         this._key_expr = key_expr;
@@ -212,7 +190,7 @@ export class Query {
         payload: Option<ZBytes>,
         attachment: Option<ZBytes>,
         encoding: Encoding | null,
-        reply_tx: SimpleChannel<ReplyWS>
+        reply_tx: SimpleChannel<QueryReplyWS>
     ) {
         return new Query(
             query_id,

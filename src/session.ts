@@ -12,9 +12,11 @@ import { IntoZBytes, ZBytes } from "./z_bytes";
 import { IntoSelector, Query, Queryable, QueryWS_to_Query, Reply, Selector } from "./query";
 import { SimpleChannel } from "channel-ts";
 import { Publisher, Subscriber } from "./pubsub";
-import { Sample, Sample_from_SampleWS } from "./sample";
+import { priority_to_int, congestion_control_to_int, CongestionControl, Priority, Sample, Sample_from_SampleWS } from "./sample";
 import { State } from "channel-ts/lib/channel";
 import { Config } from './config';
+import { Encoding } from './encoding';
+import { QueryReplyWS } from './remote_api/interface/QueryReplyWS';
 
 
 export type Option<T> = T | null;
@@ -127,10 +129,10 @@ export class Session {
     }
 
     async declare_queryable(into_key_expr: IntoKeyExpr, complete: boolean, handler?: ((query: Query) => Promise<void>)): Promise<Queryable> {
-        console.log("declare_queryable")
+
         let key_expr = KeyExpr.new(into_key_expr);
         let remote_queryable: RemoteQueryable;
-        let reply_tx: SimpleChannel<ReplyWS> = new SimpleChannel<ReplyWS>();
+        let reply_tx: SimpleChannel<QueryReplyWS> = new SimpleChannel<QueryReplyWS>();
 
         if (handler != undefined) {
 
@@ -151,12 +153,42 @@ export class Session {
     }
 
 
-    async declare_publisher(keyexpr: IntoKeyExpr): Promise<Publisher> {
+    async declare_publisher(
+        keyexpr: IntoKeyExpr,
+        encoding?: Encoding,
+        congestion_control?: CongestionControl,
+        priority?: Priority,
+        express?: boolean,
+    ): Promise<Publisher> {
         let key_expr: KeyExpr = KeyExpr.new(keyexpr)
 
-        let remote_publisher: RemotePublisher = await this.remote_session.declare_publisher(key_expr.toString());
+        let _congestion_ctrl = 0; // Default CongestionControl.DROP
+        if (congestion_control != null) {
+            _congestion_ctrl = congestion_control_to_int(congestion_control);
+        } else {
+            congestion_control = CongestionControl.DROP;
+        }
 
-        var publisher: Publisher = await Publisher.new(key_expr, remote_publisher);
+        let _priority = 5; // Default Priority.DATA
+        if (priority != null) {
+            _priority = priority_to_int(priority);
+        } else {
+            priority = Priority.DATA;
+        }
+
+        let _express = false;
+        if (express != null) {
+            _express = express;
+        }
+
+        let _encoding = Encoding.default();
+        if (encoding != null) {
+            _encoding = encoding;
+        }
+
+        let remote_publisher: RemotePublisher = await this.remote_session.declare_publisher(key_expr.toString(), _encoding.toString(), _congestion_ctrl, _priority, _express);
+
+        var publisher: Publisher = await Publisher.new(key_expr, remote_publisher, congestion_control, priority);
         return publisher
     }
 
