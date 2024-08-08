@@ -18,7 +18,7 @@ export async function main() {
     await pub.put(sample.payload())
   }
 
-  let sub = await session.declare_subscriber("test/pong", subscriber_callback);
+  await session.declare_subscriber("test/pong", subscriber_callback);
 
   var count = 0;
   while (true) {

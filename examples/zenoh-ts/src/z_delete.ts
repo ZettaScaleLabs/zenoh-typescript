@@ -1,5 +1,4 @@
 
-import { Encoding } from 'zenoh/encoding';
 import './style.css'
 import './webpage.ts'
 
@@ -10,6 +9,7 @@ async function main() {
 
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
   await session.delete("demo/delete");
+  await session.close()
 }
 
 main().then(() => console.log("Done")).catch(e => {

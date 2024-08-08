@@ -117,26 +117,13 @@ export class Publisher {
         return this._priority
     }
 
-    set_priority(prio: Priority) {
-        this._priority = prio;
-        // TODO after merge of dev/1.0.0 into plugin-remote-api
-        // this._remote_publisher.set_priority();
-    }
-
     congestion_control(): CongestionControl {
         return this._congestion_control
-    }
-
-    set_congestion_control(congestion_control: CongestionControl) {
-        this._congestion_control = congestion_control;
-        // TODO after merge of dev/1.0.0 into plugin-remote-api
-        // this._remote_publisher.set_congestion();
     }
 
     async undeclare() {
         await this._remote_publisher.undeclare()
     }
-
 
     /**
      * Creates a new Publisher on a session

@@ -1,20 +1,21 @@
 
 
-
+// External 
 import { SimpleChannel } from "channel-ts";
 // Remote API
 import { RemoteQueryable } from "./remote_api/query";
 import { ReplyWS } from "./remote_api/interface/ReplyWS";
 import { QueryReplyVariant } from "./remote_api/interface/QueryReplyVariant";
 import { ReplyErrorWS } from "./remote_api/interface/ReplyErrorWS";
-// Remote API
+import { UUIDv4 } from "./remote_api/session";
+import { QueryWS } from "./remote_api/interface/QueryWS";
+import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
+// API
 import { IntoKeyExpr, KeyExpr } from "./key_expr";
 import { IntoZBytes, ZBytes } from "./z_bytes";
 import { Sample, Sample_from_SampleWS } from "./sample";
-import { UUIDv4 } from "./remote_api/session";
-import { QueryWS } from "./remote_api/interface/QueryWS";
 import { Encoding } from "./encoding";
-import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
+import { Option } from "./session";
 
 //  ██████  ██    ██ ███████ ██████  ██    ██  █████  ██████  ██      ███████ 
 // ██    ██ ██    ██ ██      ██   ██  ██  ██  ██   ██ ██   ██ ██      ██      
@@ -23,7 +24,6 @@ import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
 //  ██████   ██████  ███████ ██   ██    ██    ██   ██ ██████  ███████ ███████ 
 //     ▀▀                                                                     
 
-export type Option<T> = T | null;
 export class Queryable {
 
     /**
@@ -143,25 +143,25 @@ export class Query {
 
     // Send Reply here.
     private reply_ws(variant: QueryReplyVariant): void {
-        let reply: QueryReplyWS = { query_uuid: this._query_id as string, result: variant  };
+        let reply: QueryReplyWS = { query_uuid: this._query_id as string, result: variant };
         this._reply_tx.send(reply)
     }
 
     reply(key_expr: IntoKeyExpr, payload: IntoZBytes): void {
         let _key_expr: KeyExpr = KeyExpr.new(key_expr);
         let z_bytes: ZBytes = ZBytes.new(payload);
-        let qr_variant : QueryReplyVariant = { "Reply": { key_expr: _key_expr.toString(), payload: Array.from(z_bytes.payload()), } };
+        let qr_variant: QueryReplyVariant = { "Reply": { key_expr: _key_expr.toString(), payload: Array.from(z_bytes.payload()), } };
         this.reply_ws(qr_variant)
     }
     reply_err(payload: IntoZBytes): void {
         let z_bytes: ZBytes = ZBytes.new(payload);
-        let qr_variant : QueryReplyVariant = { "ReplyErr": { payload: Array.from(z_bytes.payload()), } };
+        let qr_variant: QueryReplyVariant = { "ReplyErr": { payload: Array.from(z_bytes.payload()), } };
         this.reply_ws(qr_variant)
     }
 
     reply_del(key_expr: IntoKeyExpr): void {
         let _key_expr: KeyExpr = KeyExpr.new(key_expr);
-        let qr_variant : QueryReplyVariant = { "ReplyDelete": { key_expr: _key_expr.toString(), } };
+        let qr_variant: QueryReplyVariant = { "ReplyDelete": { key_expr: _key_expr.toString(), } };
         this.reply_ws(qr_variant)
     }
 

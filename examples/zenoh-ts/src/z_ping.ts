@@ -18,7 +18,7 @@ export async function main() {
   console.log("Warming up for 5 seconds...")
 
   let startTime = new Date();
-  let data = [122, 101, 110, 111, 104, 10];
+  let data = [122, 101, 110, 111, 104];
 
   while (elapsed(startTime) < 5) {
     await pub.put(data);

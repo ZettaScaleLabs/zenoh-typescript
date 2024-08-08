@@ -1,5 +1,4 @@
 
-import { Encoding } from 'zenoh/encoding';
 import './style.css'
 import './webpage.ts'
 
