@@ -124,22 +124,45 @@ export class Query {
   private _encoding: Option<Encoding>;
   private _reply_tx: SimpleChannel<QueryReplyWS>;
 
+  /**
+   * gets an selector of Query
+   * @returns Selector
+   */
   selector() {
-    return Selector.new(this._key_expr, this._parameters.toString())
+    return Selector.new(this._key_expr, this._parameters)
   }
-
+  /**
+   * gets the KeyExpr of Query
+   * @returns KeyExpr
+   */
   key_expr(): KeyExpr {
     return this._key_expr;
   }
+  /**
+   * gets the Parameters of Query
+   * @returns Parameters
+   */
   parameters(): Parameters {
     return this._parameters;
   }
+  /**
+    * gets the Optioanl payload of Query
+    * @returns Option<ZBytes>
+    */
   payload(): Option<ZBytes> {
     return this._payload;
   }
-  encoding(): Encoding | null {
+  /**
+    * gets the Optional Encoding of a Query
+    * @returns Option<ZBytes>
+    */
+  encoding(): Option<Encoding>{
     return this._encoding;
   }
+  /**
+    * gets the Optional Attachment of a Query
+    * @returns Option<ZBytes>
+    */
   attachment(): Option<ZBytes> {
     return this._attachment;
   }
@@ -157,6 +180,12 @@ export class Query {
     this._reply_tx.send(reply);
   }
 
+  /**
+    * Sends a Reply to for Query
+    * @param key_expr IntoKeyExpr
+    * @param payload: IntoZBytes
+    * @returns Option<ZBytes>
+    */
   reply(key_expr: IntoKeyExpr, payload: IntoZBytes): void {
     let _key_expr: KeyExpr = KeyExpr.new(key_expr);
     let z_bytes: ZBytes = ZBytes.new(payload);
@@ -168,6 +197,11 @@ export class Query {
     };
     this.reply_ws(qr_variant);
   }
+    /**
+    * Sends an Error Reply to a query
+    * @param payload: IntoZBytes
+    * @returns Option<ZBytes>
+    */
   reply_err(payload: IntoZBytes): void {
     let z_bytes: ZBytes = ZBytes.new(payload);
     let qr_variant: QueryReplyVariant = {
@@ -176,6 +210,11 @@ export class Query {
     this.reply_ws(qr_variant);
   }
 
+  /**
+    * Sends an Error Reply to a query
+    * @param key_expr IntoKeyExpr
+    * @returns Option<ZBytes>
+    */
   reply_del(key_expr: IntoKeyExpr): void {
     let _key_expr: KeyExpr = KeyExpr.new(key_expr);
     let qr_variant: QueryReplyVariant = {
@@ -202,6 +241,12 @@ export class Query {
     this._reply_tx = reply_tx;
   }
 
+
+  /**
+    * New Function Used to Construct Query, 
+    * Note: Users should not need to call this function
+    * But will receieve 'Query's from Queryables 
+    */
   static new(
     query_id: UUIDv4,
     key_expr: KeyExpr,
@@ -225,15 +270,15 @@ export class Query {
 
 
 export type IntoParameters = Parameters | string | String | Map<string, string>
-  /**
-   * Parameters of a Query
-   * Can be parsed from a String, using `;` or `<newline>` as separator between each parameters
-   * and `=` as separator between a key and its value. Keys and values are trimmed.
-   * 
-   * Example:
-   * let a = "a=1;b=2;c=3|4|5;d=6";
-   * let p = Parameters.new(a);
-   */
+/**
+ * Parameters of a Query
+ * Can be parsed from a String, using `;` or `<newline>` as separator between each parameters
+ * and `=` as separator between a key and its value. Keys and values are trimmed.   
+ * 
+ * Example:  
+ * `let a = "a=1;b=2;c=3|4|5;d=6"`  
+ * `let p = Parameters.new(a)`
+ */
 export class Parameters {
 
   private _params: Map<string, string>;
@@ -415,8 +460,13 @@ export class Reply {
 // ███████ ███████ ███████ ███████  ██████    ██     ██████  ██   ██
 
 
-// Selector : <keyexpr>?arg1=lol&arg2=hi
+
 export type IntoSelector = Selector | IntoKeyExpr | String | string;
+/**
+ * Selector class, holding a key expression and optional Parameters
+ * in the following format `<KeyExpr>?<Params>`    
+ * example: `demo/key/expr?arg1=lol;arg2=hi`  
+ */
 export class Selector {
   // KeyExpr object
   private _key_expr: KeyExpr;
@@ -425,13 +475,17 @@ export class Selector {
   private _parameters?: Parameters;
 
   /**
-   * get 
-   * @returns ZBytes
+   * gets Key Expression part of Selector 
+   * @returns KeyExpr
    */
   key_expr(): KeyExpr {
     return this._key_expr;
   }
 
+  /**
+   * gets Parameters part of Selector 
+   * @returns Parameters
+   */
   parameters(): Parameters {
     if (this._parameters == undefined) {
       return Parameters.new("");
@@ -445,6 +499,10 @@ export class Selector {
     this._parameters = parameters;
   }
 
+  /**
+   * New Function to create a selector from Selector / KeyExpr and Parameters
+   * @returns Selector
+   */
   static new(selector: IntoSelector, parameters?: IntoParameters): Selector {
     let key_expr: KeyExpr;
     if (selector instanceof Selector) {
