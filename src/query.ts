@@ -225,6 +225,15 @@ export class Query {
 
 
 export type IntoParameters = Parameters | string | String | Map<string, string>
+  /**
+   * Parameters of a Query
+   * Can be parsed from a String, using `;` or `<newline>` as separator between each parameters
+   * and `=` as separator between a key and its value. Keys and values are trimmed.
+   * 
+   * Example:
+   * let a = "a=1;b=2;c=3|4|5;d=6";
+   * let p = Parameters.new(a);
+   */
 export class Parameters {
 
   private _params: Map<string, string>;
@@ -307,7 +316,7 @@ export class Parameters {
   toString(): string {
     let output_string = "";
     for (let [key, value] of this._params) {
-      output_string += key + "=" + value + "&"
+      output_string += key + "=" + value + ";"
     }
     output_string = output_string.substring(0, output_string.length - 1);
 
@@ -321,9 +330,11 @@ export class Parameters {
       return new Parameters(p);
     } else {
       const params = new Map<string, string>();
-      for (const pair of p.split("&") || []) {
-        const [key, value] = pair.split("=");
-        params.set(key, value);
+      if (p.length != 0) {
+        for (const pair of p.split(";") || []) {
+          const [key, value] = pair.split("=");
+          params.set(key, value);
+        }
       }
       return new Parameters(params);
     }
@@ -405,7 +416,7 @@ export class Reply {
 
 
 // Selector : <keyexpr>?arg1=lol&arg2=hi
-export type IntoSelector = Selector | IntoKeyExpr;
+export type IntoSelector = Selector | IntoKeyExpr | String | string;
 export class Selector {
   // KeyExpr object
   private _key_expr: KeyExpr;
@@ -443,7 +454,7 @@ export class Selector {
     } else {
       key_expr = KeyExpr.new(selector);
     }
-    
+
     if (parameters == undefined) {
       return new Selector(key_expr, Parameters.new(""));
     } else {

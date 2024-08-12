@@ -13,6 +13,7 @@ import { IntoKeyExpr, KeyExpr } from "./key_expr";
 import { IntoZBytes, ZBytes } from "./z_bytes";
 import {
   IntoSelector,
+  Parameters,
   Query,
   Queryable,
   QueryWS_to_Query,
@@ -35,6 +36,8 @@ import { Encoding } from "./encoding";
 import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
 
 export type Option<T> = T | null;
+export type Result<T, E> = T | E;
+
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██
 // ██      ██      ██      ██      ██ ██    ██ ████   ██
 // ███████ █████   ███████ ███████ ██ ██    ██ ██ ██  ██
@@ -123,8 +126,27 @@ export class Session {
    * @returns success: 0, failure : -1
    */
 
-  async get(into_selector: IntoSelector): Promise<Receiver> {
-    let selector: Selector = Selector.new(into_selector);
+  async get(into_selector: IntoSelector): Promise<Result<Receiver, String>> {
+
+    let selector: Selector;
+    let key_expr: KeyExpr;
+
+    if (typeof into_selector === "string" || into_selector instanceof String) {
+      let split_string = into_selector.split("?")
+      if (split_string.length == 1) {
+        key_expr = KeyExpr.new(into_selector);
+        selector = Selector.new(key_expr);
+      } else if (split_string.length == 2) {
+        key_expr = KeyExpr.new(split_string[0]);
+        let parameters: Parameters = Parameters.new(split_string[1]);
+        selector = Selector.new(key_expr, parameters);
+      } else { //Error in Selector
+        return "Error: Invalid Selector, expected format <KeyExpr>?<Parameters>"
+      }
+    } else {
+      selector = Selector.new(into_selector);
+    }
+
     let chan: SimpleChannel<ReplyWS> = await this.remote_session.get(
       selector.key_expr().toString(),
       selector.parameters().toString(),
@@ -175,18 +197,18 @@ export class Session {
     return subscriber;
   }
 
-   /**
-   * Declares a new Queryable
-   *
-   * @remarks
-   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
-   * 
-   * @param keyexpr - string of key_expression
-   * @param complete - boolean representing Queryable completeness
-   * @param callback function - Function to be called for all samples
-   *
-   * @returns Queryable
-   */
+  /**
+  * Declares a new Queryable
+  *
+  * @remarks
+  *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
+  * 
+  * @param keyexpr - string of key_expression
+  * @param complete - boolean representing Queryable completeness
+  * @param callback function - Function to be called for all samples
+  *
+  * @returns Queryable
+  */
   async declare_queryable(
     into_key_expr: IntoKeyExpr,
     complete: boolean,
@@ -223,19 +245,19 @@ export class Session {
     return queryable;
   }
 
-   /**
-   * Declares a new Publisher
-   *
-   * @remarks
-   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
-   * 
-   * @param keyexpr - string of key_expression
-   * @param encoding - Optional, Type of Encoding data to be sent over
-   * @param congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
-   * @param priority - Optional, The Priority of zenoh messages
-   *
-   * @returns Publisher
-   */
+  /**
+  * Declares a new Publisher
+  *
+  * @remarks
+  *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
+  * 
+  * @param keyexpr - string of key_expression
+  * @param encoding - Optional, Type of Encoding data to be sent over
+  * @param congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
+  * @param priority - Optional, The Priority of zenoh messages
+  *
+  * @returns Publisher
+  */
   async declare_publisher(
     keyexpr: IntoKeyExpr,
     encoding?: Encoding,

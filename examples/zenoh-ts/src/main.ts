@@ -37,7 +37,7 @@ async function main() {
   // await session.delete("demo/delete");
 
   // console.log("Issue Get");
-  let receiver: Receiver = await session.get("test/queryable/**");
+  let receiver: Receiver = await session.get("test/queryable/**?p1=s1;p2=s2");
   let stop = false;
   while (!stop) {
     let reply = await receiver.receive();
@@ -78,17 +78,20 @@ async function main() {
   // await publisher.undeclare();
 
   // queryable
-  // console.log("declare queryable");
-  // let queryable: Queryable = await session.declare_queryable(
-  //   "demo/test/queryable",
-  //   true,
-  // );
-  // let query = await queryable.recieve();
-  // if (query instanceof Query) {
+  console.log("declare queryable");
+  let queryable: Queryable = await session.declare_queryable(
+    "demo/test/queryable",
+    true,
+  );
+  let query = await queryable.recieve();
+  if (query instanceof Query) {
+    console.log(query.selector())
+    console.log(query.selector().parameters())
+    query.reply("demo/test/queryable", "Demo Test 1234")
     // query.reply_err("Demo Test 1234")
-    // query.reply("demo/test/queryable", "Demo Test 1234")
-  //   query.reply_del("demo/test/queryable");
-  // }
+    // query.reply_del("test/queryable");
+  }
+  console.log("declare queryableend ");
 
   // Declare a Queryable with a Callback, this will continue to run until the queryable falls out of scope
   // let queryable_with_callback: Queryable = await session.declare_queryable("demo/test/queryable", true, queryable_callback);
