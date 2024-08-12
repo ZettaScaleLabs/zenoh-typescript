@@ -33,7 +33,8 @@ export class Queryable {
   }
 
   async recieve(): Promise<Query | void> {
-    // TODO: Make this Callback Subscriber ?
+
+    // TODO: Make this Callback Queryable ?
     // if (this.callback_queryable === true) {
     //     var message = "Cannot call `recieve()` on Subscriber created with callback:";
     //     console.log(message);
@@ -309,7 +310,6 @@ export class Selector {
 
   // Would need to replicate full logic of Parameters in Typescript
   // Returns the parameters of the selector
-  /// Note: Keep this async incase in the future we want to call C code
   // parameters(): Map<string, string> {
   //     const params = new Map<string, string>();
   //     for (const pair of this._parameters?.split("&") || []) {

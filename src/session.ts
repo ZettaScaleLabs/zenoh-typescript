@@ -42,9 +42,7 @@ export type Option<T> = T | null;
 // ███████ ███████ ███████ ███████ ██  ██████  ██   ████
 
 /**
- * Session Class
- * Holds pointer to Session Instance in WASM Memory
- * methods
+ * Zenoh Session
  */
 
 export class Session {
@@ -56,12 +54,10 @@ export class Session {
   }
 
   /**
-   * Creates a new Session instance in WASM Memory given a config
+   * Creates a new Session instance
    *
    * @remarks
-   *  The open function also runs zw_start_tasks,
-   *  starting `zp_start_read_task`,`zp_start_lease_task`
-   *  associating a read and write task to this session
+   *  Opens A Zenoh Session
    *
    * @param config - Config for session
    * @returns Typescript instance of a Session
@@ -75,8 +71,7 @@ export class Session {
   }
 
   /**
-   * Closes a session, cleaning up the resource in Zenoh,
-   * and unregistering the instance of the class from TypeScript
+   * Closes a session, cleaning up the resource in Zenoh
    *
    * @returns Nothing
    */
@@ -90,7 +85,7 @@ export class Session {
    * @param keyexpr - something that implements intoKeyExpr
    * @param value - something that implements intoValue
    *
-   * @returns success: 0, failure : -1
+   * @returns void
    */
   async put(
     into_key_expr: IntoKeyExpr,
@@ -114,10 +109,19 @@ export class Session {
    *
    * @returns success: 0, failure : -1
    */
+
   // TODO Do i need a Declare Key_Expression
   // async declare_ke(keyexpr: string): Promise<KeyExpr> {
   //     return new KeyExpr();
   // }
+
+  /**
+   * Issues a get query on a Zenoh session
+   *
+   * @param selector - representing a KeyExpr and Parameters
+   *
+   * @returns success: 0, failure : -1
+   */
 
   async get(into_selector: IntoSelector): Promise<Receiver> {
     let selector: Selector = Selector.new(into_selector);
@@ -129,6 +133,17 @@ export class Session {
     return receiver;
   }
 
+  /**
+   * Declares a new subscriber
+   *
+   * @remarks
+   *  If a Subscriber is created with a callback, it cannot be simultaneously polled for new values
+   * 
+   * @param keyexpr - string of key_expression
+   * @param callback function - Function to be called for all samples
+   *
+   * @returns Subscriber
+   */
   async declare_subscriber(
     into_key_expr: IntoKeyExpr,
     handler?: (sample: Sample) => Promise<void>,
@@ -160,6 +175,18 @@ export class Session {
     return subscriber;
   }
 
+   /**
+   * Declares a new Queryable
+   *
+   * @remarks
+   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
+   * 
+   * @param keyexpr - string of key_expression
+   * @param complete - boolean representing Queryable completeness
+   * @param callback function - Function to be called for all samples
+   *
+   * @returns Queryable
+   */
   async declare_queryable(
     into_key_expr: IntoKeyExpr,
     complete: boolean,
@@ -192,11 +219,23 @@ export class Session {
       );
     }
 
-    // remote_queryable
     let queryable = await Queryable.new(remote_queryable);
     return queryable;
   }
 
+   /**
+   * Declares a new Publisher
+   *
+   * @remarks
+   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
+   * 
+   * @param keyexpr - string of key_expression
+   * @param encoding - Optional, Type of Encoding data to be sent over
+   * @param congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
+   * @param priority - Optional, The Priority of zenoh messages
+   *
+   * @returns Publisher
+   */
   async declare_publisher(
     keyexpr: IntoKeyExpr,
     encoding?: Encoding,
@@ -268,6 +307,10 @@ export enum RecvErr {
   MalformedReply,
 }
 
+/**
+ * Receiver returned from `get` call on a session
+ */
+
 export class Receiver {
   private receiver: SimpleChannel<ReplyWS | RecvErr>;
 
@@ -275,6 +318,11 @@ export class Receiver {
     this.receiver = receiver;
   }
 
+  /**
+   *  Receives next Reply message from Zenoh `get`
+   * 
+   * @returns Reply
+   */
   async receive(): Promise<Reply | RecvErr> {
     if (this.receiver.state == State.close) {
       return RecvErr.Disconnected;
@@ -300,6 +348,9 @@ export class Receiver {
   }
 }
 
+/**
+ *  Function to open a Zenoh session
+ */
 export function open(config: Config): Promise<Session> {
   return Session.open(config);
 }
