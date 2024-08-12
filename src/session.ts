@@ -126,7 +126,7 @@ export class Session {
   async get(into_selector: IntoSelector): Promise<Receiver> {
     let selector: Selector = Selector.new(into_selector);
     let chan: SimpleChannel<ReplyWS> = await this.remote_session.get(
-      selector.get_key_expr().toString(),
+      selector.key_expr().toString(),
       selector.parameters().toString(),
     );
     let receiver = Receiver.new(chan);

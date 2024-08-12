@@ -37,20 +37,20 @@ async function main() {
   // await session.delete("demo/delete");
 
   // console.log("Issue Get");
-  // let receiver: Receiver = await session.get("test/queryable/**");
-  // let stop = false;
-  // while (!stop) {
-  //   let reply = await receiver.receive();
+  let receiver: Receiver = await session.get("test/queryable/**");
+  let stop = false;
+  while (!stop) {
+    let reply = await receiver.receive();
 
-  //   if (reply == RecvErr.Disconnected) {
-  //     console.log("All Replies Receved");
-  //     stop = true;
-  //   } else if (reply == RecvErr.MalformedReply) {
-  //     console.log("MalformedReply");
-  //   } else {
-  //     console.log("Reply Value ", reply.result());
-  //   };
-  // }
+    if (reply == RecvErr.Disconnected) {
+      console.log("All Replies Receved");
+      stop = true;
+    } else if (reply == RecvErr.MalformedReply) {
+      console.log("MalformedReply");
+    } else {
+      console.log("Reply Value ", reply.result());
+    };
+  }
 
   // // subscribers
   // let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", subscriber_callback);
@@ -65,30 +65,30 @@ async function main() {
   // poll_subscriber.undeclare()
 
   // // // publisher
-  let publisher: Publisher = await session.declare_publisher("demo/pub/1");
+  // let publisher: Publisher = await session.declare_publisher("demo/pub/1");
   // await publisher.put("This is typescript string");
   // await publisher.put(new String("This is typescript String ()"));
   // await publisher.put([65, 66, 67, 49]);
   // With encoding and attachment
-  await publisher.put(
-    [65, 66, 67, 49],
-    Encoding.APPLICATION_JSON(),
-    [12, 234, 5],
-  );
+  // await publisher.put(
+  //   [65, 66, 67, 49],
+  //   Encoding.APPLICATION_JSON(),
+  //   [12, 234, 5],
+  // );
   // await publisher.undeclare();
 
   // queryable
-  console.log("declare queryable");
-  let queryable: Queryable = await session.declare_queryable(
-    "demo/test/queryable",
-    true,
-  );
-  let query = await queryable.recieve();
-  if (query instanceof Query) {
+  // console.log("declare queryable");
+  // let queryable: Queryable = await session.declare_queryable(
+  //   "demo/test/queryable",
+  //   true,
+  // );
+  // let query = await queryable.recieve();
+  // if (query instanceof Query) {
     // query.reply_err("Demo Test 1234")
     // query.reply("demo/test/queryable", "Demo Test 1234")
-    query.reply_del("demo/test/queryable");
-  }
+  //   query.reply_del("demo/test/queryable");
+  // }
 
   // Declare a Queryable with a Callback, this will continue to run until the queryable falls out of scope
   // let queryable_with_callback: Queryable = await session.declare_queryable("demo/test/queryable", true, queryable_callback);

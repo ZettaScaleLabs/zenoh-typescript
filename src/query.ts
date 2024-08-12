@@ -125,7 +125,7 @@ export class Query {
   private _reply_tx: SimpleChannel<QueryReplyWS>;
 
   selector() {
-    return Selector.new(this._key_expr,this._parameters.toString())
+    return Selector.new(this._key_expr, this._parameters.toString())
   }
 
   key_expr(): KeyExpr {
@@ -223,29 +223,131 @@ export class Query {
   }
 }
 
-export class Parameters {
-  private _params: string;
 
-  private constructor(p: string) {
+export type IntoParameters = Parameters | string | String | Map<string, string>
+export class Parameters {
+
+  private _params: Map<string, string>;
+
+  private constructor(p: Map<string, string>) {
     this._params = p;
   }
 
-  toString(): string {
-    return this._params;
+  /**
+   * removes a key from the parameters
+   * @returns void
+   */
+  remove(key: string) {
+    return this._params.delete(key);
   }
 
-  static new(p: string): Parameters {
-    return new Parameters(p);
+  /**
+   * gets an iterator over the keys of the Parameters
+   * @returns Iterator<string>
+   */
+  keys(): Iterator<string> {
+    return this._params.values()
+  }
+
+  /**
+   * gets an iterator over the values of the Parameters
+   * @returns Iterator<string>
+   */
+  values(): Iterator<string> {
+    return this._params.values()
+  }
+
+  /**
+  * Returns true if properties does not contain anything.
+  * @returns void
+  */
+  is_empty(): boolean {
+    return (this._params.size == 0);
+  }
+
+  /**
+   * checks if parameters contains key
+   * @returns boolean
+   */
+  contains_key(key: string): boolean {
+    return this._params.has(key)
+  }
+
+  /**
+   * gets value with associated key, returning undefined if key does not exist
+   * @returns string | undefined
+   */
+  get(key: string): string | undefined {
+    return this._params.get(key)
+  }
+
+  /**
+   * Inserts new key,value pair into parameter
+   * @returns void
+   */
+  insert(key: string, value: string) {
+    return this._params.set(key, value);
+  }
+
+  /**
+   * extends this Parameters with the value of other parameters, overwriting `this` if keys match.  
+   * @returns void
+   */
+  extend(other: IntoParameters) {
+    let other_params = Parameters.new(other);
+    for (let [key, value] of other_params._params) {
+      this._params.set(key, value)
+    }
+  }
+
+  /**
+   * returns the string representation of the 
+   * @returns void
+   */
+  toString(): string {
+    let output_string = "";
+    for (let [key, value] of this._params) {
+      output_string += key + "=" + value + "&"
+    }
+    output_string = output_string.substring(0, output_string.length - 1);
+
+    return output_string;
+  }
+
+  static new(p: IntoParameters): Parameters {
+    if (p instanceof Parameters) {
+      return p
+    } else if (p instanceof Map) {
+      return new Parameters(p);
+    } else {
+      const params = new Map<string, string>();
+      for (const pair of p.split("&") || []) {
+        const [key, value] = pair.split("=");
+        params.set(key, value);
+      }
+      return new Parameters(params);
+    }
   }
 }
+
+
 
 export class ReplyError {
   private _payload: ZBytes;
   private _encoding: Encoding;
 
+  /**
+   * Payload of Error Reply
+   * @returns ZBytes
+   */
   payload(): ZBytes {
     return this._payload;
   }
+
+  /**
+   * Encoding of Error Reply
+   * @returns ZBytes
+   */
   encoding(): Encoding {
     return this._encoding;
   }
@@ -265,6 +367,10 @@ export class ReplyError {
 export class Reply {
   private _result: Sample | ReplyError;
 
+  /**
+   * Payload of Error Reply
+   * @returns Sample or ReplyError 
+   */
   result(): Sample | ReplyError {
     return this._result;
   }
@@ -297,54 +403,34 @@ export class Reply {
 //      ██ ██      ██      ██      ██         ██    ██    ██ ██   ██
 // ███████ ███████ ███████ ███████  ██████    ██     ██████  ██   ██
 
+
 // Selector : <keyexpr>?arg1=lol&arg2=hi
-
 export type IntoSelector = Selector | IntoKeyExpr;
-export type IntoParameters = string | String | Map<string, string>;
-
 export class Selector {
   // KeyExpr object
-  private key_expr: KeyExpr;
+  private _key_expr: KeyExpr;
 
   // Optional : parameter field
-  private _parameters?: string;
+  private _parameters?: Parameters;
 
-  // Returns the key expression
-  get_key_expr(): KeyExpr {
-    return this.key_expr;
+  /**
+   * get 
+   * @returns ZBytes
+   */
+  key_expr(): KeyExpr {
+    return this._key_expr;
   }
 
-  parameters(): string {
+  parameters(): Parameters {
     if (this._parameters == undefined) {
-      return "";
+      return Parameters.new("");
     } else {
       return this._parameters;
     }
   }
 
-  // Would need to replicate full logic of Parameters in Typescript
-  // Returns the parameters of the selector
-  // parameters(): Map<string, string> {
-  //     const params = new Map<string, string>();
-  //     for (const pair of this._parameters?.split("&") || []) {
-  //         const [key, value] = pair.split("=");
-  //         params.set(key, value);
-  //     }
-  //     return params; // If parameter does not exist, then returns undefined
-  // }
-
-  // parameter(param_key: string): string | undefined {
-  //     for (const pair of this._parameters?.split("&") || []) {
-  //         const [key, value] = pair.split("=");
-  //         if (key === param_key) {
-  //             return value
-  //         }
-  //     }
-  //     return undefined; // If parameter does not exist, then returns undefined
-  // }
-
-  private constructor(keyexpr: KeyExpr, parameters?: string) {
-    this.key_expr = keyexpr;
+  private constructor(keyexpr: KeyExpr, parameters?: Parameters) {
+    this._key_expr = keyexpr;
     this._parameters = parameters;
   }
 
@@ -357,19 +443,11 @@ export class Selector {
     } else {
       key_expr = KeyExpr.new(selector);
     }
-
+    
     if (parameters == undefined) {
-      return new Selector(key_expr, "");
-    } else if (parameters instanceof String) {
-      return new Selector(key_expr, parameters.toString());
-    } else if (parameters instanceof Map) {
-      let param_list: string = "&";
-      for (let entry of parameters.entries()) {
-        param_list.concat(entry[0] + "=" + entry[1]);
-      }
-      return new Selector(key_expr, param_list);
+      return new Selector(key_expr, Parameters.new(""));
     } else {
-      return new Selector(key_expr, parameters);
+      return new Selector(key_expr, Parameters.new(parameters));
     }
   }
 }
