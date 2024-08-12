@@ -1,5 +1,6 @@
 {
   "name": "zenoh",
+  "version": "0.0.1",
   "license": "SEE LICENSE IN 'LICENSE'",
   "type": "module",
   "exports": {
