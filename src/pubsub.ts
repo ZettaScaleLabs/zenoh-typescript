@@ -91,17 +91,23 @@ export class Publisher {
   }
 
   /**
-   * Puts a value on the publisher associated with this class instance
+   * gets the KeyExpression from Publisher
    *
-   * @param value -  something that can bec converted into a Value
-   *
-   * @returns success: 0, failure : -1
+   * @returns KeyExpr instance
    */
-
   key_expr(): KeyExpr {
     return this._key_expr;
   }
-
+  
+  /**
+   * Puts a payload on the publisher associated with this class instance
+   *
+   * @param payload    - something that can be converted into a ZBytes
+   * @param encoding   - something that can be converted into an encoding
+   * @param attachment - something that can be converted into a ZBytes
+   *
+   * @returns Promise<void>
+   */
   put(
     payload: IntoZBytes,
     encoding?: IntoEncoding,
@@ -121,7 +127,6 @@ export class Publisher {
       _attachment = Array.from(att_bytes.payload());
     }
 
-    // payload, encoding, attachment, congestion_control, priority
     return this._remote_publisher.put(
       Array.from(zbytes.payload()),
       _attachment,
@@ -129,24 +134,40 @@ export class Publisher {
     );
   }
 
+
+   /**
+   * get Priority declared for Publisher
+   *   
+   * @returns Priority
+   */
   priority(): Priority {
     return this._priority;
   }
 
+  /**
+   * get Congestion Control for a Publisher
+   *   
+   * @returns CongestionControl
+   */
   congestion_control(): CongestionControl {
     return this._congestion_control;
   }
 
+  /**
+   * undeclares publisher
+   *   
+   * @returns void
+   */
   async undeclare() {
     await this._remote_publisher.undeclare();
   }
 
   /**
    * Creates a new Publisher on a session
-   * @param keyexpr -  something that can be converted into a Key Expression
-   *
+   * @param keyexpr -  A Key Expression
    * @param session -  A Session to create the publisher on
-   *
+   * @param congestion_control -  Congestion control 
+   * @param priority -  Priority for Zenoh Data
    * @returns a new Publisher instance
    */
   static async new(

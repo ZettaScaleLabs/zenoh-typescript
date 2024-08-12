@@ -40,7 +40,7 @@ export class ZBytes {
   /**
    * return the underlying Uint8Array buffer
    * 
-   * @returns ZBytes
+   * @returns Uint8Array
    */
   payload(): Uint8Array {
     return this.buffer;
