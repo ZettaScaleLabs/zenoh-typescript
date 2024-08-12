@@ -1,25 +1,31 @@
+import { Encoding } from "zenoh/encoding";
+import "./style.css";
+import "./webpage.ts";
 
-import { Encoding } from 'zenoh/encoding';
-import './style.css'
-import './webpage.ts'
-
-import { Session, Config, Query, Sample, KeyExpr, Publisher, Subscriber, Receiver, RecvErr, Queryable } from "zenoh"
+import {
+  Session,
+  Config,
+  Query,
+  Sample,
+  KeyExpr,
+  Publisher,
+  Subscriber,
+  Receiver,
+  RecvErr,
+  Queryable,
+} from "zenoh";
 
 async function queryable_callback(query: Query) {
   console.log("  Query Receieved in Callback", query);
-  query.reply(
-    query.key_expr(),
-    [65, 66, 67, 50]
-  );
+  query.reply(query.key_expr(), [65, 66, 67, 50]);
   console.log("  ");
 }
 
 async function main() {
-
   const subscriber_callback = async function (sample: Sample): Promise<void> {
     console.log("    cb demo 1 :  Key_expr ", sample.keyexpr());
     console.log("    cb demo 1 :  Value    ", sample.payload());
-  }
+  };
 
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
   // KeyExpr
@@ -64,43 +70,50 @@ async function main() {
   // await publisher.put(new String("This is typescript String ()"));
   // await publisher.put([65, 66, 67, 49]);
   // With encoding and attachment
-  await publisher.put([65, 66, 67, 49], Encoding.APPLICATION_JSON(),[12,234,5]);
+  await publisher.put(
+    [65, 66, 67, 49],
+    Encoding.APPLICATION_JSON(),
+    [12, 234, 5],
+  );
   // await publisher.undeclare();
 
   // queryable
-  console.log("declare queryable")
-  let queryable: Queryable = await session.declare_queryable("demo/test/queryable", true);
+  console.log("declare queryable");
+  let queryable: Queryable = await session.declare_queryable(
+    "demo/test/queryable",
+    true,
+  );
   let query = await queryable.recieve();
   if (query instanceof Query) {
     // query.reply_err("Demo Test 1234")
     // query.reply("demo/test/queryable", "Demo Test 1234")
-    query.reply_del("demo/test/queryable")
+    query.reply_del("demo/test/queryable");
   }
 
   // Declare a Queryable with a Callback, this will continue to run until the queryable falls out of scope
   // let queryable_with_callback: Queryable = await session.declare_queryable("demo/test/queryable", true, queryable_callback);
-
-
 
   // Loop to spin and keep alive
   var count = 0;
   while (true) {
     var seconds = 100;
     await sleep(1000 * seconds);
-    console.log("Main Loop ? ", count)
+    console.log("Main Loop ? ", count);
     count = count + 1;
   }
 }
 
-main().then(() => console.log("Done")).catch(e => {
-  console.log(e)
-  throw e
-})
+main()
+  .then(() => console.log("Done"))
+  .catch((e) => {
+    console.log(e);
+    throw e;
+  });
 
 function executeAsync(func: any) {
   setTimeout(func, 0);
 }
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

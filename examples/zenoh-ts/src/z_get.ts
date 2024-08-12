@@ -1,16 +1,13 @@
+import "./style.css";
+import "./webpage.ts";
 
-import './style.css'
-import './webpage.ts'
-
-import { Config, Receiver, RecvErr, Session } from "zenoh"
-
+import { Config, Receiver, RecvErr, Session } from "zenoh";
 
 async function main() {
-
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
   console.log("Issue Get");
   let receiver: Receiver = await session.get("test/queryable/**");
-  
+
   let stop = false;
 
   while (!stop) {
@@ -23,12 +20,13 @@ async function main() {
       console.log("MalformedReply");
     } else {
       console.log("Reply Value ", reply.result());
-    };
+    }
   }
-
 }
 
-main().then(() => console.log("Done")).catch(e => {
-  console.log(e)
-  throw e
-})
+main()
+  .then(() => console.log("Done"))
+  .catch((e) => {
+    console.log(e);
+    throw e;
+  });

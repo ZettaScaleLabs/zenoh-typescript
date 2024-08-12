@@ -1,6 +1,6 @@
-import typescriptLogo from './typescript.svg'
+import typescriptLogo from "./typescript.svg";
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <div>
     <a href="https://zenoh.io/" target="_blank">
       <img src="https://zenoh.io/img/zenoh-dragon.png" class="logo" alt="Vite logo" />
@@ -14,5 +14,4 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       Click on the Zenoh and TypeScript logos to learn more
     </p>
   </div>
-`
-
+`;

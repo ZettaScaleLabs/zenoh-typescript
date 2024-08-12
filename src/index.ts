@@ -13,20 +13,19 @@
 //
 
 // API Layer Files
-import { KeyExpr, IntoKeyExpr } from './key_expr'
-import { ZBytes, IntoZBytes } from './z_bytes'
-import { Sample } from './sample'
-import { Publisher, Subscriber } from './pubsub'
-import { IntoSelector, Query, Queryable, Reply, Selector } from './query'
-import { Session, RecvErr, Receiver } from './session';
-import { Config } from './config';
-
+import { KeyExpr, IntoKeyExpr } from "./key_expr";
+import { ZBytes, IntoZBytes } from "./z_bytes";
+import { Sample } from "./sample";
+import { Publisher, Subscriber } from "./pubsub";
+import { IntoSelector, Query, Queryable, Reply, Selector } from "./query";
+import { Session, RecvErr, Receiver } from "./session";
+import { Config } from "./config";
 
 // Exports
-export { KeyExpr, IntoKeyExpr }
-export { ZBytes, IntoZBytes }
-export { Sample, }
-export { Publisher, Subscriber }
-export { IntoSelector, Query, Queryable, Reply, Selector }
-export { Config }
-export { Session, Receiver, RecvErr } 
+export { KeyExpr, IntoKeyExpr };
+export { ZBytes, IntoZBytes };
+export { Sample };
+export { Publisher, Subscriber };
+export { IntoSelector, Query, Queryable, Reply, Selector };
+export { Config };
+export { Session, Receiver, RecvErr };

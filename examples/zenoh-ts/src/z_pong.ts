@@ -1,22 +1,22 @@
+import { Encoding } from "zenoh/encoding";
+import "./style.css";
+import "./webpage.ts";
 
-import { Encoding } from 'zenoh/encoding';
-import './style.css'
-import './webpage.ts'
-
-import { Config, Session } from "zenoh"
-import { CongestionControl, Sample } from 'zenoh/sample';
+import { Config, Session } from "zenoh";
+import { CongestionControl, Sample } from "zenoh/sample";
 
 export async function main() {
-
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
   let pub = await session.declare_publisher(
-    "test/ping", Encoding.default(), CongestionControl.BLOCK
-  )
+    "test/ping",
+    Encoding.default(),
+    CongestionControl.BLOCK,
+  );
 
   const subscriber_callback = async function (sample: Sample): Promise<void> {
-    await pub.put(sample.payload())
-  }
+    await pub.put(sample.payload());
+  };
 
   await session.declare_subscriber("test/pong", subscriber_callback);
 
@@ -29,11 +29,12 @@ export async function main() {
 }
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-main().then(() => console.log("Done")).catch(e => {
-  console.log(e)
-  throw e
-})
-
+main()
+  .then(() => console.log("Done"))
+  .catch((e) => {
+    console.log(e);
+    throw e;
+  });

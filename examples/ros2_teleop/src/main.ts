@@ -1,6 +1,6 @@
 import { CDRReader, CDRWriter } from "jscdr";
 // import { ByteBuffer } from "bytebuffer";
-import { Session, Config, Sample } from "zenoh"
+import { Session, Config, Sample } from "zenoh";
 
 import { BatteryState, LaserScan, Log, Twist, Vector3 } from "./ros2_types";
 import ByteBuffer from "bytebuffer";
@@ -9,7 +9,7 @@ const TOPIC_DRIVE = "cmd_vel";
 const TOPIC_BATTERY = "battery_state";
 const TOPIC_LIDAR = "scan";
 const TOPIC_LOGS = "rosout";
-const TOPIC_MQTT = "zigbee2mqtt/device/**"
+const TOPIC_MQTT = "zigbee2mqtt/device/**";
 
 var document = window.document;
 
@@ -18,25 +18,30 @@ var locator = document.getElementById("locator").value;
 const session = await Session.open(Config.new(locator));
 
 function reloadPage(rest: string, s: string) {
-  window.location.search = 'rest=' + rest + "&scope=" + s;
+  window.location.search = "rest=" + rest + "&scope=" + s;
 }
 
 // Add listener for input changes REST API and Scope inputs
 if (document.getElementById("locator") != null) {
-  document.getElementById("locator").addEventListener('change', (event) => {
-    reloadPage(event.target.value, document.getElementById("scope_input").value);
+  document.getElementById("locator").addEventListener("change", (event) => {
+    reloadPage(
+      event.target.value,
+      document.getElementById("scope_input").value,
+    );
   });
 }
 
-document.getElementById("scope_input").addEventListener('change', (event) => {
+document.getElementById("scope_input").addEventListener("change", (event) => {
   reloadPage(document.getElementById("remote_api").value, event.target.value);
 });
 
 // The scope (used as a prefix for all Zenoh keys to publish and subscribe if not containing '*')
 var scope = document.getElementById("scope_input").value;
-if (scope.length > 0 && !scope.endsWith("/")) { scope += "/" }
+if (scope.length > 0 && !scope.endsWith("/")) {
+  scope += "/";
+}
 // If scope contains '*', default to "bot1" for subscription to avoid display conflicts of camera+lidar
-var sub_scope = scope.includes('*') ? "bot/" : scope;
+var sub_scope = scope.includes("*") ? "bot/" : scope;
 
 async function pubTwist(linear: number, angular: number) {
   // Get scales from HTML
@@ -46,7 +51,7 @@ async function pubTwist(linear: number, angular: number) {
   // Create a Twist message
   var twist = new Twist(
     new Vector3(linear * linear_scale, 0.0, 0.0),
-    new Vector3(0.0, 0.0, angular * angular_scale)
+    new Vector3(0.0, 0.0, angular * angular_scale),
   );
 
   // Since it's going to DDS, encode it using a jscdr.CDRWriter
@@ -54,27 +59,28 @@ async function pubTwist(linear: number, angular: number) {
   twist.encode(writer);
   // The key expression for publication
   var key_expr = scope + TOPIC_DRIVE;
-  console.log("Publish to", key_expr, twist)
-  console.log(session)
+  console.log("Publish to", key_expr, twist);
+  console.log(session);
   await session.put(key_expr, writer.buf.view);
 }
 document.pubTwist = pubTwist;
 
 // callback on keyboard's down key event
 async function onkeydown(e) {
-  if (e.keyCode == '38') {      // up arrow
+  if (e.keyCode == "38") {
+    // up arrow
     await pubTwist(1.0, 0.0);
-  }
-  else if (e.keyCode == '40') { // down arrow
+  } else if (e.keyCode == "40") {
+    // down arrow
     await pubTwist(-1.0, 0.0);
-  }
-  else if (e.keyCode == '37') { // left arrow
+  } else if (e.keyCode == "37") {
+    // left arrow
     await pubTwist(0.0, 1.0);
-  }
-  else if (e.keyCode == '39') { // right arrow
+  } else if (e.keyCode == "39") {
+    // right arrow
     await pubTwist(0.0, -1.0);
-  }
-  else if (e.keyCode == '32') { // spacebar
+  } else if (e.keyCode == "32") {
+    // spacebar
     await pubTwist(0.0, 0.0);
   }
 }
@@ -84,7 +90,12 @@ document.onkeydown = onkeydown;
 // callback on keyboard's up key event
 function onkeyup(e) {
   // if key pressed was an arrow, send a Twist(0,0) to stop the robot
-  if (e.keyCode == '37' || e.keyCode == '38' || e.keyCode == '39' || e.keyCode == '40')
+  if (
+    e.keyCode == "37" ||
+    e.keyCode == "38" ||
+    e.keyCode == "39" ||
+    e.keyCode == "40"
+  )
     pubTwist(0.0, 0.0);
 }
 // register callback on key up
@@ -104,10 +115,10 @@ const battery_subscriber = async function (sample: Sample): Promise<void> {
   if (elem != undefined) {
     elem.innerHTML = "Battery: " + Math.round(battery.percentage) + " %";
   }
-}
+};
 
 console.log("battery Topic:", key_expr);
-await session.declare_subscriber(key_expr, battery_subscriber)
+await session.declare_subscriber(key_expr, battery_subscriber);
 console.log("After Subscriber:");
 //////////////////////////////////////////////////////////////////
 //  Camera subscription (as motion-JPEG via WebService plugin)  //
@@ -138,8 +149,8 @@ var key_expr = sub_scope + TOPIC_LIDAR;
 // elem.innerHTML = "Lidar ( " + key_expr + " )";
 
 // // Get canvas context and get its dimensions
-const canvas = document.getElementById('Lidar-canvas');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("Lidar-canvas");
+const ctx = canvas.getContext("2d");
 const width = canvas.width;
 const height = canvas.height;
 
@@ -188,9 +199,9 @@ const lidar_callback = async function (sample: Sample): Promise<void> {
     var ctx_y = y + height / 2;
     ctx.beginPath();
     if (isInRange) {
-      ctx.strokeStyle = 'LightGray';
+      ctx.strokeStyle = "LightGray";
     } else {
-      ctx.strokeStyle = 'Gainsboro';
+      ctx.strokeStyle = "Gainsboro";
     }
     ctx.moveTo(width / 2, height / 2);
     ctx.lineTo(ctx_x, ctx_y);
@@ -198,7 +209,7 @@ const lidar_callback = async function (sample: Sample): Promise<void> {
   }
 
   // Draw points
-  ctx.fillStyle = 'red';
+  ctx.fillStyle = "red";
   for (const [x, y, isInRange] of points) {
     var ctx_x = x + width / 2;
     var ctx_y = y + height / 2;
@@ -209,16 +220,16 @@ const lidar_callback = async function (sample: Sample): Promise<void> {
 
   // Draw axis lines
   ctx.beginPath();
-  ctx.strokeStyle = 'DimGray';
+  ctx.strokeStyle = "DimGray";
   ctx.lineWidth = 1;
   ctx.moveTo(0, height / 2);
   ctx.lineTo(width, height / 2);
   ctx.moveTo(width / 2, 0);
   ctx.lineTo(width / 2, height);
   ctx.stroke();
-}
+};
 console.log("Lidar Sub:", key_expr);
-session.declare_subscriber(key_expr, lidar_callback)
+session.declare_subscriber(key_expr, lidar_callback);
 
 //////////////////////////////////
 //    Logs subscription (ROS2)  //
@@ -244,12 +255,21 @@ const logs_callback = async function (sample: Sample): Promise<void> {
   let log = Log.decode(reader);
   // Add it to "rosout_logs" HTML element
   let elem = document.getElementById("rosout_logs");
-  elem.innerHTML += "ROS2: [" + log.time.sec + "." + log.time.nsec + "] [" + log.name + "]: " + log.msg + "<br>";
+  elem.innerHTML +=
+    "ROS2: [" +
+    log.time.sec +
+    "." +
+    log.time.nsec +
+    "] [" +
+    log.name +
+    "]: " +
+    log.msg +
+    "<br>";
   // Auto-scroll to the bottom
   elem.scrollTop = elem.scrollHeight;
-}
+};
 console.log("Lidar Sub:", key_expr);
-session.declare_subscriber(key_expr, logs_callback)
+session.declare_subscriber(key_expr, logs_callback);
 
 //////////////////////////////////
 //    Logs subscription (MQTT)  //

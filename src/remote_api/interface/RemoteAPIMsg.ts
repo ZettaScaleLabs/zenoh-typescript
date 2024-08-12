@@ -2,4 +2,4 @@
 import type { ControlMsg } from "./ControlMsg";
 import type { DataMsg } from "./DataMsg";
 
-export type RemoteAPIMsg = { "Data": DataMsg } | { "Control": ControlMsg };
+export type RemoteAPIMsg = { Data: DataMsg } | { Control: ControlMsg };

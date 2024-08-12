@@ -1,19 +1,19 @@
+import { Encoding } from "zenoh/encoding";
+import "./style.css";
+import "./webpage.ts";
 
-import { Encoding } from 'zenoh/encoding';
-import './style.css'
-import './webpage.ts'
-
-import { Config, KeyExpr, Publisher, Session } from "zenoh"
-import { CongestionControl } from 'zenoh/sample';
+import { Config, KeyExpr, Publisher, Session } from "zenoh";
+import { CongestionControl } from "zenoh/sample";
 
 export async function main() {
-
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
   let key_expr = KeyExpr.new("demo/ping");
   let publisher: Publisher = await session.declare_publisher(
-    key_expr, Encoding.default(), CongestionControl.BLOCK
-  )
+    key_expr,
+    Encoding.default(),
+    CongestionControl.BLOCK,
+  );
 
   const payload = [122, 101, 110, 111, 104];
 
@@ -25,15 +25,15 @@ export async function main() {
     publisher.put(buf);
     sleep(1000);
   }
-
 }
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-main().then(() => console.log("Done")).catch(e => {
-  console.log(e)
-  throw e
-})
-
+main()
+  .then(() => console.log("Done"))
+  .catch((e) => {
+    console.log(e);
+    throw e;
+  });
