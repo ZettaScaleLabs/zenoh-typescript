@@ -5,6 +5,7 @@ import { SampleWS } from "./remote_api/interface/SampleWS";
 import { ZBytes } from "./z_bytes";
 import { Option } from "./session";
 import { Encoding } from "./encoding";
+
 /**
  * Kinds of Samples that can be recieved from Zenoh
  */
@@ -14,14 +15,16 @@ export enum SampleKind {
 }
 
 /**
- * Samples are publication events receieved on the Socket
+ * Congestion control for Publishers
  */
-
 export enum CongestionControl {
   DROP = "DROP",
   BLOCK = "BLOCK",
 }
 
+/**
+ * Convenience function to convert between Congestion function and int
+ */
 export function congestion_control_from_int(
   prio_u8: number,
 ): CongestionControl {
@@ -36,6 +39,9 @@ export function congestion_control_from_int(
   }
 }
 
+/**
+ * Convenience function to convert between Congestion function and int
+ */
 export function congestion_control_to_int(
   congestion_control: CongestionControl,
 ): number {
@@ -47,6 +53,9 @@ export function congestion_control_to_int(
   }
 }
 
+/**
+ * Priority enum for Publisher
+ */
 export enum Priority {
   REAL_TIME = "REAL_TIME",
   INTERACTIVE_HIGH = "INTERACTIVE_HIGH",
@@ -57,6 +66,9 @@ export enum Priority {
   BACKGROUND = "BACKGROUND",
 }
 
+/**
+ * Convenience function to convert between Priority function and int
+ */
 export function priority_from_int(prio_u8: number): Priority {
   switch (prio_u8) {
     case 1:
@@ -79,6 +91,9 @@ export function priority_from_int(prio_u8: number): Priority {
   }
 }
 
+/**
+ * Convenience function to convert between Priority function and int
+ */
 export function priority_to_int(prio: Priority): number {
   switch (prio) {
     case Priority.REAL_TIME:
@@ -98,7 +113,9 @@ export function priority_to_int(prio: Priority): number {
   }
 }
 
-// type IntoSample = SampleWS | [KeyExpr, ZBytes, SampleKind];
+/**
+ * Sample class receieved from Subscriber
+ */
 export class Sample {
   private _keyexpr: KeyExpr;
   private _payload: ZBytes;
@@ -185,6 +202,10 @@ export class Sample {
   }
 }
 
+
+/**
+ * Convenience function to convert between Sample and SampleWS
+ */
 export function Sample_from_SampleWS(sample_ws: SampleWS) {
   let sample_kind: SampleKind;
   if (sample_ws.kind == "Delete") {
@@ -227,6 +248,9 @@ export function Sample_from_SampleWS(sample_ws: SampleWS) {
   );
 }
 
+/**
+ * Convenience function to convert between SampleWS and Sample 
+ */
 export function SampleWS_from_Sample(
   sample: Sample,
   encoding: Encoding,

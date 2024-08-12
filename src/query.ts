@@ -22,16 +22,20 @@ import { Option } from "./session";
 //  ██████   ██████  ███████ ██   ██    ██    ██   ██ ██████  ███████ ███████
 //     ▀▀
 
+/**
+ * Queryable class used to receive Query's from the network and handle Reply's
+ */
 export class Queryable {
-  /**
-   * Class to hold pointer to subscriber in Wasm Memory
-   */
   private _remote_queryable: RemoteQueryable;
 
   constructor(remote_queryable: RemoteQueryable) {
     this._remote_queryable = remote_queryable;
   }
 
+  /**
+   * recieve next Query of this Queryable
+   * @returns Promise <Query | void>
+   */
   async recieve(): Promise<Query | void> {
 
     // TODO: Make this Callback Queryable ?
@@ -54,6 +58,10 @@ export class Queryable {
     }
   }
 
+  /**
+   * Undeclares Queryable
+   * @returns void
+   */
   async undeclare() {
     this._remote_queryable.undeclare();
   }
@@ -63,6 +71,9 @@ export class Queryable {
   }
 }
 
+/**
+ * Convenience function to convert between QueryWS and Query 
+ */
 export function QueryWS_to_Query(
   query_ws: QueryWS,
   reply_tx: SimpleChannel<QueryReplyWS>,
@@ -101,6 +112,9 @@ export function QueryWS_to_Query(
 //  ██████   ██████  ███████ ██   ██    ██
 //     ▀▀
 
+/**
+ * Query Class to handle  
+ */
 export class Query {
   private _query_id: UUIDv4;
   private _key_expr: KeyExpr;
@@ -111,7 +125,7 @@ export class Query {
   private _reply_tx: SimpleChannel<QueryReplyWS>;
 
   selector() {
-    // return new Selector
+    return Selector.new(this._key_expr,this._parameters.toString())
   }
 
   key_expr(): KeyExpr {
