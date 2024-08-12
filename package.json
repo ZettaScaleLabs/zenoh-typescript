@@ -4,7 +4,6 @@
   "license": "SEE LICENSE IN 'LICENSE'",
   "type": "module",
   "exports": {
-    "require": "./cjs/index.js",
     "import": "./esm/index.js"
   },
   "//types": ".//index.d.ts",

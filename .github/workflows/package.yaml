@@ -1,0 +1,81 @@
+name: Package zenoh-ts
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish artifacts'
+        default: false
+        required: false
+        type: boolean
+      version:
+        description: 'Library version'
+        required: false
+        default: '0.0.1'
+        type: string
+      zenoh_version:
+        description: 'Zenoh version'
+        required: true
+        type: string
+        default: '1.0.0-alpha.6'
+
+jobs:
+  package:
+    name: Package app for ${{ matrix.job.name }}
+    env:
+      NUXT_PUBLIC_VERSION: ${{ inputs.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { name: 'Ubuntu x64', os: 'ubuntu-22.04', arch: X64 }
+
+    runs-on: ['self-hosted', '${{ matrix.job.os }}', '${{ matrix.job.arch }}']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+
+      - name: Run install
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install 
+
+      - name: Package full Source (Linux)
+        if: ${{ inputs.publish == true && (runner.os == 'Linux') }}
+        run: |
+          zip -r * source_code.zip
+
+      - name: Transpile Library
+        run: |
+          npm run build:ts
+
+      - name: Package (Linux)
+        if: ${{ inputs.publish == true && (runner.os == 'Linux') }}
+        run: |
+          zip -r esm artifacts.zip
+
+      - name: create browser artifacts
+        uses: actions/upload-artifact@v2
+        with:
+           path: artifacts.zip
+
+      - name: Clean up
+        if: true && ( runner.os == 'Linux' || runner.os == 'macOS' )
+        run: |
+          rm -rf esm
+          rm -rf dist
+          rm -rf cjs
+          rm -rf artifacts
+          rm -rf artifacts.zip
+          rm -rf node_modules
+          rm -rf packages
+          rm -rf .yarn/cache
+          rm -rf ext
+          rm -rf zenoh-ts/node_modules
+          rm -rf zenoh-ts/.output
+          rm -rf zenoh-ts/.yarn/cache

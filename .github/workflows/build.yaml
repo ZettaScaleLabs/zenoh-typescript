@@ -1,0 +1,30 @@
+name: run build
+
+on:
+   pull_request:
+      branches:
+         - 'main'
+
+jobs:
+   build:
+      runs-on: ${{ matrix.os }}
+      strategy:
+         matrix:
+            os: [ubuntu-latest]
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Setup Node
+          uses: actions/setup-node@v4
+          with:
+            node-version: '21'
+
+        - name: Run install
+          uses: borales/actions-yarn@v4
+          with:
+            cmd: install 
+
+        - name: Transpile Library
+          run: |
+            npm run build:ts
