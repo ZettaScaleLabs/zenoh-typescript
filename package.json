@@ -23,7 +23,8 @@
     "request": "^2.79.0",
     "text-encoding": "^0.7.0",
     "ts-log": "^2.2.5",
-    "tslog": "^4.9.3"
+    "tslog": "^4.9.3",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/node": "20.9.1",
