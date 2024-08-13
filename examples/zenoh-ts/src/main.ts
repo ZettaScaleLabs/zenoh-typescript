@@ -1,6 +1,7 @@
 import { Encoding } from "zenoh/encoding";
 import "./style.css";
 import "./webpage.ts";
+import {main_thr} from  "./z_sub_thr.ts";
 
 import {
   Session,
@@ -22,14 +23,16 @@ async function queryable_callback(query: Query) {
 }
 
 async function main() {
-  const subscriber_callback = async function (sample: Sample): Promise<void> {
-    console.log("    cb demo 1 :  Key_expr ", sample.keyexpr());
-    console.log("    cb demo 1 :  Value    ", sample.payload());
-  };
+  main_thr();
 
-  const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
+  // const subscriber_callback = async function (sample: Sample): Promise<void> {
+  //   console.log("    cb demo 1 :  Key_expr ", sample.keyexpr());
+  //   console.log("    cb demo 1 :  Value    ", sample.payload());
+  // };
+
+  // const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
   // KeyExpr
-  let key_exp = KeyExpr.new("demo/put");
+  // let key_exp = KeyExpr.new("demo/put");
 
   // Session put / del / get
   // await session.put("demo/put", [65, 66, 67, 49]);
@@ -37,20 +40,20 @@ async function main() {
   // await session.delete("demo/delete");
 
   // console.log("Issue Get");
-  let receiver: Receiver = await session.get("test/queryable/**?p1=s1;p2=s2");
-  let stop = false;
-  while (!stop) {
-    let reply = await receiver.receive();
+  // let receiver: Receiver = await session.get("test/queryable/**?p1=s1;p2=s2");
+  // let stop = false;
+  // while (!stop) {
+  //   let reply = await receiver.receive();
 
-    if (reply == RecvErr.Disconnected) {
-      console.log("All Replies Receved");
-      stop = true;
-    } else if (reply == RecvErr.MalformedReply) {
-      console.log("MalformedReply");
-    } else {
-      console.log("Reply Value ", reply.result());
-    };
-  }
+  //   if (reply == RecvErr.Disconnected) {
+  //     console.log("All Replies Receved");
+  //     stop = true;
+  //   } else if (reply == RecvErr.MalformedReply) {
+  //     console.log("MalformedReply");
+  //   } else {
+  //     console.log("Reply Value ", reply.result());
+  //   };
+  // }
 
   // // subscribers
   // let callback_subscriber: Subscriber = await session.declare_subscriber("demo/pub", subscriber_callback);
@@ -78,20 +81,20 @@ async function main() {
   // await publisher.undeclare();
 
   // queryable
-  console.log("declare queryable");
-  let queryable: Queryable = await session.declare_queryable(
-    "demo/test/queryable",
-    true,
-  );
-  let query = await queryable.recieve();
-  if (query instanceof Query) {
-    console.log(query.selector())
-    console.log(query.selector().parameters())
-    query.reply("demo/test/queryable", "Demo Test 1234")
-    // query.reply_err("Demo Test 1234")
-    // query.reply_del("test/queryable");
-  }
-  console.log("declare queryableend ");
+  // console.log("declare queryable");
+  // let queryable: Queryable = await session.declare_queryable(
+  //   "demo/test/queryable",
+  //   true,
+  // );
+  // let query = await queryable.recieve();
+  // if (query instanceof Query) {
+  //   console.log(query.selector())
+  //   console.log(query.selector().parameters())
+  //   query.reply("demo/test/queryable", "Demo Test 1234")
+  //   // query.reply_err("Demo Test 1234")
+  //   // query.reply_del("test/queryable");
+  // }
+  // console.log("declare queryableend ");
 
   // Declare a Queryable with a Callback, this will continue to run until the queryable falls out of scope
   // let queryable_with_callback: Queryable = await session.declare_queryable("demo/test/queryable", true, queryable_callback);
