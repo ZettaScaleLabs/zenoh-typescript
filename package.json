@@ -40,5 +40,9 @@
     "build": "npx tsc",
     "release": "npx release-it",
     "clean": "rm -rf ./node_modules ./dist ./esm"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
   }
 }
