@@ -66,6 +66,7 @@ jobs:
           npx release-it
 
       - name: Cleanup
+        if: always()
         run: |
           rm -rf node_modules
           rm -rf dist
