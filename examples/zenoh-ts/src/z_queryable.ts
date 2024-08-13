@@ -1,7 +1,7 @@
 import "./style.css";
 import "./webpage.ts";
 
-import { Config, KeyExpr, Query, Queryable, Session, ZBytes } from "zenoh";
+import { Config, KeyExpr, Query, Queryable, Session, ZBytes } from "@ZettaScaleLabs/zenoh-ts";
 
 type Option<T> = T | null;
 

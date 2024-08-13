@@ -1,4 +1,3 @@
-import { Encoding } from "zenoh/encoding";
 import "./style.css";
 import "./webpage.ts";
 import {main_thr} from  "./z_sub_thr.ts";
@@ -14,7 +13,7 @@ import {
   Receiver,
   RecvErr,
   Queryable,
-} from "zenoh";
+} from "@ZettaScaleLabs/zenoh-ts";;
 
 async function queryable_callback(query: Query) {
   console.log("  Query Receieved in Callback", query);

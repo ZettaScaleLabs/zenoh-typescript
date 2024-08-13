@@ -34,7 +34,9 @@ import { State } from "channel-ts/lib/channel";
 import { Config } from "./config";
 import { Encoding } from "./encoding";
 import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
+import { Error } from "./remote_api/session";
 
+export { Error };
 export type Option<T> = T | null;
 export type Result<T, E> = T | E;
 
@@ -69,7 +71,7 @@ export class Session {
 
   static async open(config: Promise<Config> | Config): Promise<Session> {
     const cfg = await config;
-    let remote_session: RemoteSession = await RemoteSession.new(cfg.locator);
+    let remote_session = await RemoteSession.new(cfg.locator);
     return new Session(remote_session);
   }
 

@@ -16,6 +16,6 @@
   "dependencies": {
     "tslog": "^4.9.3",
     "jscdr": "0.0.3",
-    "zenoh": "file:../../esm/"
+    "@ZettaScaleLabs/zenoh-ts": "file:../../"
   }
 }

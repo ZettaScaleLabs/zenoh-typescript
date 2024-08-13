@@ -1,12 +1,11 @@
-import { Encoding } from "zenoh/encoding";
 import "./style.css";
 import "./webpage.ts";
 
-import { Config, Session } from "zenoh";
-import { CongestionControl } from "zenoh/sample";
+import { Encoding, CongestionControl, Config, Session } from "@ZettaScaleLabs/zenoh-ts";
 
 export async function main() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
+
   let sub = await session.declare_subscriber("test/pong");
   let pub = await session.declare_publisher(
     "test/ping",
@@ -38,13 +37,13 @@ export async function main() {
     let rtt = samples_out[i];
     console.log(
       data.length +
-        "bytes: seq=" +
-        i +
-        " rtt=" +
-        rtt +
-        "ms lat=" +
-        rtt / 2 +
-        "ms",
+      "bytes: seq=" +
+      i +
+      " rtt=" +
+      rtt +
+      "ms lat=" +
+      rtt / 2 +
+      "ms",
     );
   }
 }

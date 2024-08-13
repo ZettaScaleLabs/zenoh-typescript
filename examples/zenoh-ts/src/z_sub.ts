@@ -1,8 +1,7 @@
 import "./style.css";
 import "./webpage.ts";
 
-import { Config, Subscriber, Session } from "zenoh";
-import { Sample } from "zenoh/sample";
+import { Sample, Config, Subscriber, Session } from "@ZettaScaleLabs/zenoh-ts";
 
 export async function main() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));

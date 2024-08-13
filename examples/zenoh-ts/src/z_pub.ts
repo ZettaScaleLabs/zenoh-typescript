@@ -1,9 +1,7 @@
-import { Encoding } from "zenoh/encoding";
 import "./style.css";
 import "./webpage.ts";
 
-import { Config, KeyExpr, Publisher, Session } from "zenoh";
-import { CongestionControl } from "zenoh/sample";
+import { Encoding, CongestionControl, Config, KeyExpr, Publisher, Session } from "@ZettaScaleLabs/zenoh-ts";
 
 export async function main() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));

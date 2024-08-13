@@ -23,9 +23,9 @@
   integrity sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==
 
 "@types/node@^18.0.0 || >=20.0.0":
-  version "20.14.10"
-  resolved "https://registry.npmjs.org/@types/node/-/node-20.14.10.tgz"
-  integrity sha512-MdiXf+nDuMvY0gJKxyfZ7/6UFsETO7mGKF54MVD/ekJS6HdFtpZFBgrh6Pseu64XTb2MLyFPlbW6hj8HYRQNOQ==
+  version "20.12.13"
+  resolved "https://registry.npmjs.org/@types/node/-/node-20.12.13.tgz"
+  integrity sha512-gBGeanV41c1L171rR7wjbMiEpEI/l5XFQdLLfhr/REwpgDy/4U8y89+i8kRiLzDyZdOkXh+cRaTetUnCYutoXA==
   dependencies:
     undici-types "~5.26.4"
 
@@ -33,6 +33,20 @@
   version "10.0.0"
   resolved "https://registry.npmjs.org/@types/uuid/-/uuid-10.0.0.tgz"
   integrity sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==
+
+"@ZettaScaleLabs/zenoh-ts@file:../../":
+  version "0.0.1"
+  resolved "file:../.."
+  dependencies:
+    channel-ts "^0.1.2"
+    cpx "^1.5.0"
+    fp-ts "^2.16.5"
+    object-inspect "^1.13.1"
+    request "^2.79.0"
+    text-encoding "^0.7.0"
+    ts-log "^2.2.5"
+    tslog "^4.9.3"
+    uuid "^10.0.0"
 
 bytebuffer@5.0.1:
   version "5.0.1"
@@ -162,6 +176,3 @@ vite@^5.2.12:
     rollup "^4.13.0"
   optionalDependencies:
     fsevents "~2.3.3"
-
-"zenoh@file:../../esm/":
-  resolved "file:../../esm"

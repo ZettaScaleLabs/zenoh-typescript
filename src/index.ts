@@ -15,12 +15,12 @@
 // API Layer Files
 import { KeyExpr, IntoKeyExpr } from "./key_expr";
 import { ZBytes, IntoZBytes } from "./z_bytes";
-import { Sample } from "./sample";
+import { CongestionControl, Sample } from "./sample";
 import { Publisher, Subscriber } from "./pubsub";
-import { IntoSelector, Parameters , Query, Queryable, Reply, Selector } from "./query";
+import { IntoSelector, Parameters, Query, Queryable, Reply, Selector } from "./query";
 import { Session, RecvErr, Receiver } from "./session";
 import { Config } from "./config";
-
+import { Encoding } from "./encoding";
 
 // Exports
 export { KeyExpr, IntoKeyExpr };
@@ -30,3 +30,5 @@ export { Publisher, Subscriber };
 export { IntoSelector, Parameters, Query, Queryable, Reply, Selector };
 export { Config };
 export { Session, Receiver, RecvErr };
+export { Encoding, CongestionControl };
+

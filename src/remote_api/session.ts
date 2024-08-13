@@ -5,6 +5,7 @@ import { Logger } from "tslog";
 
 const log = new Logger({ stylePrettyLogs: false });
 
+
 // Import interface
 import { RemoteAPIMsg } from "./interface/RemoteAPIMsg";
 import { SampleWS } from "./interface/SampleWS";
@@ -23,6 +24,13 @@ import { QueryReplyWS } from "./interface/QueryReplyWS";
 // ██████  █████   ██ ████ ██ ██    ██    ██    █████       ███████ █████   ███████ ███████ ██ ██    ██ ██ ██  ██
 // ██   ██ ██      ██  ██  ██ ██    ██    ██    ██               ██ ██           ██      ██ ██ ██    ██ ██  ██ ██
 // ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████ ███████ ███████ ███████ ██  ██████  ██   ████
+
+export class Error {
+  msg: string
+  constructor(msg: string) {
+    this.msg = msg;
+  }
+}
 
 export enum RemoteRecvErr {
   Disconnected,
@@ -55,8 +63,12 @@ export class RemoteSession {
     let split = url.split("/");
     let websocket_endpoint = split[0] + "://" + split[1];
 
+    const MAX_RETRIES: number = 10;
+    let retries: number = 0;
     let websocket_connected = false;
-    let retry_timeout_ms = 3000;
+    let retry_timeout_ms = 2000;
+    let exponential_multiplier = 1;
+
     const chan = new SimpleChannel<JSONMessage>(); // creates a new simple channel
     let ws = new WebSocket(websocket_endpoint);
     while (websocket_connected == false) {
@@ -75,11 +87,14 @@ export class RemoteSession {
 
       let wait = 0;
       while (ws.readyState != 1) {
-        log.debug("Websocket Ready State " + ws.readyState);
         await sleep(100);
         wait += 100;
-        if (wait > retry_timeout_ms) {
+        if (wait > (retry_timeout_ms * exponential_multiplier)) {
           ws.close();
+          if (retries > MAX_RETRIES) {
+            throw new Error(`Failed to Connect to locator endpoint: ${url} after ${MAX_RETRIES}`);
+          }
+          exponential_multiplier = exponential_multiplier * 2;
           break;
         }
       }

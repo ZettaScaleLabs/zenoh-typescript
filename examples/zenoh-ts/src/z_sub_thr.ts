@@ -1,8 +1,7 @@
 import "./style.css";
 import "./webpage.ts";
 
-import { Config, Session } from "zenoh";
-import { Sample } from "zenoh/sample";
+import { Config, Session, Sample } from "@ZettaScaleLabs/zenoh-ts";
 
 // Throughput test
 class Stats {
@@ -46,7 +45,8 @@ class Stats {
 export async function main_thr() {
 
   console.log("Open Session");
-  const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
+
+  const session : Session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
   let stats = new Stats(1000000);
   const subscriber_callback = async function (sample: Sample): Promise<void> {
