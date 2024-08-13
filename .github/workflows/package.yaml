@@ -35,6 +35,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: git config
+        run: |
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -45,37 +50,21 @@ jobs:
         with:
           cmd: install 
 
-      - name: Package full Source (Linux)
-        if: ${{ inputs.publish == true && (runner.os == 'Linux') }}
-        run: |
-          zip -r * source_code.zip
+      - name: transpile code
+        run: yarn run build
 
-      - name: Transpile Library
+      - name: Publish
+        id: publish
+        shell: bash
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
-          npm run build:ts
+          npm install
+          npx release-it
 
-      - name: Package (Linux)
-        if: ${{ inputs.publish == true && (runner.os == 'Linux') }}
+      - name: Cleanup
         run: |
-          zip -r esm artifacts.zip
-
-      - name: create browser artifacts
-        uses: actions/upload-artifact@v2
-        with:
-           path: artifacts.zip
-
-      - name: Clean up
-        if: true && ( runner.os == 'Linux' || runner.os == 'macOS' )
-        run: |
-          rm -rf esm
-          rm -rf dist
-          rm -rf cjs
-          rm -rf artifacts
-          rm -rf artifacts.zip
           rm -rf node_modules
-          rm -rf packages
-          rm -rf .yarn/cache
-          rm -rf ext
-          rm -rf zenoh-ts/node_modules
-          rm -rf zenoh-ts/.output
-          rm -rf zenoh-ts/.yarn/cache
+          rm -rf dist
+          rm -rf package-lock.json

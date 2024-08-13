@@ -1,19 +1,19 @@
 {
-  "name": "zenoh",
+  "name": "@ZettaScaleLabs/zenoh",
   "version": "0.0.1",
   "license": "SEE LICENSE IN 'LICENSE'",
   "type": "module",
   "exports": {
-    "import": "./esm/index.js"
+    "import": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
-  "//types": ".//index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "package.json",
     "README.md",
-    "esm",
-    "cjs",
-    "LICENSE",
-    "src"
+    "dist",
+    "LICENSE"
   ],
   "dependencies": {
     "channel-ts": "^0.1.2",
@@ -30,9 +30,6 @@
     "@types/node": "20.9.1",
     "@types/object-inspect": "^1.13.0",
     "@types/uuid": "^10.0.0",
-    "cpx": "^1.5.0",
-    "esbuild": "0.20.1",
-    "exports-loader": "^4.0.0",
     "ts-loader": "^9.5.0",
     "ts-node": "10.9.1",
     "typedoc": "^0.26.5",
@@ -40,16 +37,8 @@
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
-    "build": "npm run build:ts",
-    "//  FULL BUILD   //": "",
-    "clean_build_package": "npm run clean && npm install ",
-    "//  CLEAN        //": "",
-    "clean": "rm -rf dist esm cjs && rm -rf node_modules",
-    "//  BUILD        //": "",
-    "build:ts": "npm run build:esm",
-    "build:esm": "npx tsc --module es2022 --outDir esm/ && echo '{\"type\": \"module\"}' > esm/package.json",
-    "//   PACKAGE       //": "",
-    "webpack": "webpack",
-    "example": "cd examples && npm run start"
+    "build": "npx tsc",
+    "release": "npx release-it",
+    "clean": "rm -rf ./node_modules ./dist ./esm"
   }
 }
