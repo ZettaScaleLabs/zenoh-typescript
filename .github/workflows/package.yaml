@@ -30,7 +30,6 @@ jobs:
       matrix:
         job:
           - { name: 'Ubuntu x64', os: 'ubuntu-22.04', arch: X64 }
-
     runs-on: ['self-hosted', '${{ matrix.job.os }}', '${{ matrix.job.arch }}']
     permissions:
       contents: read
