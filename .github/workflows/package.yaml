@@ -63,7 +63,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
           npm install
-          npm login
           npx release-it
 
       - name: Cleanup
