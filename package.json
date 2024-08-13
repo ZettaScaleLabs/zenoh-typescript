@@ -1,5 +1,5 @@
 {
-  "name": "@ZettaScaleLabs/zenoh",
+  "name": "@ZettaScaleLabs/zenoh-ts",
   "version": "0.0.1",
   "license": "SEE LICENSE IN 'LICENSE'",
   "type": "module",
