@@ -23,9 +23,9 @@
   integrity sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==
 
 "@types/node@^18.0.0 || >=20.0.0":
-  version "20.12.13"
-  resolved "https://registry.npmjs.org/@types/node/-/node-20.12.13.tgz"
-  integrity sha512-gBGeanV41c1L171rR7wjbMiEpEI/l5XFQdLLfhr/REwpgDy/4U8y89+i8kRiLzDyZdOkXh+cRaTetUnCYutoXA==
+  version "20.14.10"
+  resolved "https://registry.npmjs.org/@types/node/-/node-20.14.10.tgz"
+  integrity sha512-MdiXf+nDuMvY0gJKxyfZ7/6UFsETO7mGKF54MVD/ekJS6HdFtpZFBgrh6Pseu64XTb2MLyFPlbW6hj8HYRQNOQ==
   dependencies:
     undici-types "~5.26.4"
 
@@ -35,7 +35,7 @@
   integrity sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==
 
 "@ZettaScaleLabs/zenoh-ts@file:../../":
-  version "0.0.1"
+  version "0.0.2"
   resolved "file:../.."
   dependencies:
     channel-ts "^0.1.2"
