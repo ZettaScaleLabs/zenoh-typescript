@@ -21,7 +21,7 @@ export async function main() {
 
   while (elapsed(startTime) < 5) {
     await pub.put(data);
-    await sub.recieve();
+    await sub.receive();
   }
 
   let samples = 600;
@@ -29,7 +29,7 @@ export async function main() {
   for (var i = 0; i < samples; i++) {
     let write_time = new Date();
     await pub.put(data);
-    await sub.recieve();
+    await sub.receive();
     samples_out.push(elapsed_ms(write_time));
   }
 

@@ -91,7 +91,7 @@ export class RemotePublisher {
 // ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████  ██████  ██████  ███████  ██████ ██   ██ ██ ██████  ███████ ██   ██
 
 // If defined with a Callback, All samples passed to the Callback,
-// else, must call recieve on the
+// else, must call receive on the
 export class RemoteSubscriber {
   private key_expr: String;
   private subscriber_id: UUID;
@@ -141,7 +141,7 @@ export class RemoteSubscriber {
     );
   }
 
-  async recieve(): Promise<SampleWS | void> {
+  async receive(): Promise<SampleWS | void> {
     if (this.undeclared == true) {
       var message =
         "Subscriber keyexpr:`" +
@@ -155,7 +155,7 @@ export class RemoteSubscriber {
 
     if (this.callback != undefined) {
       var message =
-        "Cannot Call recieve on Subscriber created with callback:`" +
+        "Cannot Call receive on Subscriber created with callback:`" +
         this.key_expr +
         "` id:`" +
         this.subscriber_id +

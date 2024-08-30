@@ -11,7 +11,7 @@ export async function main() {
   let key_expr = KeyExpr.new("demo/test/queryable");
   let queryable: Queryable = await session.declare_queryable(key_expr, true);
   const payload = [122, 101, 110, 111, 104];
-  let query = await queryable.recieve();
+  let query = await queryable.receive();
   while (query instanceof Query) {
     console.log("Query Payload");
     console.log(query.selector());
@@ -30,7 +30,7 @@ export async function main() {
     );
     query.reply_del("demo/test/queryable");
 
-    query = await queryable.recieve();
+    query = await queryable.receive();
   }
 }
 

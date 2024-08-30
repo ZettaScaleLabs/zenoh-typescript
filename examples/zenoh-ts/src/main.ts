@@ -61,9 +61,9 @@ async function main() {
   // console.log("undeclare callback_subscriber");
 
   // let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub");
-  // let value = await poll_subscriber.recieve();
+  // let value = await poll_subscriber.receive();
   // console.log("poll_subscriber", value);
-  // console.log(await poll_subscriber.recieve());
+  // console.log(await poll_subscriber.receive());
   // poll_subscriber.undeclare()
 
   // // // publisher
@@ -85,7 +85,7 @@ async function main() {
   //   "demo/test/queryable",
   //   true,
   // );
-  // let query = await queryable.recieve();
+  // let query = await queryable.receive();
   // if (query instanceof Query) {
   //   console.log(query.selector())
   //   console.log(query.selector().parameters())

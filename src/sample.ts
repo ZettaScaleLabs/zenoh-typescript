@@ -7,7 +7,7 @@ import { Option } from "./session";
 import { Encoding } from "./encoding";
 
 /**
- * Kinds of Samples that can be recieved from Zenoh
+ * Kinds of Samples that can be received from Zenoh
  */
 export enum SampleKind {
   PUT = "PUT",

@@ -10,7 +10,7 @@ export type IntoZBytes =
   | string;
 
 /**
- * Class to represent an Array of Bytes recieved from Zenoh
+ * Class to represent an Array of Bytes received from Zenoh
  */
 export class ZBytes {
   private buffer: Uint8Array;

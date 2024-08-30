@@ -33,21 +33,21 @@ export class Queryable {
   }
 
   /**
-   * recieve next Query of this Queryable
+   * receive next Query of this Queryable
    * @returns Promise <Query | void>
    */
-  async recieve(): Promise<Query | void> {
+  async receive(): Promise<Query | void> {
 
     // TODO: Make this Callback Queryable ?
     // if (this.callback_queryable === true) {
-    //     var message = "Cannot call `recieve()` on Subscriber created with callback:";
+    //     var message = "Cannot call `receive()` on Subscriber created with callback:";
     //     console.log(message);
     //     return
     // }
 
     // QueryWS -> Query
     console;
-    let opt_query_ws = await this._remote_queryable.recieve();
+    let opt_query_ws = await this._remote_queryable.receive();
     if (opt_query_ws != undefined) {
       let query_ws = opt_query_ws[0];
       let reply_tx = opt_query_ws[1];

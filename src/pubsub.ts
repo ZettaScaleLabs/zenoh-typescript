@@ -34,16 +34,16 @@ export class Subscriber {
     this.callback_subscriber = callback_subscriber;
   }
 
-  async recieve(): Promise<Sample | void> {
+  async receive(): Promise<Sample | void> {
     if (this.callback_subscriber === true) {
       var message =
-        "Cannot call `recieve()` on Subscriber created with callback:";
+        "Cannot call `receive()` on Subscriber created with callback:";
       console.log(message);
       return;
     }
 
     // from SampleWS -> Sample
-    let opt_sample_ws = await this.remote_subscriber.recieve();
+    let opt_sample_ws = await this.remote_subscriber.receive();
     if (opt_sample_ws != undefined) {
       return Sample_from_SampleWS(opt_sample_ws);
     } else {

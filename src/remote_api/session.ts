@@ -45,7 +45,7 @@ export class RemoteSession {
   session: Option<UUIDv4>;
   subscribers: Map<UUIDv4, SimpleChannel<SampleWS>>;
   queryables: Map<UUIDv4, SimpleChannel<QueryWS>>;
-  get_reciever: Map<UUIDv4, SimpleChannel<ReplyWS | RemoteRecvErr>>;
+  get_receiver: Map<UUIDv4, SimpleChannel<ReplyWS | RemoteRecvErr>>;
 
   private constructor(ws: WebSocket, ws_channel: SimpleChannel<JSONMessage>) {
     this.ws = ws;
@@ -53,7 +53,7 @@ export class RemoteSession {
     this.session = none;
     this.subscribers = new Map<UUIDv4, SimpleChannel<SampleWS>>();
     this.queryables = new Map<UUIDv4, SimpleChannel<QueryWS>>();
-    this.get_reciever = new Map<UUIDv4, SimpleChannel<ReplyWS>>();
+    this.get_receiver = new Map<UUIDv4, SimpleChannel<ReplyWS>>();
   }
 
   //
@@ -131,7 +131,7 @@ export class RemoteSession {
   ): Promise<SimpleChannel<ReplyWS>> {
     let uuid = uuidv4();
     let channel: SimpleChannel<ReplyWS> = new SimpleChannel<ReplyWS>();
-    this.get_reciever.set(uuid, channel);
+    this.get_receiver.set(uuid, channel);
 
     let control_message: ControlMsg = {
       Get: { key_expr: key_expr, parameters: parameters, id: uuid },
@@ -299,7 +299,7 @@ export class RemoteSession {
       if ("Session" in control_msg) {
         this.session = some(control_msg["Session"]);
       } else if ("GetFinished" in control_msg) {
-        let channel = this.get_reciever.get(control_msg["GetFinished"].id);
+        let channel = this.get_receiver.get(control_msg["GetFinished"].id);
         channel?.send(RemoteRecvErr.Disconnected);
       }
     }
@@ -321,7 +321,7 @@ export class RemoteSession {
     } else if ("GetReply" in data_msg) {
       let get_reply: ReplyWS = data_msg["GetReply"];
 
-      let opt_receiver = this.get_reciever.get(get_reply.query_uuid);
+      let opt_receiver = this.get_receiver.get(get_reply.query_uuid);
       if (opt_receiver != undefined) {
         let channel: SimpleChannel<ReplyWS | RemoteRecvErr> = opt_receiver;
         channel.send(get_reply);
@@ -341,7 +341,7 @@ export class RemoteSession {
         }
       } else if ("Reply" in queryable_msg) {
         // Server
-        console.log("Client should not recieve Reply in Queryable Message");
+        console.log("Client should not receive Reply in Queryable Message");
         console.log("Replies to get queries should come via Get Reply");
       } else {
         console.log("Queryable message Variant not recognized");

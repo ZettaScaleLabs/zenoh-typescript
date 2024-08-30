@@ -24,7 +24,7 @@ function executeAsync(func: any) {
 //                                                              ▀▀
 
 // If defined with a Callback, All samples passed to the Callback,
-// else, must call recieve on the
+// else, must call receive on the
 export class RemoteQueryable {
   private key_expr: String;
   private queryable_id: UUIDv4;
@@ -93,7 +93,7 @@ export class RemoteQueryable {
     );
   }
 
-  async recieve(): Promise<[QueryWS, SimpleChannel<QueryReplyWS>] | void> {
+  async receive(): Promise<[QueryWS, SimpleChannel<QueryReplyWS>] | void> {
     if (this.undeclared == true) {
       var message =
         "Queryable keyexpr:`" +
@@ -107,7 +107,7 @@ export class RemoteQueryable {
 
     if (this.callback != undefined) {
       var message =
-        "Cannot Call recieve on Queryable created with callback:`" +
+        "Cannot Call receive on Queryable created with callback:`" +
         this.key_expr +
         "` id:`" +
         this.queryable_id +

@@ -11,7 +11,7 @@ export async function main() {
     console.log("    cb demo 1 :  Value    ", sample.payload());
   };
 
-  // Callback Subscriber tkae a callback which will be called upon every sample recieved.
+  // Callback Subscriber tkae a callback which will be called upon every sample received.
   let callback_subscriber: Subscriber = await session.declare_subscriber(
     "demo/pub",
     subscriber_callback,
@@ -25,9 +25,9 @@ export async function main() {
   // The dropping of these values occurs in the Remote-API Plugin
   let poll_subscriber: Subscriber =
     await session.declare_subscriber("demo/pub");
-  let value = await poll_subscriber.recieve();
+  let value = await poll_subscriber.receive();
   console.log("poll_subscriber", value);
-  console.log(await poll_subscriber.recieve());
+  console.log(await poll_subscriber.receive());
   poll_subscriber.undeclare();
 }
 
