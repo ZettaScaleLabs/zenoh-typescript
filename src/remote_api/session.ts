@@ -301,7 +301,7 @@ export class RemoteSession {
       } else if ("GetFinished" in control_msg) {
         let channel = this.get_receiver.get(control_msg["GetFinished"].id);
         channel?.send(RemoteRecvErr.Disconnected);
-        this.get_reciever.delete(control_msg["GetFinished"].id);
+        this.get_receiver.delete(control_msg["GetFinished"].id);
       }
     }
   }
