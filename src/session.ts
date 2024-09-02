@@ -107,13 +107,6 @@ export class Session {
 
     this.remote_session.delete(key_expr.toString());
   }
-  /**
-   * Declares a Key Expression on a session
-   *
-   * @param keyexpr - string of key_expression
-   *
-   * @returns success: 0, failure : -1
-   */
 
   // TODO Do i need a Declare Key_Expression
   // async declare_ke(keyexpr: string): Promise<KeyExpr> {
@@ -123,9 +116,9 @@ export class Session {
   /**
    * Issues a get query on a Zenoh session
    *
-   * @param selector - representing a KeyExpr and Parameters
+   * @param into_selector - representing a KeyExpr and Parameters
    *
-   * @returns success: 0, failure : -1
+   * @returns Result<Receiver, String>
    */
 
   async get(into_selector: IntoSelector): Promise<Result<Receiver, String>> {
