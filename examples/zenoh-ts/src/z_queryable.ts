@@ -5,7 +5,7 @@ import { Config, KeyExpr, Query, Queryable, Session, ZBytes } from "@ZettaScaleL
 
 type Option<T> = T | null;
 
-export async function main() {
+export async function main_queryable() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
   let key_expr = KeyExpr.new("demo/test/queryable");
@@ -33,10 +33,3 @@ export async function main() {
     query = await queryable.receive();
   }
 }
-
-main()
-  .then(() => console.log("Done"))
-  .catch((e) => {
-    console.log(e);
-    throw e;
-  });

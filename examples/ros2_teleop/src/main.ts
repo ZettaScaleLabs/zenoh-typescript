@@ -1,6 +1,7 @@
 import { CDRReader, CDRWriter } from "jscdr";
 // import { ByteBuffer } from "bytebuffer";
-import { Session, Config, Sample } from "zenoh";
+import { Session, Config, Sample } from "@ZettaScaleLabs/zenoh-ts";
+
 
 import { BatteryState, LaserScan, Log, Twist, Vector3 } from "./ros2_types";
 import ByteBuffer from "bytebuffer";
@@ -120,22 +121,6 @@ const battery_subscriber = async function (sample: Sample): Promise<void> {
 console.log("battery Topic:", key_expr);
 await session.declare_subscriber(key_expr, battery_subscriber);
 console.log("After Subscriber:");
-//////////////////////////////////////////////////////////////////
-//  Camera subscription (as motion-JPEG via WebService plugin)  //
-//////////////////////////////////////////////////////////////////
-
-// If your robot has a camera and zcapture installed (from zenoh-demos/computer-vision/zcam/):
-// the zcapture must be started with "-k <scope>/camera", and the zenoh router must have the WebServer plugin running
-// if (document.getElementById("camera_img") != null) {
-//   // update Camera label
-//   let elem = document.getElementById("camera_label");
-//   elem.innerHTML = "Camera ( " + sub_scope + "camera )";
-
-//   // Set "camera_img" element's src to the same URL host, but with port 8080 (WebServer plugin)
-//   // and with path: "<scope>/camera?_method=SUB"
-//   img_url = remote_api.replace(":8000", ":8080") + sub_scope + "camera?_method=SUB";
-//   document.getElementById("camera_img").src = img_url;
-// }
 
 ///////////////////////////////
 //    Lidar subscription     //
@@ -270,31 +255,3 @@ const logs_callback = async function (sample: Sample): Promise<void> {
 };
 console.log("Lidar Sub:", key_expr);
 session.declare_subscriber(key_expr, logs_callback);
-
-//////////////////////////////////
-//    Logs subscription (MQTT)  //
-//////////////////////////////////
-// var mqtt_logs_source = null;
-
-// // Test if Server-Source Event is supported
-// if (typeof (EventSource) !== "undefined") {
-//     // the key expression to subscribe (no scope used by MQTT bridge as only 1)
-//     var key_expr = TOPIC_MQTT;
-
-//     console.log("Subscribe to EventSource: " + remote_api + key_expr);
-//     ros2_logs_source = new EventSource(remote_api + key_expr);
-//     ros2_logs_source.addEventListener("PUT", function (e) {
-//         console.log("Received sample: " + e.data);
-//         // The zenoh REST API sends JSON objects
-//         // that includes "key", "value", "encoding" and "time" (same than a result to GET)
-//         let sample = JSON.parse(e.data)
-//         // Add it to "rosout_logs" HTML element
-//         let elem = document.getElementById("rosout_logs");
-//         elem.innerHTML += "MQTT: on " + sample.key + " : " + JSON.stringify(sample.value) + "<br>";
-//         // Auto-scroll to the bottom
-//         elem.scrollTop = elem.scrollHeight;
-//     }, false);
-
-// } else {
-//     document.getElementById("rosout_logs").innerHTML = "Sorry, your browser does not support server-sent events...";
-// }

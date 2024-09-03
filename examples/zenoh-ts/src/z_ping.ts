@@ -3,7 +3,7 @@ import "./webpage.ts";
 
 import { Encoding, CongestionControl, Config, Session } from "@ZettaScaleLabs/zenoh-ts";
 
-export async function main() {
+export async function main_ping() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
   let sub = await session.declare_subscriber("test/pong");
@@ -64,9 +64,3 @@ function elapsed_ms(startTime: Date) {
   return timeDiff;
 }
 
-main()
-  .then(() => console.log("Done"))
-  .catch((e) => {
-    console.log(e);
-    throw e;
-  });

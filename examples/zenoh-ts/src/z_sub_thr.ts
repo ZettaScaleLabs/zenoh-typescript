@@ -43,19 +43,16 @@ class Stats {
 }
 
 export async function main_thr() {
-
   console.log("Open Session");
-
   const session : Session = await Session.open(Config.new("ws/127.0.0.1:10000"));
-
-  let stats = new Stats(1000000);
+  let stats = new Stats(100000);
   const subscriber_callback = async function (sample: Sample): Promise<void> {
     stats.increment();
   };
 
-  console.log("declare subscriber");
+  console.log("Declare subscriber");
   await session.declare_subscriber(
-    "test/thr/p",
+    "test/thr",
     subscriber_callback,
   );
 

@@ -3,7 +3,7 @@ import "./webpage.ts";
 
 import { Sample, Config, Subscriber, Session } from "@ZettaScaleLabs/zenoh-ts";
 
-export async function main() {
+export async function main_sub() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
   const subscriber_callback = async function (sample: Sample): Promise<void> {
@@ -34,10 +34,3 @@ export async function main() {
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-main()
-  .then(() => console.log("Done"))
-  .catch((e) => {
-    console.log(e);
-    throw e;
-  });

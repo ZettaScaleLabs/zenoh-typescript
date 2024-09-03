@@ -19,11 +19,11 @@ export class ZBytes {
     this.buffer = buffer;
   }
 
-   /**
-   * returns the length of the ZBytes buffer
-   * 
-   * @returns number
-   */
+  /**
+  * returns the length of the ZBytes buffer
+  * 
+  * @returns number
+  */
   len(): number {
     return this.buffer.length;
   }
@@ -47,6 +47,15 @@ export class ZBytes {
   }
 
   /**
+   * return the underlying Uint8Array buffer
+   * 
+   * @returns Uint8Array
+   */
+  deserialize<T>(d: Deserialize<T>): T {
+    return d.deserialize(this.buffer);
+  }
+
+  /**
    * new function to create a ZBytes 
    * 
    * @returns ZBytes
@@ -63,3 +72,51 @@ export class ZBytes {
     }
   }
 }
+
+
+/**
+ * Interface to support converting ZBytes into type T
+ * 
+ * @returns T
+ */
+interface Deserialize<T> {
+
+  deserialize(buffer: Uint8Array): T
+
+}
+
+/**
+ * Convienence class to convert Zbytes to a string
+ * 
+ * @returns string
+ */
+export class TextDeserializer implements Deserialize<string> {
+  deserialize(buffer: Uint8Array): string {
+    var decoder = new TextDecoder();
+    return decoder.decode(buffer)
+  }
+}
+
+/**
+ * Convienence class to convert Zbytes to a Uint8Array
+ * 
+ * @returns string
+ */
+export class Uint8ArrayDeserializer implements Deserialize<Uint8Array> {
+  deserialize(buffer: Uint8Array): Uint8Array {
+    return buffer
+  }
+}
+
+
+/**
+ * Convienence class to convert Zbytes to an Array<number>
+ * 
+ * @returns string
+ */
+export class ArrayNumberDeserializer implements Deserialize<Array<number>> {
+  deserialize(buffer: Uint8Array): Array<number> {
+    return Array.from(buffer)
+  }
+}
+

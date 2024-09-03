@@ -3,7 +3,7 @@ import "./webpage.ts";
 
 import { Encoding, CongestionControl, Config, KeyExpr, Publisher, Session } from "@ZettaScaleLabs/zenoh-ts";
 
-export async function main() {
+export async function main_pub() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
   let key_expr = KeyExpr.new("demo/ping");
@@ -28,10 +28,3 @@ export async function main() {
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-main()
-  .then(() => console.log("Done"))
-  .catch((e) => {
-    console.log(e);
-    throw e;
-  });
