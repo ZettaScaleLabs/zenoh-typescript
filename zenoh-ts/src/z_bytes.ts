@@ -9,6 +9,7 @@ export type IntoZBytes =
   | String
   | string;
 
+//TODO : Implement for primitave types
 /**
  * Class to represent an Array of Bytes received from Zenoh
  */
@@ -42,18 +43,10 @@ export class ZBytes {
    * 
    * @returns Uint8Array
    */
-  payload(): Uint8Array {
-    return this.buffer;
-  }
-
-  /**
-   * return the underlying Uint8Array buffer
-   * 
-   * @returns Uint8Array
-   */
   deserialize<T>(d: Deserialize<T>): T {
     return d.deserialize(this.buffer);
   }
+  // TODO: Implement seralize
 
   /**
    * new function to create a ZBytes 

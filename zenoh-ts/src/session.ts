@@ -37,6 +37,7 @@ import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
 import { Error } from "./remote_api/session";
 
 export { Error };
+// TODO : Remove - Replace with Exception
 export type Option<T> = T | null;
 export type Result<T, E> = T | E;
 

@@ -1,3 +1,4 @@
+import { TextDeserializer } from "../../../dist/z_bytes";
 import "./style.css";
 import "./webpage.ts";
 
@@ -8,7 +9,7 @@ export async function main_sub() {
 
   const subscriber_callback = async function (sample: Sample): Promise<void> {
     console.log("    cb demo 1 :  Key_expr ", sample.keyexpr());
-    console.log("    cb demo 1 :  Value    ", sample.payload());
+    console.log("    cb demo 1 :  Value    ", sample.payload().deserialize(new TextDeserializer()));
   };
 
   // Callback Subscriber tkae a callback which will be called upon every sample received.
