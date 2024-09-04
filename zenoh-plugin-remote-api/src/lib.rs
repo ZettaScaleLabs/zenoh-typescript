@@ -75,6 +75,13 @@ const GIT_VERSION: &str = git_version::git_version!(prefix = "v", cargo_prefix =
 
 lazy_static::lazy_static! {
     static ref LONG_VERSION: String = format!("{} built with {}", GIT_VERSION, env!("RUSTC_VERSION"));
+    // The global runtime is used in the dynamic plugins, which we can't get the current runtime
+    static ref TOKIO_RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(WORKER_THREAD_NUM)
+        .max_blocking_threads(MAX_BLOCK_THREAD_NUM)
+        .enable_all()
+        .build()
+        .expect("Unable to create runtime");
 }
 
 fn load_certs(path: &Path) -> io::Result<Vec<CertificateDer<'static>>> {
@@ -139,19 +146,6 @@ impl Plugin for RemoteApiPlugin {
             None => None,
         };
 
-        let plugin_runtime: tokio::runtime::Runtime =
-            match tokio::runtime::Builder::new_multi_thread()
-                .worker_threads(WORKER_THREAD_NUM)
-                .max_blocking_threads(MAX_BLOCK_THREAD_NUM)
-                .enable_all()
-                .build()
-            {
-                Ok(runtime) => runtime,
-                Err(err) => {
-                    bail!("Unable to create tokio runtime, {err}");
-                }
-            };
-
         let weak_runtime = Runtime::downgrade(runtime);
         if let Some(runtime) = weak_runtime.upgrade() {
             // Create Map Of Websocket State
@@ -164,7 +158,6 @@ impl Plugin for RemoteApiPlugin {
 
             let join_handle = run_websocket_server(
                 conf.websocket_port,
-                &plugin_runtime,
                 runtime_cl,
                 state_map_cl,
                 wss_config,
@@ -173,7 +166,6 @@ impl Plugin for RemoteApiPlugin {
             // Return WebServer And State
             let running_plugin = _RunningPluginInner {
                 _zenoh_runtime: runtime,
-                _plugin_runtime: plugin_runtime,
                 _websocket_server: join_handle,
                 _state_map: state_map,
             };
@@ -188,7 +180,6 @@ type StateMap = Arc<RwLock<HashMap<SocketAddr, RemoteState>>>;
 
 struct _RunningPluginInner {
     _zenoh_runtime: Runtime,
-    _plugin_runtime: tokio::runtime::Runtime,
     _websocket_server: JoinHandle<()>,
     _state_map: StateMap,
 }
@@ -233,7 +224,6 @@ impl Streamable for TlsStream<TcpStream> {}
 // Listen on the Zenoh Session
 fn run_websocket_server(
     ws_port: String,
-    plugin_runtime: &tokio::runtime::Runtime,
     zenoh_runtime: Runtime,
     state_map: StateMap,
     opt_certs: Option<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)>,
@@ -249,7 +239,7 @@ fn run_websocket_server(
         opt_tls_acceptor = Some(TlsAcceptor::from(Arc::new(config)));
     }
 
-    plugin_runtime.spawn(async move {
+    let websocket_server_future = async move {
         tracing::info!("Spawning Remote API Plugin on {:?}", ws_port);
 
         let tcp = TcpListener::bind(ws_port).await;
@@ -343,7 +333,16 @@ fn run_websocket_server(
             state_map.write().await.remove(sock_adress.as_ref());
             tracing::info!("Disconnected {}", sock_adress.as_ref());
         }
-    })
+    };
+
+    match tokio::runtime::Handle::try_current() {
+        Ok(rt) => {
+            rt.spawn(websocket_server_future)
+        }
+        Err(_) => {
+            TOKIO_RUNTIME.spawn(websocket_server_future)
+        }
+    }
 }
 
 async fn handle_message(

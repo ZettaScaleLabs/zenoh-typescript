@@ -34,7 +34,7 @@ description = "Zenoh: The Zero Overhead Pub/Sub/Query Protocol."
 
 
 [features]
-default = ["dynamic_plugin", "zenoh/default", "zenoh/unstable", "zenoh/plugins"]
+default = ["dynamic_plugin"]
 dynamic_plugin = []
 
 [lib]
