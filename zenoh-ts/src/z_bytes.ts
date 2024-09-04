@@ -217,15 +217,3 @@ export class Uint8ArrayDeserializer implements Deserialize<Uint8Array> {
     return buffer
   }
 }
-
-/**
- * Convienence class to convert Zbytes to an Array<number>
- * 
- * @returns string
- */
-export class ArrayNumberDeserializer implements Deserialize<Array<number>> {
-  deserialize(buffer: Uint8Array): Array<number> {
-    return Array.from(buffer)
-  }
-}
-

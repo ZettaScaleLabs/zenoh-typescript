@@ -37,9 +37,8 @@ import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
 import { Error } from "./remote_api/session";
 
 export { Error };
-// TODO : Remove - Replace with Exception
 export type Option<T> = T | null;
-export type Result<T, E> = T | E;
+
 
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██
 // ██      ██      ██      ██      ██ ██    ██ ████   ██
@@ -109,20 +108,17 @@ export class Session {
     this.remote_session.delete(key_expr.toString());
   }
 
-  // TODO Do i need a Declare Key_Expression
-  // async declare_ke(keyexpr: string): Promise<KeyExpr> {
-  //     return new KeyExpr();
-  // }
-
   /**
    * Issues a get query on a Zenoh session
    *
    * @param into_selector - representing a KeyExpr and Parameters
    *
-   * @returns Result<Receiver, String>
+   * @returns Receiver
    */
 
-  async get(into_selector: IntoSelector): Promise<Result<Receiver, String>> {
+  async get(
+    into_selector: IntoSelector
+  ): Promise<Receiver> {
 
     let selector: Selector;
     let key_expr: KeyExpr;
@@ -137,7 +133,7 @@ export class Session {
         let parameters: Parameters = Parameters.new(split_string[1]);
         selector = Selector.new(key_expr, parameters);
       } else { //Error in Selector
-        return "Error: Invalid Selector, expected format <KeyExpr>?<Parameters>"
+        throw "Error: Invalid Selector, expected format <KeyExpr>?<Parameters>";
       }
     } else {
       selector = Selector.new(into_selector);
