@@ -45,25 +45,27 @@ jobs:
 
       - name: Setup Node
         uses: actions/setup-node@v4
-        working-directory: zenoh-ts
         with:
+          working-directory: zenoh-ts
           node-version: 20
           registry-url: https://npm.pkg.github.com/
 
       - name: Run install
         uses: borales/actions-yarn@v4
-        working-directory: zenoh-ts
         with:
+          working-directory: zenoh-ts
           cmd: install 
 
       - name: transpile code
-        working-directory: zenoh-ts
+        with:
+          working-directory: zenoh-ts
         run: yarn run build
 
       - name: Publish
         id: publish
         shell: bash
-        working-directory: zenoh-ts
+        with:
+          working-directory: zenoh-ts
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -72,7 +74,8 @@ jobs:
           npx release-it
 
       - name: Cleanup
-        working-directory: zenoh-ts
+        with:
+          working-directory: zenoh-ts
         if: always()
         run: |
           rm -rf node_modules
