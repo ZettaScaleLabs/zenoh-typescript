@@ -39,6 +39,9 @@ import { Error } from "./remote_api/session";
 export { Error };
 export type Option<T> = T | null;
 
+function executeAsync(func: any) {
+  setTimeout(func, 0);
+}
 
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██
 // ██      ██      ██      ██      ██ ██    ██ ████   ██
@@ -117,8 +120,9 @@ export class Session {
    */
 
   async get(
-    into_selector: IntoSelector
-  ): Promise<Receiver> {
+    into_selector: IntoSelector,
+    callback?: (reply: Reply) => Promise<void>,
+  ): Promise<Receiver | void> {
 
     let selector: Selector;
     let key_expr: KeyExpr;
@@ -143,8 +147,25 @@ export class Session {
       selector.key_expr().toString(),
       selector.parameters().toString(),
     );
+
     let receiver = Receiver.new(chan);
-    return receiver;
+
+    if (callback != undefined) {
+      executeAsync(async () => {
+        for await (const message of chan) {
+          // This horribleness comes from SimpleChannel sending a 0 when the channel is closed
+          if (message != undefined && (message as unknown as number) != 0) {
+            let reply = Reply.new(message);
+            callback(reply);
+          } else {
+            break
+          }
+        }
+      });
+      return undefined;
+    } else {
+      return receiver;
+    }
   }
 
   /**
@@ -160,18 +181,18 @@ export class Session {
    */
   async declare_subscriber(
     into_key_expr: IntoKeyExpr,
-    handler?: (sample: Sample) => Promise<void>,
+    callback?: (sample: Sample) => Promise<void>,
   ): Promise<Subscriber> {
     let key_expr = KeyExpr.new(into_key_expr);
     let remote_subscriber: RemoteSubscriber;
     let callback_subscriber = false;
-    if (handler != undefined) {
+    if (callback != undefined) {
       callback_subscriber = true;
       const callback_conversion = async function (
         sample_ws: SampleWS,
       ): Promise<void> {
         let sample: Sample = Sample_from_SampleWS(sample_ws);
-        handler(sample);
+        callback(sample);
       };
       remote_subscriber = await this.remote_session.declare_subscriber(
         key_expr.toString(),
@@ -204,20 +225,20 @@ export class Session {
   async declare_queryable(
     into_key_expr: IntoKeyExpr,
     complete: boolean,
-    handler?: (query: Query) => Promise<void>,
+    callback?: (query: Query) => Promise<void>,
   ): Promise<Queryable> {
     let key_expr = KeyExpr.new(into_key_expr);
     let remote_queryable: RemoteQueryable;
     let reply_tx: SimpleChannel<QueryReplyWS> =
       new SimpleChannel<QueryReplyWS>();
 
-    if (handler != undefined) {
+    if (callback != undefined) {
       const callback_conversion = async function (
         query_ws: QueryWS,
       ): Promise<void> {
         let query: Query = QueryWS_to_Query(query_ws, reply_tx);
 
-        handler(query);
+        callback(query);
       };
       remote_queryable = await this.remote_session.declare_queryable(
         key_expr.toString(),

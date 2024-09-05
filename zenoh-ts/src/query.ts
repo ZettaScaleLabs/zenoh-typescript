@@ -435,21 +435,16 @@ export class Reply {
     this._result = result;
   }
 
-  static new(reply_ws: ReplyWS): Reply | undefined {
+  static new(reply_ws: ReplyWS): Reply {
     if ("Ok" in reply_ws.result) {
       let sample_ws = reply_ws.result["Ok"];
       let sample = Sample_from_SampleWS(sample_ws);
       return new Reply(sample);
-    } else if ("Err" in reply_ws.result) {
+    } else {
       let sample_ws_err: ReplyErrorWS = reply_ws.result["Err"];
       let reply_error = ReplyError.new(sample_ws_err);
       return new Reply(reply_error);
-    } else {
-      console.log(
-        "Expected Ok or Err Variant in ReplyWS message When creating Replys",
-      );
-      return;
-    }
+    } 
   }
 }
 
