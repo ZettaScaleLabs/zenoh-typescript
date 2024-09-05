@@ -45,12 +45,14 @@ jobs:
 
       - name: Setup Node
         uses: actions/setup-node@v4
+        working-directory: zenoh-ts
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com/
 
       - name: Run install
         uses: borales/actions-yarn@v4
+        working-directory: zenoh-ts
         with:
           cmd: install 
 
