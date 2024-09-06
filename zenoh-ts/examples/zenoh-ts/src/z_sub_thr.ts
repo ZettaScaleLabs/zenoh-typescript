@@ -1,3 +1,4 @@
+import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
@@ -46,13 +47,14 @@ export async function main_thr() {
   console.log("Open Session");
   const session : Session = await Session.open(Config.new("ws/127.0.0.1:10000"));
   let stats = new Stats(100000);
-  const subscriber_callback = async function (sample: Sample): Promise<void> {
+  const subscriber_callback = async function (_sample: Sample): Promise<void> {
     stats.increment();
   };
 
   console.log("Declare subscriber");
   await session.declare_subscriber(
     "test/thr",
+    new FifoChannel(256),
     subscriber_callback,
   );
 

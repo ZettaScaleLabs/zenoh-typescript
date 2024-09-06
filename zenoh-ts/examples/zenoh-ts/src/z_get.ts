@@ -22,7 +22,7 @@ export async function main_get() {
   await session.get("test/queryable/**", get_callback);
 
 
-  // poll receiever
+  // Poll receiever
   let receiver: void | Receiver  = await session.get("test/queryable/**");
   if (!(receiver instanceof Receiver)){
     return // Return in case of callback get query
@@ -30,7 +30,6 @@ export async function main_get() {
 
   let reply = await receiver.receive();
   while (reply != RecvErr.Disconnected) {
-
     if (reply == RecvErr.MalformedReply) {
       console.log("MalformedReply");
     } else {
