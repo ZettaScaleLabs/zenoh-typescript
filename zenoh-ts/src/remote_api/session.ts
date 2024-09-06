@@ -5,7 +5,6 @@ import { Logger } from "tslog";
 
 const log = new Logger({ stylePrettyLogs: false });
 
-
 // Import interface
 import { RemoteAPIMsg } from "./interface/RemoteAPIMsg";
 import { SampleWS } from "./interface/SampleWS";
@@ -18,6 +17,8 @@ import { RemoteQueryable } from "./query";
 import { ReplyWS } from "./interface/ReplyWS";
 import { QueryableMsg } from "./interface/QueryableMsg";
 import { QueryReplyWS } from "./interface/QueryReplyWS";
+import { ChannelType, Handler } from "../pubsub";
+import { HandlerChannel } from "./interface/HandlerChannel";
 
 // ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ███████ ███████ ███████ ██  ██████  ███    ██
 // ██   ██ ██      ████  ████ ██    ██    ██    ██          ██      ██      ██      ██      ██ ██    ██ ████   ██
@@ -160,12 +161,29 @@ export class RemoteSession {
 
   async declare_subscriber(
     key_expr: string,
+    handler: Handler,
     callback?: (sample: SampleWS) => Promise<void>,
   ): Promise<RemoteSubscriber> {
     let uuid = uuidv4();
 
+    let handler_type: HandlerChannel;
+    console.log("Handler",handler)
+    switch (handler.channel_type) {
+      case ChannelType.Ring: {
+        handler_type = { "Ring": handler.size };
+        break;
+      }
+      case ChannelType.Fifo: {
+        handler_type = { "Fifo": handler.size };
+        break;
+      }
+      default: {
+        throw "channel type undetermined"
+      }
+    }
+
     let control_message: ControlMsg = {
-      DeclareSubscriber: { key_expr: key_expr, id: uuid },
+      DeclareSubscriber: { key_expr: key_expr, id: uuid, handler: handler_type },
     };
 
     let channel: SimpleChannel<SampleWS> = new SimpleChannel<SampleWS>();
@@ -237,15 +255,15 @@ export class RemoteSession {
     return publisher;
   }
 
-  async subscriber(
-    key_expr: string,
-    handler: (val: string) => Promise<void>,
-  ): Promise<void> {
-    for await (const data of this.ws_channel) {
-      // use async iterator to receive data
-      handler(data);
-    }
-  }
+  // async subscriber(
+  //   key_expr: string,
+  //   handler: (val: string) => Promise<void>,
+  // ): Promise<void> {
+  //   for await (const data of this.ws_channel) {
+  //     // use async iterator to receive data
+  //     handler(data);
+  //   }
+  // }
 
   //
   // Sending Messages

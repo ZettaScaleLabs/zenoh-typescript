@@ -14,10 +14,10 @@ async function main() {
   // main_thr();
   // main_ping();
   // main_pong();
-  // main_sub();
+  main_sub();
   // main_pub();
   // main_queryable();
-  main_get();
+  // main_get();
 
   var count = 0;
   while (true) {

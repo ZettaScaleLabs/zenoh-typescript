@@ -21,7 +21,7 @@ import {
   Selector,
 } from "./query";
 import { SimpleChannel } from "channel-ts";
-import { Publisher, Subscriber } from "./pubsub";
+import { FifoChannel, Handler, Publisher, Subscriber } from "./pubsub";
 import {
   priority_to_int,
   congestion_control_to_int,
@@ -181,6 +181,7 @@ export class Session {
    */
   async declare_subscriber(
     into_key_expr: IntoKeyExpr,
+    handler: Handler = new FifoChannel(256), // This is to match the API_DATA_RECEPTION_CHANNEL_SIZE of zenoh internally
     callback?: (sample: Sample) => Promise<void>,
   ): Promise<Subscriber> {
     let key_expr = KeyExpr.new(into_key_expr);
@@ -196,16 +197,20 @@ export class Session {
       };
       remote_subscriber = await this.remote_session.declare_subscriber(
         key_expr.toString(),
+        handler,
         callback_conversion,
       );
     } else {
       remote_subscriber = await this.remote_session.declare_subscriber(
         key_expr.toString(),
+        handler,
       );
     }
+
     let subscriber = await Subscriber.new(
       remote_subscriber,
       callback_subscriber,
+      
     );
     return subscriber;
   }
@@ -341,6 +346,7 @@ export enum RecvErr {
   Disconnected,
   MalformedReply,
 }
+
 
 /**
  * Receiver returned from `get` call on a session

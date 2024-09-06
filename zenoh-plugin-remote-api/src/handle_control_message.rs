@@ -3,13 +3,19 @@ use std::{error::Error, net::SocketAddr};
 use tracing::{error, warn};
 use uuid::Uuid;
 use zenoh::{
-    bytes::EncodingBuilderTrait, key_expr::KeyExpr, qos::QoSBuilderTrait, query::Selector,
+    bytes::EncodingBuilderTrait,
+    handlers::{FifoChannel, RingChannel},
+    key_expr::KeyExpr,
+    qos::QoSBuilderTrait,
+    query::Selector,
     session::SessionDeclarations,
 };
 
 use crate::{
-    interface::{ControlMsg, DataMsg, QueryWS, QueryableMsg, RemoteAPIMsg, ReplyWS, SampleWS},
-    StateMap,
+    interface::{
+        ControlMsg, DataMsg, HandlerChannel, QueryWS, QueryableMsg, RemoteAPIMsg, ReplyWS, SampleWS,
+    },
+    spawn_future, StateMap,
 };
 
 pub async fn handle_control_message(
@@ -75,32 +81,58 @@ pub async fn handle_control_message(
         // SUBSCRIBER
         ControlMsg::DeclareSubscriber {
             key_expr: key_expr_str,
+            handler,
             id: subscriber_uuid,
         } => {
             let key_expr = KeyExpr::new(key_expr_str).unwrap();
             let ch_tx = state_map.websocket_tx.clone();
-            let res_subscriber = state_map
-                .session
-                .declare_subscriber(key_expr)
-                .callback(move |sample| {
-                    let sample_ws = SampleWS::from(sample);
-                    let remote_api_message =
-                        RemoteAPIMsg::Data(DataMsg::Sample(sample_ws, subscriber_uuid));
-                    if let Err(e) = ch_tx.send(remote_api_message) {
-                        error!("Forward Sample Channel error: {e}");
-                    };
-                })
-                .await?;
 
-            state_map
-                .subscribers
-                .insert(subscriber_uuid, res_subscriber);
+            let join_handle = match handler {
+                HandlerChannel::Fifo(size) => {
 
+                    let subscriber = state_map
+                        .session
+                        .declare_subscriber(key_expr)
+                        .with(FifoChannel::new(size))
+                        .await?;
+
+                    spawn_future(async move {
+                        while let Ok(sample) = subscriber.recv_async().await {
+                            let sample_ws = SampleWS::from(sample);
+                            let remote_api_message =
+                                RemoteAPIMsg::Data(DataMsg::Sample(sample_ws, subscriber_uuid));
+                            if let Err(e) = ch_tx.send(remote_api_message) {
+                                error!("Forward Sample Channel error: {e}");
+                            };
+                        }
+                    })
+                }
+                HandlerChannel::Ring(size) => {
+                    let subscriber = state_map
+                        .session
+                        .declare_subscriber(key_expr)
+                        .with(RingChannel::new(size))
+                        .await?;
+
+                    spawn_future(async move {
+                        while let Ok(sample) = subscriber.recv_async().await {
+                            let sample_ws = SampleWS::from(sample);
+                            let remote_api_message =
+                                RemoteAPIMsg::Data(DataMsg::Sample(sample_ws, subscriber_uuid));
+                            if let Err(e) = ch_tx.send(remote_api_message) {
+                                error!("Forward Sample Channel error: {e}");
+                            };
+                        }
+                    })
+                }
+            };
+
+            state_map.subscribers.insert(subscriber_uuid, join_handle);
             return Ok(Some(ControlMsg::Subscriber(subscriber_uuid)));
         }
         ControlMsg::UndeclareSubscriber(uuid) => {
-            if let Some(subscriber) = state_map.subscribers.remove(&uuid) {
-                subscriber.undeclare().await?
+            if let Some(join_handle) = state_map.subscribers.remove(&uuid) {
+                join_handle.abort(); // This should drop the underlying subscriber of the future
             } else {
                 warn!("UndeclareSubscriber: No Subscriber with UUID {uuid}");
             }

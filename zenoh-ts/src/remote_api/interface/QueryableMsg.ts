@@ -2,6 +2,4 @@
 import type { QueryReplyWS } from "./QueryReplyWS";
 import type { QueryWS } from "./QueryWS";
 
-export type QueryableMsg =
-  | { Query: { queryable_uuid: string; query: QueryWS } }
-  | { Reply: { reply: QueryReplyWS } };
+export type QueryableMsg = { "Query": { queryable_uuid: string, query: QueryWS, } } | { "Reply": { reply: QueryReplyWS, } };

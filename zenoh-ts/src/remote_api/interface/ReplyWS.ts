@@ -2,7 +2,4 @@
 import type { ReplyErrorWS } from "./ReplyErrorWS";
 import type { SampleWS } from "./SampleWS";
 
-export type ReplyWS = {
-  query_uuid: string;
-  result: { Ok: SampleWS } | { Err: ReplyErrorWS };
-};
+export type ReplyWS = { query_uuid: string, result: { Ok : SampleWS } | { Err : ReplyErrorWS }, };

@@ -100,6 +100,7 @@ pub enum ControlMsg {
     DeclareSubscriber {
         #[ts(as = "OwnedKeyExprWrapper")]
         key_expr: OwnedKeyExpr,
+        handler: HandlerChannel,
         id: Uuid,
     },
     Subscriber(Uuid),
@@ -189,6 +190,12 @@ where
     S: Serializer,
 {
     s.serialize_u8(*priority as u8)
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub(crate) enum HandlerChannel {
+    Fifo(usize),
+    Ring(usize),
 }
 
 // ██     ██ ██████   █████  ██████  ██████  ███████ ██████  ███████

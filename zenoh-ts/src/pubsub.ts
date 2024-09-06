@@ -64,6 +64,34 @@ export class Subscriber {
   }
 }
 
+export enum ChannelType {
+  Ring,
+  Fifo,
+}
+
+export interface Handler {
+  size: number;
+  channel_type:ChannelType;
+}
+
+export class RingChannel implements Handler {
+  size: number
+  channel_type: ChannelType = ChannelType.Ring;
+  constructor(size: number) {
+    this.size = size;
+  }
+}
+
+export class FifoChannel implements Handler {
+  size: number
+  channel_type: ChannelType = ChannelType.Fifo;
+  constructor(size: number) {
+    this.size = size;
+  }
+}
+
+
+
 // ██████  ██    ██ ██████  ██      ██ ███████ ██   ██ ███████ ██████
 // ██   ██ ██    ██ ██   ██ ██      ██ ██      ██   ██ ██      ██   ██
 // ██████  ██    ██ ██████  ██      ██ ███████ ███████ █████   ██████
@@ -98,7 +126,7 @@ export class Publisher {
   key_expr(): KeyExpr {
     return this._key_expr;
   }
-  
+
   /**
    * Puts a payload on the publisher associated with this class instance
    *
@@ -135,11 +163,11 @@ export class Publisher {
   }
 
 
-   /**
-   * get Priority declared for Publisher
-   *   
-   * @returns Priority
-   */
+  /**
+  * get Priority declared for Publisher
+  *   
+  * @returns Priority
+  */
   priority(): Priority {
     return this._priority;
   }

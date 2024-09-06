@@ -21,6 +21,7 @@
 use std::{
     collections::HashMap,
     fs::File,
+    future::Future,
     io::{self, BufReader, ErrorKind},
     net::SocketAddr,
     path::Path,
@@ -52,7 +53,7 @@ use zenoh::{
         plugins::{RunningPluginTrait, ZenohPlugin},
         runtime::Runtime,
     },
-    pubsub::{Publisher, Subscriber},
+    pubsub::Publisher,
     query::{Query, Queryable},
     Session,
 };
@@ -82,6 +83,13 @@ lazy_static::lazy_static! {
         .enable_all()
         .build()
         .expect("Unable to create runtime");
+}
+
+pub fn spawn_future(fut: impl Future<Output = ()> + 'static + std::marker::Send) -> JoinHandle<()> {
+    match tokio::runtime::Handle::try_current() {
+        Ok(rt) => rt.spawn(fut),
+        Err(_) => TOKIO_RUNTIME.spawn(fut),
+    }
 }
 
 fn load_certs(path: &Path) -> io::Result<Vec<CertificateDer<'static>>> {
@@ -156,12 +164,8 @@ impl Plugin for RemoteApiPlugin {
             let runtime_cl = runtime.clone();
             let state_map_cl = state_map.clone();
 
-            let join_handle = run_websocket_server(
-                conf.websocket_port,
-                runtime_cl,
-                state_map_cl,
-                wss_config,
-            );
+            let join_handle =
+                run_websocket_server(conf.websocket_port, runtime_cl, state_map_cl, wss_config);
 
             // Return WebServer And State
             let running_plugin = _RunningPluginInner {
@@ -207,7 +211,8 @@ struct RemoteState {
     session: Arc<Session>,
     // key_expr: HashSet<KeyExpr<'static>>,
     // PubSub
-    subscribers: HashMap<Uuid, Subscriber<'static, ()>>,
+    subscribers: HashMap<Uuid, JoinHandle<()>>,
+    // subscribers: HashMap<Uuid, Subscriber<'static, ()>>,
     publishers: HashMap<Uuid, Publisher<'static>>,
     // Queryable
     queryables: HashMap<Uuid, Queryable<'static, ()>>,
@@ -335,14 +340,7 @@ fn run_websocket_server(
         }
     };
 
-    match tokio::runtime::Handle::try_current() {
-        Ok(rt) => {
-            rt.spawn(websocket_server_future)
-        }
-        Err(_) => {
-            TOKIO_RUNTIME.spawn(websocket_server_future)
-        }
-    }
+    spawn_future(websocket_server_future)
 }
 
 async fn handle_message(
