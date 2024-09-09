@@ -32,7 +32,6 @@ categories = [
 ]
 description = "Zenoh: The Zero Overhead Pub/Sub/Query Protocol."
 
-
 [features]
 default = ["dynamic_plugin"]
 dynamic_plugin = []
