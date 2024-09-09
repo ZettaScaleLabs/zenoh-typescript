@@ -11,4 +11,5 @@ zenoh-ts/cjs/
 zenoh-ts/esm/
 
 zenoh-plugin-remote-api/target/** 
+zenoh-plugin-remote-api/bindings/** 
 **/target/** 
