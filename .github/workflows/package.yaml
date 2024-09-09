@@ -60,8 +60,11 @@ jobs:
           cmd: install 
           dir: ./zenoh-ts
 
-      - name: transpile code
+      - name: Transpile Code
         run: yarn run build
+
+      - name: Check git status
+        run: git status
 
       - name: Publish
         id: publish
