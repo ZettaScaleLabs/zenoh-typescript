@@ -63,9 +63,6 @@ jobs:
       - name: Transpile Code
         run: yarn run build
 
-      - name: Check git status
-        run: git status
-
       - name: Publish
         id: publish
         shell: bash
@@ -73,7 +70,7 @@ jobs:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
         run: |
-          npm install
+          git status
           npx release-it
 
       - name: Cleanup
