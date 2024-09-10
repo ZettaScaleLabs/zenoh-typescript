@@ -26,6 +26,10 @@ export class Subscriber {
   private remote_subscriber: RemoteSubscriber;
   private callback_subscriber: boolean;
 
+  async dispose() {
+    this.undeclare();
+  }
+
   constructor(
     remote_subscriber: RemoteSubscriber,
     callback_subscriber: boolean,
@@ -36,9 +40,7 @@ export class Subscriber {
 
   async receive(): Promise<Sample | void> {
     if (this.callback_subscriber === true) {
-      var message =
-        "Cannot call `receive()` on Subscriber created with callback:";
-      console.log(message);
+      console.log("Cannot call `receive()` on Subscriber created with callback:");
       return;
     }
 
@@ -52,7 +54,7 @@ export class Subscriber {
     }
   }
 
-  async undeclare() {
+  undeclare() {
     this.remote_subscriber.undeclare();
   }
 
@@ -71,7 +73,7 @@ export enum ChannelType {
 
 export interface Handler {
   size: number;
-  channel_type:ChannelType;
+  channel_type: ChannelType;
 }
 
 export class RingChannel implements Handler {

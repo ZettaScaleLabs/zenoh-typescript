@@ -40,13 +40,12 @@ export class Queryable {
 
     // TODO: Make this Callback Queryable ?
     // if (this.callback_queryable === true) {
-    //     var message = "Cannot call `receive()` on Subscriber created with callback:";
+    //     let message = "Cannot call `receive()` on Subscriber created with callback:";
     //     console.log(message);
     //     return
     // }
 
     // QueryWS -> Query
-    console;
     let opt_query_ws = await this._remote_queryable.receive();
     if (opt_query_ws != undefined) {
       let query_ws = opt_query_ws[0];
@@ -156,7 +155,7 @@ export class Query {
     * gets the Optional Encoding of a Query
     * @returns Option<ZBytes>
     */
-  encoding(): Option<Encoding>{
+  encoding(): Option<Encoding> {
     return this._encoding;
   }
   /**
@@ -197,11 +196,11 @@ export class Query {
     };
     this.reply_ws(qr_variant);
   }
-    /**
-    * Sends an Error Reply to a query
-    * @param payload: IntoZBytes
-    * @returns Option<ZBytes>
-    */
+  /**
+  * Sends an Error Reply to a query
+  * @param payload: IntoZBytes
+  * @returns Option<ZBytes>
+  */
   reply_err(payload: IntoZBytes): void {
     let z_bytes: ZBytes = ZBytes.new(payload);
     let qr_variant: QueryReplyVariant = {
@@ -444,7 +443,7 @@ export class Reply {
       let sample_ws_err: ReplyErrorWS = reply_ws.result["Err"];
       let reply_error = ReplyError.new(sample_ws_err);
       return new Reply(reply_error);
-    } 
+    }
   }
 }
 

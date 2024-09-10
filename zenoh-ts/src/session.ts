@@ -318,7 +318,7 @@ export class Session {
         _express,
       );
 
-    var publisher: Publisher = await Publisher.new(
+    let publisher: Publisher = await Publisher.new(
       key_expr,
       remote_publisher,
       congestion_control,

@@ -44,7 +44,7 @@ export class RemotePublisher {
     encoding: string | null,
   ) {
     if (this.undeclared == true) {
-      var message =
+      let message =
         "Publisher keyexpr:`" +
         this.key_expr +
         "` id:`" +
@@ -65,9 +65,9 @@ export class RemotePublisher {
     this.session_ref.send_data_message(data_msg);
   }
 
-  async undeclare() {
+  undeclare() {
     if (this.undeclared == true) {
-      var message =
+      let message =
         "Publisher keyexpr:`" +
         this.key_expr +
         "` id:`" +
@@ -143,39 +143,33 @@ export class RemoteSubscriber {
 
   async receive(): Promise<SampleWS | void> {
     if (this.undeclared == true) {
-      var message =
-        "Subscriber keyexpr:`" +
+      console.log("Subscriber keyexpr:`" +
         this.key_expr +
         "` id:`" +
         this.subscriber_id +
-        "`";
-      console.log(message);
+        "`");
       return;
     }
 
     if (this.callback != undefined) {
-      var message =
-        "Cannot Call receive on Subscriber created with callback:`" +
+      console.log("Cannot Call receive on Subscriber created with callback:`" +
         this.key_expr +
         "` id:`" +
         this.subscriber_id +
-        "`";
-      console.log(message);
+        "`");
       return;
     }
 
     return this.rx.receive();
   }
 
-  async undeclare() {
+  undeclare() {
     if (this.undeclared == true) {
-      var message =
-        "Subscriber keyexpr:`" +
+      console.log("Subscriber keyexpr:`" +
         this.key_expr +
         "` id:`" +
         this.subscriber_id +
-        "` already closed";
-      console.log(message);
+        "` already closed");
       return;
     }
 

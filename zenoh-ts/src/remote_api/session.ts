@@ -108,7 +108,7 @@ export class RemoteSession {
       }
     }
 
-    var session = new RemoteSession(ws, chan);
+    let session = new RemoteSession(ws, chan);
     session.channel_receive();
     return session;
   }
@@ -167,7 +167,7 @@ export class RemoteSession {
     let uuid = uuidv4();
 
     let handler_type: HandlerChannel;
-    console.log("Handler",handler)
+    console.log("Handler", handler)
     switch (handler.channel_type) {
       case ChannelType.Ring: {
         handler_type = { "Ring": handler.size };
@@ -202,12 +202,12 @@ export class RemoteSession {
     return subscriber;
   }
 
-  async declare_queryable(
+  declare_queryable(
     key_expr: string,
     complete: boolean,
     reply_tx: SimpleChannel<QueryReplyWS>,
     callback?: (sample: QueryWS) => Promise<void>,
-  ): Promise<RemoteQueryable> {
+  ): RemoteQueryable {
     let uuid = uuidv4();
 
     let control_message: ControlMsg = {
@@ -232,13 +232,13 @@ export class RemoteSession {
     return queryable;
   }
 
-  async declare_publisher(
+  declare_publisher(
     key_expr: string,
     encoding: string,
     congestion_control: number,
     priority: number,
     express: boolean,
-  ): Promise<RemotePublisher> {
+  ): RemotePublisher {
     let uuid: string = uuidv4();
     let publisher = new RemotePublisher(key_expr, uuid, this);
     let control_message: ControlMsg = {
@@ -268,17 +268,17 @@ export class RemoteSession {
   //
   // Sending Messages
   //
-  async send_data_message(data_message: DataMsg) {
+  send_data_message(data_message: DataMsg) {
     let remote_api_message: RemoteAPIMsg = { Data: data_message };
     this.send_remote_api_message(remote_api_message);
   }
 
-  async send_ctrl_message(ctrl_message: ControlMsg) {
+  send_ctrl_message(ctrl_message: ControlMsg) {
     let remote_api_message: RemoteAPIMsg = { Control: ctrl_message };
     this.send_remote_api_message(remote_api_message);
   }
 
-  private async send_remote_api_message(remote_api_message: RemoteAPIMsg) {
+  private send_remote_api_message(remote_api_message: RemoteAPIMsg) {
     this.ws.send(JSON.stringify(remote_api_message));
   }
 

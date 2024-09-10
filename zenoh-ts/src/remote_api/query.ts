@@ -10,8 +10,6 @@ import { DataMsg } from "./interface/DataMsg";
 import { QueryableMsg } from "./interface/QueryableMsg";
 import { QueryReplyWS } from "./interface/QueryReplyWS";
 
-// const log = new Logger({ stylePrettyLogs: false });
-
 function executeAsync(func: any) {
   setTimeout(func, 0);
 }
@@ -56,7 +54,7 @@ export class RemoteQueryable {
     this.reply_tx = reply_tx;
   }
 
-  static async new(
+  static new(
     key_expr: String,
     queryable_id: UUIDv4,
     session_ref: RemoteSession,
@@ -95,39 +93,33 @@ export class RemoteQueryable {
 
   async receive(): Promise<[QueryWS, SimpleChannel<QueryReplyWS>] | void> {
     if (this.undeclared == true) {
-      var message =
-        "Queryable keyexpr:`" +
+      console.log("Queryable keyexpr:`" +
         this.key_expr +
         "` id:`" +
         this.queryable_id +
-        "` undeclared";
-      console.log(message);
+        "` already undeclared");
       return undefined;
     }
 
     if (this.callback != undefined) {
-      var message =
-        "Cannot Call receive on Queryable created with callback:`" +
+      console.log("Cannot Call receive on Queryable created with callback:`" +
         this.key_expr +
         "` id:`" +
         this.queryable_id +
-        "`";
-      console.log(message);
+        "`");
       return undefined;
     }
 
     return [await this.query_rx.receive(), this.reply_tx];
   }
 
-  async undeclare() {
+  undeclare() {
     if (this.undeclared == true) {
-      var message =
-        "Queryable keyexpr:`" +
+      console.log("Queryable keyexpr:`" +
         this.key_expr +
         "` id:`" +
         this.queryable_id +
-        "` already closed";
-      console.log(message);
+        "` already closed");
       return;
     }
 
