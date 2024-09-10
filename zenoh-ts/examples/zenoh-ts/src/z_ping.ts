@@ -26,14 +26,14 @@ export async function main_ping() {
 
   let samples = 600;
   let samples_out = [];
-  for (var i = 0; i < samples; i++) {
+  for (let i = 0; i < samples; i++) {
     let write_time = new Date();
     await pub.put(data);
     await sub.receive();
     samples_out.push(elapsed_ms(write_time));
   }
 
-  for (var i = 0; i < samples_out.length; i++) {
+  for (let i = 0; i < samples_out.length; i++) {
     let rtt = samples_out[i];
     console.log(
       data.length +
@@ -49,17 +49,17 @@ export async function main_ping() {
 }
 
 function elapsed(startTime: Date) {
-  var endTime = new Date();
+  let endTime = new Date();
 
-  var timeDiff =
+  let timeDiff =
     (endTime.getMilliseconds() - startTime.getMilliseconds()) / 1000; //in s
-  var seconds = Math.round(timeDiff);
+  let seconds = Math.round(timeDiff);
   return seconds;
 }
 
 function elapsed_ms(startTime: Date) {
-  var endTime = new Date();
-  var timeDiff: number =
+  let endTime = new Date();
+  let timeDiff: number =
     endTime.getMilliseconds() - startTime.getMilliseconds(); //in ms
   return timeDiff;
 }

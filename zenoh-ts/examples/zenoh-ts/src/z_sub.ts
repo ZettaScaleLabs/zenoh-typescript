@@ -1,5 +1,5 @@
 import { FifoChannel, RingChannel } from "../../../dist/pubsub";
-import { TextDeserializer } from "../../../dist/z_bytes";
+import { deserialize_string } from "../../../dist/z_bytes";
 import "./style.css";
 import "./webpage.ts";
 
@@ -13,7 +13,7 @@ export async function main_sub() {
       ">> [Subscriber] Received " +
       sample.kind() + " ('" +
       sample.keyexpr() + "': '" +
-      sample.payload().deserialize(new TextDeserializer()) + "')",
+      sample.payload().deserialize(deserialize_string) + "')",
     );
   };
 
@@ -23,6 +23,7 @@ export async function main_sub() {
     new FifoChannel(10),
     subscriber_callback,
   );
+
   await sleep(1000 * 3);
   callback_subscriber.undeclare();
   console.log("undeclare callback_subscriber");
@@ -38,7 +39,7 @@ export async function main_sub() {
       ">> [Subscriber] Received " +
       sample.kind() + " ('" +
       sample.keyexpr() + "': '" +
-      sample.payload().deserialize(new TextDeserializer()) + "')",
+      sample.payload().deserialize(deserialize_string) + "')",
     );
     sample = await poll_subscriber.receive();
   }

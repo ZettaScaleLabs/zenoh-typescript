@@ -1,5 +1,5 @@
 import { ReplyError } from "../../../dist/query";
-import { TextDeserializer } from "../../../dist/z_bytes";
+import { deserialize_string } from "../../../dist/z_bytes";
 import "./style.css";
 import "./webpage.ts";
 
@@ -13,10 +13,10 @@ export async function main_get() {
     let resp = reply.result();
     if (resp instanceof Sample) {
       let sample: Sample = resp;
-      console.log(">> Received ('", sample.keyexpr(), ":", sample.payload().deserialize(new TextDeserializer()),"')");
+      console.log(">> Received ('", sample.keyexpr(), ":", sample.payload().deserialize(deserialize_string),"')");
     } else {
       let reply_error: ReplyError = resp;
-      console.log(">> Received (ERROR: '", reply_error.payload().deserialize(new TextDeserializer()), "')");
+      console.log(">> Received (ERROR: '", reply_error.payload().deserialize(deserialize_string), "')");
     }
   };
   await session.get("test/queryable/**", get_callback);
@@ -36,10 +36,10 @@ export async function main_get() {
       let resp = reply.result();
       if (resp instanceof Sample) {
         let sample: Sample = resp;
-        console.log(">> Received ('", sample.keyexpr(), ":", sample.payload().deserialize(new TextDeserializer()),"')");
+        console.log(">> Received ('", sample.keyexpr(), ":", sample.payload().deserialize(deserialize_string),"')");
       } else {
         let reply_error: ReplyError = resp;
-        console.log(">> Received (ERROR: '{", reply_error.payload().deserialize(new TextDeserializer()), "}')");
+        console.log(">> Received (ERROR: '{", reply_error.payload().deserialize(deserialize_string), "}')");
       }
     }
     reply = await receiver.receive();

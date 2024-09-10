@@ -1,12 +1,12 @@
 import "./style.css";
 import "./webpage.ts";
-import {main_thr} from  "./z_sub_thr.ts";
-import {main_get} from  "./z_get.ts";
-import { main_ping } from "./z_ping.ts";
-import { main_pong } from "./z_pong.ts";
+// import {main_thr} from  "./z_sub_thr.ts";
+// import {main_get} from  "./z_get.ts";
+// import { main_ping } from "./z_ping.ts";
+// import { main_pong } from "./z_pong.ts";
 import { main_sub } from "./z_sub.ts";
-import { main_pub } from "./z_pub.ts";
-import { main_queryable } from "./z_queryable.ts";
+// import { main_pub } from "./z_pub.ts";
+// import { main_queryable } from "./z_queryable.ts";
 
 
 async function main() {
@@ -19,9 +19,9 @@ async function main() {
   // main_queryable();
   // main_get();
 
-  var count = 0;
+  let count = 0;
   while (true) {
-    var seconds = 100;
+    let seconds = 100;
     await sleep(1000 * seconds);
     console.log("Main Loop ? ", count);
     count = count + 1;
