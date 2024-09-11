@@ -125,13 +125,15 @@ pub enum ControlMsg {
         encoding: Option<String>,
         #[serde(
             deserialize_with = "deserialize_congestion_control",
-            serialize_with = "serialize_congestion_control"
+            serialize_with = "serialize_congestion_control",
+            default
         )]
         #[ts(type = "number | undefined")]
         congestion_control: Option<CongestionControl>,
         #[serde(
             deserialize_with = "deserialize_priority",
-            serialize_with = "serialize_priority"
+            serialize_with = "serialize_priority",
+            default
         )]
         #[ts(type = "number | undefined")]
         priority: Option<Priority>,
@@ -146,19 +148,21 @@ pub enum ControlMsg {
         //
         #[serde(
             deserialize_with = "deserialize_congestion_control",
-            serialize_with = "serialize_congestion_control"
+            serialize_with = "serialize_congestion_control",
+            default
         )]
         #[ts(type = "number | undefined")]
         congestion_control: Option<CongestionControl>,
         #[serde(
             deserialize_with = "deserialize_priority",
-            serialize_with = "serialize_priority"
+            serialize_with = "serialize_priority",
+            default
         )]
         #[ts(type = "number | undefined")]
         priority: Option<Priority>,
         #[ts(type = "boolean | undefined")]
         express: Option<bool>,
-    #[ts(type = "number[] | undefined")]
+        #[ts(type = "number[] | undefined")]
         attachment: Option<Vec<u8>>,
     },
     // Subscriber

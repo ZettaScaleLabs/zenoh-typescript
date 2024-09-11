@@ -6,7 +6,9 @@ import { main_get } from  "./z_get.ts";
 // import { main_pong } from "./z_pong.ts";
 // import { main_sub } from "./z_sub.ts";
 // import { main_pub } from "./z_pub.ts";
+import { main_put } from "./z_put.ts";
 // import { main_queryable } from "./z_queryable.ts";
+// import { main_delete } from "./z_delete.ts";
 
 
 async function main() {
@@ -17,7 +19,9 @@ async function main() {
   // main_sub();
   // main_pub();
   // main_queryable();
-  main_get();
+  // main_get();
+  // main_delete();
+  main_put();
 
   let count = 0;
   while (true) {
