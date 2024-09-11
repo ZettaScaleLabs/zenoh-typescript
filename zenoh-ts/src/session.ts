@@ -21,7 +21,7 @@ import {
   Selector,
 } from "./query";
 import { SimpleChannel } from "channel-ts";
-import { FifoChannel, Handler, Publisher, Subscriber } from "./pubsub";
+import { ChannelType, FifoChannel, Handler, Publisher, RingChannel, Subscriber } from "./pubsub";
 import {
   priority_to_int,
   congestion_control_to_int,
@@ -35,6 +35,7 @@ import { Config } from "./config";
 import { Encoding } from "./encoding";
 import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
 import { Error } from "./remote_api/session";
+import { HandlerChannel } from "./remote_api/interface/HandlerChannel";
 
 export { Error };
 export type Option<T> = T | null;
@@ -111,6 +112,32 @@ export class Session {
     this.remote_session.delete(key_expr.toString());
   }
 
+  private check_handler_or_callback<T>(handler?: FifoChannel | RingChannel | ((sample: T) => Promise<void>)):
+    [undefined | ((callback: T) => Promise<void>), HandlerChannel] {
+
+    let handler_type: HandlerChannel;
+    let callback = undefined;
+    if (handler instanceof FifoChannel || handler instanceof RingChannel) {
+      switch (handler.channel_type) {
+        case ChannelType.Ring: {
+          handler_type = { "Ring": handler.size };
+          break;
+        }
+        case ChannelType.Fifo: {
+          handler_type = { "Fifo": handler.size };
+          break;
+        }
+        default: {
+          throw "channel type undetermined"
+        }
+      }
+    } else {
+      handler_type = { "Fifo": 256 };
+      callback = handler;
+    }
+    return [callback, handler_type]
+  }
+
   /**
    * Issues a get query on a Zenoh session
    *
@@ -118,7 +145,6 @@ export class Session {
    *
    * @returns Receiver
    */
-
   async get(
     into_selector: IntoSelector,
     callback?: (reply: Reply) => Promise<void>,
@@ -175,42 +201,45 @@ export class Session {
    *  If a Subscriber is created with a callback, it cannot be simultaneously polled for new values
    * 
    * @param keyexpr - string of key_expression
-   * @param callback function - Function to be called for all samples
+   * @param handler - Either a HandlerChannel or a Callback Function to be called for all samples
    *
    * @returns Subscriber
    */
+  // Handler size : This is to match the API_DATA_RECEPTION_CHANNEL_SIZE of zenoh internally
+  async declare_subscriber(into_key_expr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber>;
+  async declare_subscriber(into_key_expr: IntoKeyExpr, handler: Handler): Promise<Subscriber>;
   async declare_subscriber(
     into_key_expr: IntoKeyExpr,
-    handler: Handler = new FifoChannel(256), // This is to match the API_DATA_RECEPTION_CHANNEL_SIZE of zenoh internally
-    callback?: (sample: Sample) => Promise<void>,
+    handler: ((sample: Sample) => Promise<void>) | Handler = new FifoChannel(256),
   ): Promise<Subscriber> {
     let key_expr = KeyExpr.new(into_key_expr);
     let remote_subscriber: RemoteSubscriber;
     let callback_subscriber = false;
-    if (callback != undefined) {
+    let [callback, handler_type] = this.check_handler_or_callback<Sample>(handler);
+
+    if (callback !== undefined) {
       callback_subscriber = true;
-      const callback_conversion = async function (
-        sample_ws: SampleWS,
-      ): Promise<void> {
+      const callback_conversion = async function (sample_ws: SampleWS,): Promise<void> {
         let sample: Sample = Sample_from_SampleWS(sample_ws);
-        callback(sample);
+        if (callback !== undefined) { 
+          callback(sample);
+        }
       };
-      remote_subscriber = await this.remote_session.declare_subscriber(
+      remote_subscriber = await this.remote_session.declare_remote_subscriber(
         key_expr.toString(),
-        handler,
+        handler_type,
         callback_conversion,
       );
     } else {
-      remote_subscriber = await this.remote_session.declare_subscriber(
+      remote_subscriber = await this.remote_session.declare_remote_subscriber(
         key_expr.toString(),
-        handler,
+        handler_type,
       );
     }
 
     let subscriber = await Subscriber.new(
       remote_subscriber,
       callback_subscriber,
-      
     );
     return subscriber;
   }
@@ -245,14 +274,14 @@ export class Session {
 
         callback(query);
       };
-      remote_queryable = await this.remote_session.declare_queryable(
+      remote_queryable = await this.remote_session.declare_remote_queryable(
         key_expr.toString(),
         complete,
         reply_tx,
         callback_conversion,
       );
     } else {
-      remote_queryable = await this.remote_session.declare_queryable(
+      remote_queryable = await this.remote_session.declare_remote_queryable(
         key_expr.toString(),
         complete,
         reply_tx,
@@ -310,7 +339,7 @@ export class Session {
     }
 
     let remote_publisher: RemotePublisher =
-      await this.remote_session.declare_publisher(
+      await this.remote_session.declare_remote_publisher(
         key_expr.toString(),
         _encoding.toString(),
         _congestion_ctrl,

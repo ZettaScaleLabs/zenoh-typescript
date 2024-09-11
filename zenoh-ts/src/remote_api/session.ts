@@ -17,7 +17,6 @@ import { RemoteQueryable } from "./query";
 import { ReplyWS } from "./interface/ReplyWS";
 import { QueryableMsg } from "./interface/QueryableMsg";
 import { QueryReplyWS } from "./interface/QueryReplyWS";
-import { ChannelType, Handler } from "../pubsub";
 import { HandlerChannel } from "./interface/HandlerChannel";
 
 // ██████  ███████ ███    ███  ██████  ████████ ███████     ███████ ███████ ███████ ███████ ██  ██████  ███    ██
@@ -158,32 +157,15 @@ export class RemoteSession {
   //     let control_message: ControlMsg = { "CreateKeyExpr": key_expr };
   //     this.send_ctrl_message(control_message);
   // }
-
-  async declare_subscriber(
+  async declare_remote_subscriber(
     key_expr: string,
-    handler: Handler,
+    handler: HandlerChannel,
     callback?: (sample: SampleWS) => Promise<void>,
   ): Promise<RemoteSubscriber> {
     let uuid = uuidv4();
 
-    let handler_type: HandlerChannel;
-    console.log("Handler", handler)
-    switch (handler.channel_type) {
-      case ChannelType.Ring: {
-        handler_type = { "Ring": handler.size };
-        break;
-      }
-      case ChannelType.Fifo: {
-        handler_type = { "Fifo": handler.size };
-        break;
-      }
-      default: {
-        throw "channel type undetermined"
-      }
-    }
-
     let control_message: ControlMsg = {
-      DeclareSubscriber: { key_expr: key_expr, id: uuid, handler: handler_type },
+      DeclareSubscriber: { key_expr: key_expr, id: uuid, handler: handler },
     };
 
     let channel: SimpleChannel<SampleWS> = new SimpleChannel<SampleWS>();
@@ -202,7 +184,8 @@ export class RemoteSession {
     return subscriber;
   }
 
-  declare_queryable(
+
+  declare_remote_queryable(
     key_expr: string,
     complete: boolean,
     reply_tx: SimpleChannel<QueryReplyWS>,
@@ -232,7 +215,7 @@ export class RemoteSession {
     return queryable;
   }
 
-  declare_publisher(
+  declare_remote_publisher(
     key_expr: string,
     encoding: string,
     congestion_control: number,
@@ -254,16 +237,6 @@ export class RemoteSession {
     this.send_ctrl_message(control_message);
     return publisher;
   }
-
-  // async subscriber(
-  //   key_expr: string,
-  //   handler: (val: string) => Promise<void>,
-  // ): Promise<void> {
-  //   for await (const data of this.ws_channel) {
-  //     // use async iterator to receive data
-  //     handler(data);
-  //   }
-  // }
 
   //
   // Sending Messages

@@ -35,7 +35,7 @@
   integrity sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==
 
 "@ZettaScaleLabs/zenoh-ts@file:../../":
-  version "0.0.3"
+  version "0.0.5"
   resolved "file:../.."
   dependencies:
     channel-ts "^0.1.2"
