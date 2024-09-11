@@ -19,8 +19,9 @@ export async function main_get() {
       console.log(">> Received (ERROR: '", reply_error.payload().deserialize(deserialize_string), "')");
     }
   };
-  await session.get("test/queryable/**", get_callback);
 
+  console.log("Start z_get")
+  await session.get("test/queryable/**", get_callback);
 
   // Poll receiever
   let receiver: void | Receiver  = await session.get("test/queryable/**");

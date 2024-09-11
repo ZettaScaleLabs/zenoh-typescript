@@ -116,10 +116,24 @@ export class RemoteSession {
   // Zenoh Session Functions
   //
   // Put
-  async put(key_expr: string, payload: Array<number>): Promise<void> {
+  async put(key_expr: string,
+    payload: Array<number>,
+    encoding?: string,
+    congestion_control?: number,
+    priority?: number,
+    express?: boolean,
+    attachment?: Array<number>
+  ): Promise<void> {
     let owned_keyexpr: OwnedKeyExprWrapper = key_expr;
     let data_message: ControlMsg = {
-      Put: { key_expr: owned_keyexpr, payload: payload },
+      Put: {
+        key_expr: owned_keyexpr, payload: payload,
+        encoding: encoding,
+        congestion_control: congestion_control,
+        priority: priority,
+        express: express,
+        attachment: attachment,
+      },
     };
     this.send_ctrl_message(data_message);
   }
@@ -128,22 +142,57 @@ export class RemoteSession {
   async get(
     key_expr: string,
     parameters: string | null,
+    handler: HandlerChannel,
+    // 
+    consolidation?: number,
+    congestion_control?: number,
+    priority?: number,
+    express?: boolean,
+    encoding?: string,
+    payload?: Array<number>,
+    attachment?: Array<number>
   ): Promise<SimpleChannel<ReplyWS>> {
     let uuid = uuidv4();
     let channel: SimpleChannel<ReplyWS> = new SimpleChannel<ReplyWS>();
     this.get_receiver.set(uuid, channel);
 
     let control_message: ControlMsg = {
-      Get: { key_expr: key_expr, parameters: parameters, id: uuid },
+      Get: {
+        key_expr: key_expr,
+        parameters: parameters,
+        id: uuid,
+        handler: handler,
+        consolidation: consolidation,
+        congestion_control: congestion_control,
+        priority: priority,
+        express: express,
+        encoding: encoding,
+        payload: payload,
+        attachment: attachment
+      },
     };
     this.send_ctrl_message(control_message);
     return channel;
   }
 
   // delete
-  async delete(key_expr: string): Promise<void> {
+  async delete(
+    key_expr: string,
+    congestion_control?: number,
+    priority?: number,
+    express?: boolean,
+    attachment?: Array<number>
+  ): Promise<void> {
     let owned_keyexpr: OwnedKeyExprWrapper = key_expr;
-    let data_message: ControlMsg = { Delete: { key_expr: owned_keyexpr } };
+    let data_message: ControlMsg = {
+      Delete: {
+        key_expr: owned_keyexpr,
+        congestion_control: congestion_control,
+        priority: priority,
+        express: express,
+        attachment: attachment,
+      }
+    };
     this.send_ctrl_message(data_message);
   }
 

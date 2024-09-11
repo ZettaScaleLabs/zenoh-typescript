@@ -29,6 +29,8 @@ import {
   Priority,
   Sample,
   Sample_from_SampleWS,
+  consolidation_mode_to_int,
+  ConsolidationMode,
 } from "./sample";
 import { State } from "channel-ts/lib/channel";
 import { Config } from "./config";
@@ -99,17 +101,82 @@ export class Session {
   async put(
     into_key_expr: IntoKeyExpr,
     into_zbytes: IntoZBytes,
+    encoding?: Encoding,
+    congestion_control?: CongestionControl,
+    priority?: Priority,
+    express?: boolean,
+    attachment?: IntoZBytes
   ): Promise<void> {
     let key_expr = KeyExpr.new(into_key_expr);
     let z_bytes = ZBytes.new(into_zbytes);
 
-    this.remote_session.put(key_expr.toString(), Array.from(z_bytes.payload()));
+    let _encoding;
+    let _congestion_control;
+    let _priority;
+    let _express;
+    let _attachment;
+
+    if (encoding != undefined) {
+      _encoding = encoding.toString()
+    }
+    if (congestion_control != undefined) {
+      _congestion_control = congestion_control_to_int(congestion_control);
+    }
+    if (priority != undefined) {
+      _priority = priority_to_int(priority);
+    }
+    if (express != undefined) {
+      _express = express
+    }
+    if (attachment != undefined) {
+      _attachment = Array.from(ZBytes.new(attachment).payload())
+    }
+
+    this.remote_session.put(
+      key_expr.toString(),
+      Array.from(z_bytes.payload()),
+      _encoding,
+      _congestion_control,
+      _priority,
+      _express,
+      _attachment,
+    );
   }
 
-  async delete(into_key_expr: IntoKeyExpr): Promise<void> {
+  async delete(
+    into_key_expr: IntoKeyExpr,
+    congestion_control?: CongestionControl,
+    priority?: Priority,
+    express?: boolean,
+    attachment?: IntoZBytes
+  ): Promise<void> {
     let key_expr = KeyExpr.new(into_key_expr);
 
-    this.remote_session.delete(key_expr.toString());
+    let _congestion_control;
+    let _priority;
+    let _express;
+    let _attachment;
+    if (congestion_control != undefined) {
+      _congestion_control = congestion_control_to_int(congestion_control);
+    }
+    if (priority != undefined) {
+      _priority = priority_to_int(priority);
+    }
+    if (express != undefined) {
+      _express = express
+    }
+    if (attachment != undefined) {
+      _attachment = Array.from(ZBytes.new(attachment).payload())
+    }
+
+
+    this.remote_session.delete(
+      key_expr.toString(),
+      _congestion_control,
+      _priority,
+      _express,
+      _attachment,
+    );
   }
 
   private check_handler_or_callback<T>(handler?: FifoChannel | RingChannel | ((sample: T) => Promise<void>)):
@@ -147,8 +214,15 @@ export class Session {
    */
   async get(
     into_selector: IntoSelector,
-    callback?: (reply: Reply) => Promise<void>,
-  ): Promise<Receiver | void> {
+    handler: ((sample: Reply) => Promise<void>) | Handler = new FifoChannel(256),
+    consolidation?: ConsolidationMode,
+    congestion_control?: CongestionControl,
+    priority?: Priority,
+    express?: boolean,
+    encoding?: Encoding,
+    payload?: IntoZBytes,
+    attachment?: IntoZBytes
+  ): Promise<Receiver | undefined> {
 
     let selector: Selector;
     let key_expr: KeyExpr;
@@ -162,18 +236,61 @@ export class Session {
         key_expr = KeyExpr.new(split_string[0]);
         let parameters: Parameters = Parameters.new(split_string[1]);
         selector = Selector.new(key_expr, parameters);
-      } else { //Error in Selector
+      } else {
         throw "Error: Invalid Selector, expected format <KeyExpr>?<Parameters>";
       }
     } else {
       selector = Selector.new(into_selector);
     }
 
+    let [callback, handler_type] = this.check_handler_or_callback<Reply>(handler);
+
+    // Optional Parameters 
+    let _consolidation;
+    let _encoding;
+    let _congestion_control;
+    let _priority;
+    let _express;
+    let _attachment;
+    let _payload;
+
+    if (consolidation != undefined) {
+      _consolidation = consolidation_mode_to_int(consolidation)
+    }
+    if (encoding != undefined) {
+      _encoding = encoding.toString()
+    }
+    if (congestion_control != undefined) {
+      _congestion_control = congestion_control_to_int(congestion_control);
+    }
+    if (priority != undefined) {
+      _priority = priority_to_int(priority);
+    }
+    if (express != undefined) {
+      _express = express
+    }
+    if (attachment != undefined) {
+      _attachment = Array.from(ZBytes.new(attachment).payload())
+    }
+    if (payload != undefined) {
+      _payload = Array.from(ZBytes.new(payload).payload())
+    }
+
+    console.log("Send Get");
+
     let chan: SimpleChannel<ReplyWS> = await this.remote_session.get(
       selector.key_expr().toString(),
       selector.parameters().toString(),
+      handler_type,
+      _consolidation,
+      _congestion_control,
+      _priority,
+      _express,
+      _encoding,
+      _payload,
+      _attachment,
     );
-
+    console.log("After Send Get");
     let receiver = Receiver.new(chan);
 
     if (callback != undefined) {
@@ -182,7 +299,9 @@ export class Session {
           // This horribleness comes from SimpleChannel sending a 0 when the channel is closed
           if (message != undefined && (message as unknown as number) != 0) {
             let reply = Reply.new(message);
-            callback(reply);
+            if (callback != undefined){
+              callback(reply);
+            }
           } else {
             break
           }
@@ -221,7 +340,7 @@ export class Session {
       callback_subscriber = true;
       const callback_conversion = async function (sample_ws: SampleWS,): Promise<void> {
         let sample: Sample = Sample_from_SampleWS(sample_ws);
-        if (callback !== undefined) { 
+        if (callback !== undefined) {
           callback(sample);
         }
       };

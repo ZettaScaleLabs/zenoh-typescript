@@ -6,7 +6,7 @@ use uuid::Uuid;
 use zenoh::{
     key_expr::OwnedKeyExpr,
     qos::{CongestionControl, Priority},
-    query::{Query, Reply, ReplyError},
+    query::{ConsolidationMode, Query, Reply, ReplyError},
     sample::{Sample, SampleKind},
 };
 
@@ -75,12 +75,43 @@ pub enum ControlMsg {
     Session(Uuid),
 
     // Session Action Messages
-    // TODO Replace parameters String with Parameters
     Get {
         #[ts(as = "OwnedKeyExprWrapper")]
         key_expr: OwnedKeyExpr,
         parameters: Option<String>,
+        handler: HandlerChannel,
         id: Uuid,
+        // Parameters
+        #[serde(
+            deserialize_with = "deserialize_consolidation_mode",
+            serialize_with = "serialize_consolidation_mode",
+            default
+        )]
+        #[ts(type = "number | undefined")]
+        consolidation: Option<ConsolidationMode>,
+        // timeout: Option<ConsolidationMode>,
+        #[serde(
+            deserialize_with = "deserialize_congestion_control",
+            serialize_with = "serialize_congestion_control",
+            default
+        )]
+        #[ts(type = "number | undefined")]
+        congestion_control: Option<CongestionControl>,
+        #[serde(
+            deserialize_with = "deserialize_priority",
+            serialize_with = "serialize_priority",
+            default
+        )]
+        #[ts(type = "number | undefined")]
+        priority: Option<Priority>,
+        #[ts(type = "boolean | undefined")]
+        express: Option<bool>,
+        #[ts(type = "string | undefined")]
+        encoding: Option<String>,
+        #[ts(type = "number[] | undefined")]
+        payload: Option<Vec<u8>>,
+    #[ts(type = "number[] | undefined")]
+        attachment: Option<Vec<u8>>,
     },
     GetFinished {
         id: Uuid,
@@ -89,13 +120,47 @@ pub enum ControlMsg {
         #[ts(as = "OwnedKeyExprWrapper")]
         key_expr: OwnedKeyExpr,
         payload: Vec<u8>,
+        //
+        #[ts(type = "string | undefined")]
+        encoding: Option<String>,
+        #[serde(
+            deserialize_with = "deserialize_congestion_control",
+            serialize_with = "serialize_congestion_control"
+        )]
+        #[ts(type = "number | undefined")]
+        congestion_control: Option<CongestionControl>,
+        #[serde(
+            deserialize_with = "deserialize_priority",
+            serialize_with = "serialize_priority"
+        )]
+        #[ts(type = "number | undefined")]
+        priority: Option<Priority>,
+        #[ts(type = "boolean | undefined")]
+        express: Option<bool>,
+    #[ts(type = "number[] | undefined")]
+        attachment: Option<Vec<u8>>,
     },
     Delete {
         #[ts(as = "OwnedKeyExprWrapper")]
         key_expr: OwnedKeyExpr,
+        //
+        #[serde(
+            deserialize_with = "deserialize_congestion_control",
+            serialize_with = "serialize_congestion_control"
+        )]
+        #[ts(type = "number | undefined")]
+        congestion_control: Option<CongestionControl>,
+        #[serde(
+            deserialize_with = "deserialize_priority",
+            serialize_with = "serialize_priority"
+        )]
+        #[ts(type = "number | undefined")]
+        priority: Option<Priority>,
+        #[ts(type = "boolean | undefined")]
+        express: Option<bool>,
+    #[ts(type = "number[] | undefined")]
+        attachment: Option<Vec<u8>>,
     },
-    //
-
     // Subscriber
     DeclareSubscriber {
         #[ts(as = "OwnedKeyExprWrapper")]
@@ -110,86 +175,149 @@ pub enum ControlMsg {
     DeclarePublisher {
         #[ts(as = "OwnedKeyExprWrapper")]
         key_expr: OwnedKeyExpr,
-        encoding: String,
+        #[ts(type = "string | undefined")]
+        encoding: Option<String>,
         #[serde(
             deserialize_with = "deserialize_congestion_control",
             serialize_with = "serialize_congestion_control"
         )]
-        #[ts(type = "number")]
-        congestion_control: CongestionControl,
+        #[ts(type = "number | undefined")]
+        congestion_control: Option<CongestionControl>,
         #[serde(
             deserialize_with = "deserialize_priority",
             serialize_with = "serialize_priority"
         )]
-        #[ts(type = "number")]
-        priority: Priority,
-        express: bool,
+        #[ts(type = "number | undefined")]
+        priority: Option<Priority>,
+        #[ts(type = "boolean | undefined")]
+        express: Option<bool>,
         id: Uuid,
     },
     UndeclarePublisher(Uuid),
-
     // Queryable
     DeclareQueryable {
         #[ts(as = "OwnedKeyExprWrapper")]
         key_expr: OwnedKeyExpr,
-        complete: bool,
         id: Uuid,
+        complete: bool,
     },
     UndeclareQueryable(Uuid),
 }
 
-fn deserialize_congestion_control<'de, D>(d: D) -> Result<CongestionControl, D::Error>
+fn deserialize_consolidation_mode<'de, D>(d: D) -> Result<Option<ConsolidationMode>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    Ok(match u8::deserialize(d)? {
-        0u8 => CongestionControl::Drop,
-        1u8 => CongestionControl::Block,
+    match Option::<u8>::deserialize(d) {
+        Ok(Some(value)) => Ok(Some(match value {
+            0u8 => ConsolidationMode::Auto,
+            1u8 => ConsolidationMode::None,
+            2u8 => ConsolidationMode::Monotonic,
+            3u8 => ConsolidationMode::Latest,
+            _ => {
+                return Err(serde::de::Error::custom(format!(
+                    "Value not valid for ConsolidationMode Enum {:?}",
+                    value
+                )))
+            }
+        })),
+        Ok(None) => Ok(None),
+        Err(err) => Err(serde::de::Error::custom(format!(
+            "Value not valid for ConsolidationMode Enum {:?}",
+            err
+        ))),
+    }
+}
+
+fn serialize_consolidation_mode<S>(
+    consolidation_mode: &Option<ConsolidationMode>,
+    s: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match consolidation_mode {
+        Some(c_mode) => s.serialize_u8(*c_mode as u8),
+        None => s.serialize_none(),
+    }
+}
+
+fn deserialize_congestion_control<'de, D>(d: D) -> Result<Option<CongestionControl>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<u8>::deserialize(d) {
+        Ok(Some(value)) => Ok(Some(match value {
+            0u8 => CongestionControl::Drop,
+            1u8 => CongestionControl::Block,
+            val => {
+                return Err(serde::de::Error::custom(format!(
+                    "Value not valid for CongestionControl Enum {:?}",
+                    val
+                )))
+            }
+        })),
+        Ok(None) => Ok(None),
         val => {
             return Err(serde::de::Error::custom(format!(
                 "Value not valid for CongestionControl Enum {:?}",
                 val
             )))
         }
-    })
+    }
 }
 
 fn serialize_congestion_control<S>(
-    congestion_control: &CongestionControl,
+    congestion_control: &Option<CongestionControl>,
     s: S,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    s.serialize_u8(*congestion_control as u8)
+    match congestion_control {
+        Some(c_ctrl) => s.serialize_u8(*c_ctrl as u8),
+        None => s.serialize_none(),
+    }
 }
 
-fn deserialize_priority<'de, D>(d: D) -> Result<Priority, D::Error>
+fn deserialize_priority<'de, D>(d: D) -> Result<Option<Priority>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    Ok(match u8::deserialize(d)? {
-        1u8 => Priority::RealTime,
-        2u8 => Priority::InteractiveHigh,
-        3u8 => Priority::InteractiveLow,
-        4u8 => Priority::DataHigh,
-        5u8 => Priority::Data,
-        6u8 => Priority::DataLow,
-        7u8 => Priority::Background,
+    match Option::<u8>::deserialize(d) {
+        Ok(Some(value)) => Ok(Some(match value {
+            1u8 => Priority::RealTime,
+            2u8 => Priority::InteractiveHigh,
+            3u8 => Priority::InteractiveLow,
+            4u8 => Priority::DataHigh,
+            5u8 => Priority::Data,
+            6u8 => Priority::DataLow,
+            7u8 => Priority::Background,
+            val => {
+                return Err(serde::de::Error::custom(format!(
+                    "Value not valid for Priority Enum {:?}",
+                    val
+                )))
+            }
+        })),
+        Ok(None) => Ok(None),
         val => {
             return Err(serde::de::Error::custom(format!(
                 "Value not valid for Priority Enum {:?}",
                 val
             )))
         }
-    })
+    }
 }
 
-fn serialize_priority<S>(priority: &Priority, s: S) -> Result<S::Ok, S::Error>
+fn serialize_priority<S>(priority: &Option<Priority>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    s.serialize_u8(*priority as u8)
+    match priority {
+        Some(prio) => s.serialize_u8(*prio as u8),
+        None => s.serialize_none(),
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -225,7 +353,9 @@ pub struct QueryWS {
     key_expr: OwnedKeyExpr,
     parameters: String,
     encoding: Option<String>,
+    #[ts(type = "number[] | undefined")]
     attachment: Option<Vec<u8>>,
+    #[ts(type = "number[] | undefined")]
     payload: Option<Vec<u8>>,
 }
 

@@ -22,6 +22,34 @@ export enum CongestionControl {
   BLOCK = "BLOCK",
 }
 
+export enum ConsolidationMode {
+  Auto,
+  None,
+  Monotonic,
+  Latest,
+}
+
+/**
+ * Convenience function to convert between Congestion function and int
+ */
+export function consolidation_mode_to_int(
+  congestion_control: ConsolidationMode,
+): number {
+  switch (congestion_control) {
+    case ConsolidationMode.Auto:
+      return 0
+    case ConsolidationMode.None:
+      return 1
+    case ConsolidationMode.Monotonic:
+      return 2
+    case ConsolidationMode.Latest:
+      return 3
+    default:
+      console.log("Unknown ConsolidationMode Variant, default to Auto");
+      return 0;
+  }
+}
+
 /**
  * Convenience function to convert between Congestion function and int
  */

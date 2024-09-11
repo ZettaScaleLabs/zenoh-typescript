@@ -348,10 +348,12 @@ async fn handle_message(
     sock_addr: SocketAddr,
     state_map: StateMap,
 ) -> Option<RemoteAPIMsg> {
+    tracing::warn!("{msg}");
     match msg {
         Message::Text(text) => match serde_json::from_str::<RemoteAPIMsg>(&text) {
             Ok(msg) => match msg {
                 RemoteAPIMsg::Control(ctrl_msg) => {
+                    tracing::warn!("ctrl_msg {:?}",ctrl_msg);
                     match handle_control_message(ctrl_msg, sock_addr, state_map).await {
                         Ok(ok) => return ok.map(RemoteAPIMsg::Control),
                         Err(err) => {
@@ -366,7 +368,8 @@ async fn handle_message(
                 }
             },
             Err(err) => {
-                error!(
+
+                tracing::error!(
                     "RemoteAPI: WS Message Cannot be Deserialized to RemoteAPIMsg {}",
                     err
                 );

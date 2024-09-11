@@ -8,6 +8,7 @@ use zenoh::{
     key_expr::KeyExpr,
     qos::QoSBuilderTrait,
     query::Selector,
+    sample::SampleBuilderTrait,
     session::SessionDeclarations,
 };
 
@@ -17,6 +18,14 @@ use crate::{
     },
     spawn_future, StateMap,
 };
+
+macro_rules! add_if_some  {
+    ($x:ident, $y:ident) => {
+        if let Some($x) = $x {
+            $y = $y.$x($x);
+        }                    
+    };
+}
 
 pub async fn handle_control_message(
     ctrl_msg: ControlMsg,
@@ -45,39 +54,102 @@ pub async fn handle_control_message(
                 warn!("State Map Does not contain SocketAddr");
             }
         }
-        //
-        // ControlMsg::CreateKeyExpr(key_expr_str) => {
-        //     let key_expr = KeyExpr::new(key_expr_str).unwrap();
-        //     remote_state.key_expr.insert(key_expr.clone());
-        //     Some(ControlMsg::KeyExpr(key_expr.to_string()))
-        // }
-        //
         ControlMsg::Get {
             key_expr,
             parameters,
             id,
+            handler,
+            consolidation,
+            congestion_control,
+            priority,
+            express,
+            encoding,
+            payload,
+            attachment,
         } => {
+            println!("Recieved Get {:?}",key_expr);
             let selector = Selector::owned(key_expr, parameters.unwrap_or_default());
-            let receiver: flume::Receiver<zenoh::query::Reply> =
-                state_map.session.get(selector).await?;
-            let mut receiving = true;
-            while receiving {
-                match receiver.recv_async().await {
-                    Ok(reply) => {
-                        let reply_ws = ReplyWS::from((reply, id));
-                        let remote_api_msg = RemoteAPIMsg::Data(DataMsg::GetReply(reply_ws));
-                        if let Err(err) = state_map.websocket_tx.send(remote_api_msg) {
-                            tracing::error!("{}", err);
+            let mut get_builder = state_map.session.get(selector);
+
+            add_if_some!(consolidation, get_builder);
+            add_if_some!(congestion_control, get_builder);
+            add_if_some!(priority, get_builder);
+            add_if_some!(express, get_builder);
+            add_if_some!(encoding, get_builder);
+            add_if_some!(payload, get_builder);
+            add_if_some!(attachment, get_builder);
+
+            match handler {
+                HandlerChannel::Fifo(size) => {
+                    let receiver = get_builder.with(FifoChannel::new(size)).await?;
+                    let mut receiving: bool = true;
+                    while receiving {
+                        match receiver.recv_async().await {
+                            Ok(reply) => {
+                                let reply_ws = ReplyWS::from((reply, id));
+                                let remote_api_msg =
+                                    RemoteAPIMsg::Data(DataMsg::GetReply(reply_ws));
+                                if let Err(err) = state_map.websocket_tx.send(remote_api_msg) {
+                                    tracing::error!("{}", err);
+                                }
+                            }
+                            Err(_) => receiving = false,
                         }
                     }
-                    Err(_) => receiving = false,
                 }
-            }
+                HandlerChannel::Ring(size) => {
+                    let receiver = get_builder.with(RingChannel::new(size)).await?;
+                    let mut receiving: bool = true;
+                    while receiving {
+                        match receiver.recv_async().await {
+                            Ok(reply) => {
+                                let reply_ws = ReplyWS::from((reply, id));
+                                let remote_api_msg =
+                                    RemoteAPIMsg::Data(DataMsg::GetReply(reply_ws));
+                                if let Err(err) = state_map.websocket_tx.send(remote_api_msg) {
+                                    tracing::error!("{}", err);
+                                }
+                            }
+                            Err(_) => receiving = false,
+                        }
+                    }
+                }
+            };
             let remote_api_msg = RemoteAPIMsg::Control(ControlMsg::GetFinished { id });
             state_map.websocket_tx.send(remote_api_msg)?;
         }
-        ControlMsg::Put { key_expr, payload } => state_map.session.put(key_expr, payload).await?,
-        ControlMsg::Delete { key_expr } => state_map.session.delete(key_expr).await?,
+        ControlMsg::Put {
+            key_expr,
+            payload,
+            encoding,
+            congestion_control,
+            priority,
+            express,
+            attachment,
+        } => {
+            let mut put_builder = state_map.session.put(key_expr, payload);
+            add_if_some!(encoding, put_builder);
+            add_if_some!(congestion_control, put_builder);
+            add_if_some!(priority, put_builder);
+            add_if_some!(express, put_builder);
+            add_if_some!(attachment, put_builder);
+            put_builder.await?;
+        }
+        ControlMsg::Delete {
+            key_expr,
+            congestion_control,
+            priority,
+            express,
+            attachment,
+        } => {
+            let mut delete_builder = state_map.session.delete(key_expr);
+            add_if_some!(congestion_control, delete_builder);
+            add_if_some!(priority, delete_builder);
+            add_if_some!(express, delete_builder);
+            add_if_some!(attachment, delete_builder);
+            
+            delete_builder.await?;
+        }
         // SUBSCRIBER
         ControlMsg::DeclareSubscriber {
             key_expr: key_expr_str,
@@ -89,7 +161,6 @@ pub async fn handle_control_message(
 
             let join_handle = match handler {
                 HandlerChannel::Fifo(size) => {
-
                     let subscriber = state_map
                         .session
                         .declare_subscriber(key_expr)
@@ -146,14 +217,20 @@ pub async fn handle_control_message(
             priority,
             express,
         } => {
-            let publisher = state_map
-                .session
-                .declare_publisher(key_expr)
-                .congestion_control(congestion_control)
-                .encoding(encoding)
-                .priority(priority)
-                .express(express)
-                .await?;
+            let mut publisher_builder = state_map.session.declare_publisher(key_expr);
+            if let Some(encoding) = encoding {
+                publisher_builder = publisher_builder.encoding(encoding);
+            }
+            if let Some(congestion_control) = congestion_control {
+                publisher_builder = publisher_builder.congestion_control(congestion_control);
+            }
+            if let Some(priority) = priority {
+                publisher_builder = publisher_builder.priority(priority);
+            }
+            if let Some(express) = express {
+                publisher_builder = publisher_builder.express(express);
+            };
+            let publisher = publisher_builder.await?;
             state_map.publishers.insert(uuid, publisher);
         }
         ControlMsg::UndeclarePublisher(id) => {
