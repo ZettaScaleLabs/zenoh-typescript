@@ -1,0 +1,48 @@
+{
+  "name": "@ZettaScaleLabs/zenoh-ts",
+  "version": "0.0.6",
+  "license": "SEE LICENSE IN 'LICENSE'",
+  "type": "module",
+  "exports": {
+    "import": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "package.json",
+    "README.md",
+    "dist",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "channel-ts": "^0.1.2",
+    "cpx": "^1.5.0",
+    "fp-ts": "^2.16.5",
+    "object-inspect": "^1.13.1",
+    "request": "^2.79.0",
+    "text-encoding": "^0.7.0",
+    "ts-log": "^2.2.5",
+    "tslog": "^4.9.3",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.9.1",
+    "@types/object-inspect": "^1.13.0",
+    "@types/uuid": "^10.0.0",
+    "ts-loader": "^9.5.0",
+    "ts-node": "10.9.1",
+    "typedoc": "^0.26.5",
+    "typescript": "^5.3.2",
+    "webpack-cli": "^5.1.4"
+  },
+  "scripts": {
+    "build": "npx tsc",
+    "release": "npx release-it",
+    "clean": "rm -rf ./node_modules ./dist ./esm"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
+  }
+}
