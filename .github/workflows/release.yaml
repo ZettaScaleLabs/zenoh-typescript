@@ -47,7 +47,8 @@ jobs:
       bump-deps-version: ${{ inputs.zenoh-version }}
       bump-deps-pattern: ${{ inputs.zenoh-version && 'zenoh.*' || '^$' }}
       bump-deps-branch: ${{ inputs.zenoh-version && format('release/{0}', inputs.zenoh-version) || '' }}
-    secrets: inherit
+    secrets:
+      BOT_TOKEN_WORKFLOW: ${{ secrets.BOT_TOKEN_WORKFLOW }}
 
   build-debian:
     name: Build Debian packages
