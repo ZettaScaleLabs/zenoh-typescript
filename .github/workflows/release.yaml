@@ -38,7 +38,8 @@ on:
 jobs:
   tag:
     name: Branch, Bump & tag crates
-    uses: eclipse-zenoh/ci/.github/workflows/branch-bump-tag-crates.yml@main
+    #uses: eclipse-zenoh/ci/.github/workflows/branch-bump-tag-crates.yml@main
+    uses: ZettaScaleLabs/ci/.github/workflows/branch-bump-tag-crates.yml@add-secrets
     with:
       repo: ${{ github.repository }}
       live-run: ${{ inputs.live-run || false }}
