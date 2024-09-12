@@ -17,7 +17,7 @@ Check the website [zenoh.io](http://zenoh.io) and the [roadmap](https://github.c
 
 # Typescript/Javascript API
 
-This repository provides a Typscript / Javascript binding based [zenoh-pico], a pico variant of zenoh written in C aimed at resource constrained systems (i.e. Micro controllers).  
+This repository provides a Typscript / Javascript binding through the use of the `remote-api-plugin` in this repo. 
 The long term plan is to use zenoh [Zenoh written in Rust](https://github.com/eclipse-zenoh/zenoh) to target WASM.  
 In its current state, it is not possible to compile Zenoh (Rust) to target WASM, and will need to undergo a fair amount of refactoring before that can happen.
 
@@ -27,105 +27,76 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 
 > :warning: **WARNING** :warning: : Zenoh and its ecosystem are under active development. When you build from git, make sure you also build from git any other Zenoh repository you plan to use (e.g. binding, plugin, backend, etc.). It may happen that some changes in git are not compatible with the most recent packaged Zenoh release (e.g. deb, docker, pip). We put particular effort in maintaining compatibility between the various git repositories in the Zenoh project.
 
+## Building the Typescript project
+
 1. Make sure that the following utilities are available on your platform. 
- - [Docker](https://www.docker.com/), Please check [here](https://docs.docker.com/engine/install/) to learn how to install it.
  - [NPM](https://www.npmjs.com/package/npm)
+ - [yarn](https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable)
  - [Typescript](https://www.typescriptlang.org/download/) 
 
-2. Clone the [source] with `git`:
+2. Navigate to the directory `zenoh-ts`
 
-   ```bash
-   git clone --recurse-submodules git@github.com:ZettaScaleLabs/zenoh-ts.git
-   ```
-
-   This also clones [zenoh-pico] according to the `.gitmodules` file.
-
-3. Build:
-
-   While in active development, running the command
+3. Run the commands:
 
 ```bash
-  cd ./zenoh-ts
+  yarn install 
+  # 
+  yarn run build
 ```
 
-then
+## Building the Rust Plugin
 
-```bash
-  npm run build
-```
+1. Make sure that the following utilities are available on your platform. 
+ - [Cargo + Rust Compiler](https://rustup.rs/)
 
-Will run the build pipeline of
+2. Navigate to `zenoh-plugin-remote-api`
 
-- Starting a Docker container containing the [Emscripten-SDK](https://emscripten.org/)
-- Building [zenoh-pico] to target WASM, using CMake + the Emscripten toolchain
-- Copying the artifacts from the build container to the host system
-- The artifacts include:
-  - `zenoh-wasm.js`
-  - `zenoh-wasm.wasm`
-  - `zenoh-wasm.worker.js`
-- The compiling the typescript interface to Javascript, and exporting a types declaration file.
-- Webpack to package
+3. Run `cargo build`
 
-[source]: https://github.com/ZettaScale-Labs/zenoh-ts.git
-[zenoh-pico]: https://github.com/eclipse-zenoh/zenoh-pico
+## **Examples of usage**
 
-## Running the Examples
+### Running the Rust Plugin
 
-Our Example structure, will have a pub/sub pair in the browser periodically putting,
-and a pub/sub pair locally on the command line to match,
+Prerequisites:
+ - You have a zenoh router (`zenohd`) installed, and the `zenoh_plugin_remote_api` library file is available in `~/.zenoh/lib`.
 
-In order to run the examples, the user must:
+### **Setup via a JSON5 configuration file**
 
-1. From the `./examples/web/` directory, start an instance of the web application.
+  - Create a `zenoh.json5` configuration file containing for example:
+    ```json5
+    {
+      plugins: {
+        // configuration of "storage_manager" plugin:
+        remote_api: {
+          "websocket_port": "10000",
+          // secure_websocket configuration is optional
+          "secure_websocket": {
+                "certificate_path" : "/path/to/certificate",
+                "private_key_path" : "/path/to/private_key"
+          }
+        }
+        // Optionally, add the REST plugin
+        rest: { http_port: 8000 }
+      }
+    }
+    ```
+  - Run the zenoh router with:
+    `zenohd -c zenoh.json5`
 
-```bash
-npm install && npm run develop
-```
+## Adding Typescript to your application
 
-2. Start an instance of `zenohd` with the websocket transport enabled.
-   This can be done by building the zenoh daemon `zenohd` from the Rust repo for [zenoh], and running the following command.
+The TypeScript library can be install from the command line: 
 
-```
-RUST_LOG=DEBUG ./zenohd -l tcp/[::]:7447 -l ws/[::]:10000
-```
+`npm install @zettascalelabs/zenoh-ts@0.0.6`
 
-<!--
-RUST_LOG=DEBUG cargo run zenohd -- -l tcp/[::]:7447 -l ws/[::]:10000
--->
+Or added via package.json
 
-3.1. For publishing from a Typescript application to Zenoh you can run the `z_sub` example from [zenoh] and start a subscriber locally as follows:
+`"@zettascalelabs/zenoh-ts": "0.0.6" `
 
-```
-RUST_LOG=DEBUG ./z_sub -k demo/recv/from/ts
-```
+Note: In order to add this library to your project you must log into the github npm repository,  
+please refer to this link for more information [Accessing github NPM](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry#authenticating-with-a-personal-access-token)
 
-3.2. For subscribing in a Typescript application on a Key Expression on Zenoh you can run the `z_pub` example from [zenoh] and start a subscriber locally as follows:
-
-```
-RUST_LOG=DEBUG ./z_pub -k demo/send/to/ts
-```
-
-  3.3. Navigate to the webpage 
-
-
-The setup should look like this diagram below
-
-<img src="./example.png" >
 
 [zenoh]: https://github.com/eclipse-zenoh/zenoh
 
-### Known Limitations + Future
 
-This set of bindings to Typescript started out as a long running experiment to get a full implementation of the Zenoh protocol to compile and run natively in the browser.
-It was born out of the then state of the Rust [Zenoh] implementation not supporting targeting Web Assembly due to project and library structure.  
-At the time [Zenoh-pico] was ready to compile to WASM, and so this repository was born.  
-After much experimentation, we have discovered a number of long term drawbacks of Zenoh-pico -> WASM using the Emscripten compiler and have decided to move in a different direction.
-Between the many iterations of reducing interface, callback, async-compatability, and build complexity, to the limitations of Emscripten, we have found there are ways of getting Zenoh available to Typescript/Javascript developers with much lower development friction, both short term and long.
-
-What works today is `put`, `publisher` and _mostly_ `subscriber`,
-There is a recurring pthread issue when creating a `subscriber` that occurs when using this implementation (Async threaded TS <-> CPP interop != simple)
-
-We are open sourcing this Repo for the community to see what was implemented, play around with what works, and as an option to fix what does not, but ultimately offer no production ready gaurentees with this set of language bindings in its current state.
-
-We are switching focus to another, simpler and lower maintenence way of exposing Zenoh to a Typescript environment.  
-Look out in our blog for announcements as we continue to strive to produce quality, roboust, performant software.
