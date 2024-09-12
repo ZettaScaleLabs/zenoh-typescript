@@ -27,11 +27,10 @@ In its current state, it is not possible to compile Zenoh (Rust) to target WASM,
 
 > :warning: **WARNING** :warning: : Zenoh and its ecosystem are under active development. When you build from git, make sure you also build from git any other Zenoh repository you plan to use (e.g. binding, plugin, backend, etc.). It may happen that some changes in git are not compatible with the most recent packaged Zenoh release (e.g. deb, docker, pip). We put particular effort in maintaining compatibility between the various git repositories in the Zenoh project.
 
-1. Make sure that the following utilities are available on your platform.
-
-- [Docker](https://www.docker.com/), Please check [here](https://docs.docker.com/engine/install/) to learn how to install it.
-- [NPM](https://www.npmjs.com/package/npm)
-- Typescript
+1. Make sure that the following utilities are available on your platform. 
+ - [Docker](https://www.docker.com/), Please check [here](https://docs.docker.com/engine/install/) to learn how to install it.
+ - [NPM](https://www.npmjs.com/package/npm)
+ - [Typescript](https://www.typescriptlang.org/download/) 
 
 2. Clone the [source] with `git`:
 
@@ -105,6 +104,9 @@ RUST_LOG=DEBUG ./z_sub -k demo/recv/from/ts
 ```
 RUST_LOG=DEBUG ./z_pub -k demo/send/to/ts
 ```
+
+  3.3. Navigate to the webpage 
+
 
 The setup should look like this diagram below
 
