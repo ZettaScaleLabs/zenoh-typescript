@@ -19,11 +19,11 @@ use crate::{
     spawn_future, StateMap,
 };
 
-macro_rules! add_if_some  {
+macro_rules! add_if_some {
     ($x:ident, $y:ident) => {
         if let Some($x) = $x {
             $y = $y.$x($x);
-        }                    
+        }
     };
 }
 
@@ -67,7 +67,7 @@ pub async fn handle_control_message(
             payload,
             attachment,
         } => {
-            println!("Recieved Get {:?}",key_expr);
+            println!("Recieved Get {:?}", key_expr);
             let selector = Selector::owned(key_expr, parameters.unwrap_or_default());
             let mut get_builder = state_map.session.get(selector);
 
@@ -147,7 +147,7 @@ pub async fn handle_control_message(
             add_if_some!(priority, delete_builder);
             add_if_some!(express, delete_builder);
             add_if_some!(attachment, delete_builder);
-            
+
             delete_builder.await?;
         }
         // SUBSCRIBER

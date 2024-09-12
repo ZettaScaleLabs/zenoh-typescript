@@ -110,7 +110,7 @@ pub enum ControlMsg {
         encoding: Option<String>,
         #[ts(type = "number[] | undefined")]
         payload: Option<Vec<u8>>,
-    #[ts(type = "number[] | undefined")]
+        #[ts(type = "number[] | undefined")]
         attachment: Option<Vec<u8>>,
     },
     GetFinished {
@@ -139,7 +139,7 @@ pub enum ControlMsg {
         priority: Option<Priority>,
         #[ts(type = "boolean | undefined")]
         express: Option<bool>,
-    #[ts(type = "number[] | undefined")]
+        #[ts(type = "number[] | undefined")]
         attachment: Option<Vec<u8>>,
     },
     Delete {
