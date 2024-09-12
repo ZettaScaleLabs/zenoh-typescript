@@ -6,27 +6,27 @@ on:
          - 'main'
 
 jobs:
-   build:
+  build:
     strategy:
       fail-fast: false
       matrix:
         job:
           - { name: 'Ubuntu x64', os: 'ubuntu-22.04', arch: X64 }
     runs-on: ['self-hosted', '${{ matrix.job.os }}', '${{ matrix.job.arch }}']
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-        - name: Setup Node
-          uses: actions/setup-node@v4
-          with:
-            node-version: '21'
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
 
-        - name: Run install
-          uses: borales/actions-yarn@v4
-          with:
-            cmd: install 
+      - name: Run install
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install 
 
-        - name: Transpile Library
-          run: |
-            npm run build:ts
+      - name: Transpile Library
+        run: |
+          npm run build:ts
