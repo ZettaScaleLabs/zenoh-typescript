@@ -38,7 +38,7 @@ export class RemotePublisher {
     this.undeclared = false;
   }
 
-  async put(
+  put(
     payload: Array<number>,
     attachment: Array<number> | null,
     encoding: string | null,

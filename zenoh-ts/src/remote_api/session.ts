@@ -81,8 +81,12 @@ export class RemoteSession {
 
       ws.onmessage = function (event: any) {
         // `this` here is a websocket object
-        // console.log("   MSG FROM SVR", event.data);
         chan.send(event.data);
+      };
+
+      ws.onclose = function (event: any) {
+        // `this` here is a websocket object
+        console.warn("Websocket connection to remote-api-plugin has been disconnected")
       };
 
       let wait = 0;

@@ -20,8 +20,9 @@ export async function main_pub() {
 
     console.log("Block statement execution no : " + idx);
     console.log(`Putting Data ('${key_expr}': '${buf}')...`);
-    publisher.put(buf);
-    sleep(1000);
+    publisher.put(buf, Encoding.TEXT_PLAIN, "attachment");
+    await sleep(1000);
+
   }
 }
 

@@ -142,7 +142,7 @@ export class Publisher {
     payload: IntoZBytes,
     encoding?: IntoEncoding,
     attachment?: IntoZBytes,
-  ): Promise<void> {
+  ): void {
     let zbytes: ZBytes = ZBytes.new(payload);
     let _encoding;
     if (encoding != null) {
