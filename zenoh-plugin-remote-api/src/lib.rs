@@ -258,85 +258,94 @@ fn run_websocket_server(
         };
 
         while let Ok((tcp_stream, sock_addr)) = server.accept().await {
-            println!("raw {sock_addr:?}");
-            let sock_adress = Arc::new(sock_addr);
-            let (ws_ch_tx, ws_ch_rx) = flume::unbounded::<RemoteAPIMsg>();
+            let state_map = state_map.clone();
+            let zenoh_runtime = zenoh_runtime.clone();
+            let opt_tls_acceptor = opt_tls_acceptor.clone();
+            println!("NEW raw {sock_addr:?}");
 
-            let mut write_guard = state_map.write().await;
+            let new_websocket = async move {
+                let sock_adress = Arc::new(sock_addr);
+                let (ws_ch_tx, ws_ch_rx) = flume::unbounded::<RemoteAPIMsg>();
 
-            let session = match zenoh::session::init(zenoh_runtime.clone()).await {
-                Ok(session) => session.into_arc(),
-                Err(err) => {
-                    tracing::error!("Unable to get Zenoh session from Runtime {err}");
-                    continue;
-                }
-            };
+                let mut write_guard = state_map.write().await;
 
-            let state: RemoteState = RemoteState {
-                websocket_tx: ws_ch_tx.clone(),
-                session_id: Uuid::new_v4(),
-                session,
-                subscribers: HashMap::new(),
-                publishers: HashMap::new(),
-                queryables: HashMap::new(),
-                unanswered_queries: Arc::new(std::sync::RwLock::new(HashMap::new())),
-            };
-
-            // if remote state exists in map already. Ignore it and reinitialize
-            let _ = write_guard.insert(sock_addr, state);
-            drop(write_guard);
-
-            let streamable: Box<dyn Streamable> = match &opt_tls_acceptor {
-                Some(acceptor) => match acceptor.accept(tcp_stream).await {
-                    Ok(tls_stream) => Box::new(tls_stream),
+                let session = match zenoh::session::init(zenoh_runtime.clone()).await {
+                    Ok(session) => session.into_arc(),
                     Err(err) => {
-                        error!("Could not secure TcpStream -> TlsStream {:?}", err);
-                        continue;
+                        tracing::error!("Unable to get Zenoh session from Runtime {err}");
+                        return;
                     }
-                },
-                None => Box::new(tcp_stream),
+                };
+
+                let state: RemoteState = RemoteState {
+                    websocket_tx: ws_ch_tx.clone(),
+                    session_id: Uuid::new_v4(),
+                    session,
+                    subscribers: HashMap::new(),
+                    publishers: HashMap::new(),
+                    queryables: HashMap::new(),
+                    unanswered_queries: Arc::new(std::sync::RwLock::new(HashMap::new())),
+                };
+
+                // if remote state exists in map already. Ignore it and reinitialize
+                let _ = write_guard.insert(sock_addr, state);
+                drop(write_guard);
+
+                let streamable: Box<dyn Streamable> = match &opt_tls_acceptor {
+                    Some(acceptor) => match acceptor.accept(tcp_stream).await {
+                        Ok(tls_stream) => Box::new(tls_stream),
+                        Err(err) => {
+                            error!("Could not secure TcpStream -> TlsStream {:?}", err);
+                            return;
+                        }
+                    },
+                    None => Box::new(tcp_stream),
+                };
+
+                let ws_stream = tokio_tungstenite::accept_async(streamable)
+                    .await
+                    .expect("Error during the websocket handshake occurred");
+
+                let (ws_tx, ws_rx) = ws_stream.split();
+
+                let ch_rx_stream = ws_ch_rx
+                    .into_stream()
+                    .map(|remote_api_msg| {
+                        // TODO: Take Care of unwrap.
+                        let val = serde_json::to_string(&remote_api_msg).unwrap();
+                        Ok(Message::Text(val))
+                    })
+                    .forward(ws_tx);
+
+                let sock_adress_cl = sock_adress.clone();
+
+                let state_map_cl_outer = state_map.clone();
+
+                //  Incomming message from Websocket
+                let incoming_ws = tokio::task::spawn(async move {
+                    let mut non_close_messages =
+                        ws_rx.try_filter(|msg| future::ready(!msg.is_close()));
+                    let state_map_cl = state_map_cl_outer.clone();
+                    let sock_adress_ref = sock_adress_cl.clone();
+                    while let Ok(Some(msg)) = non_close_messages.try_next().await {
+                        if let Some(response) =
+                            handle_message(msg, *sock_adress_ref, state_map_cl.clone()).await
+                        {
+                            if let Err(err) = ws_ch_tx.send(response) {
+                                error!("WS Send Error: {err:?}");
+                            };
+                        };
+                    }
+                });
+
+                pin_mut!(ch_rx_stream, incoming_ws);
+                future::select(ch_rx_stream, incoming_ws).await;
+
+                state_map.write().await.remove(sock_adress.as_ref());
+                tracing::info!("Disconnected {}", sock_adress.as_ref());
             };
 
-            let ws_stream = tokio_tungstenite::accept_async(streamable)
-                .await
-                .expect("Error during the websocket handshake occurred");
-
-            let (ws_tx, ws_rx) = ws_stream.split();
-
-            let ch_rx_stream = ws_ch_rx
-                .into_stream()
-                .map(|remote_api_msg| {
-                    // TODO: Take Care of unwrap.
-                    let val = serde_json::to_string(&remote_api_msg).unwrap();
-                    Ok(Message::Text(val))
-                })
-                .forward(ws_tx);
-
-            let sock_adress_cl = sock_adress.clone();
-
-            let state_map_cl_outer = state_map.clone();
-
-            //  Incomming message from Websocket
-            let incoming_ws = tokio::task::spawn(async move {
-                let mut non_close_messages = ws_rx.try_filter(|msg| future::ready(!msg.is_close()));
-                let state_map_cl = state_map_cl_outer.clone();
-                let sock_adress_ref = sock_adress_cl.clone();
-                while let Ok(Some(msg)) = non_close_messages.try_next().await {
-                    if let Some(response) =
-                        handle_message(msg, *sock_adress_ref, state_map_cl.clone()).await
-                    {
-                        if let Err(err) = ws_ch_tx.send(response) {
-                            error!("WS Send Error: {err:?}");
-                        };
-                    };
-                }
-            });
-
-            pin_mut!(ch_rx_stream, incoming_ws);
-            future::select(ch_rx_stream, incoming_ws).await;
-
-            state_map.write().await.remove(sock_adress.as_ref());
-            tracing::info!("Disconnected {}", sock_adress.as_ref());
+            spawn_future(new_websocket);
         }
     };
 
@@ -348,12 +357,10 @@ async fn handle_message(
     sock_addr: SocketAddr,
     state_map: StateMap,
 ) -> Option<RemoteAPIMsg> {
-    tracing::warn!("{msg}");
     match msg {
         Message::Text(text) => match serde_json::from_str::<RemoteAPIMsg>(&text) {
             Ok(msg) => match msg {
                 RemoteAPIMsg::Control(ctrl_msg) => {
-                    tracing::warn!("ctrl_msg {:?}", ctrl_msg);
                     match handle_control_message(ctrl_msg, sock_addr, state_map).await {
                         Ok(ok) => return ok.map(RemoteAPIMsg::Control),
                         Err(err) => {
