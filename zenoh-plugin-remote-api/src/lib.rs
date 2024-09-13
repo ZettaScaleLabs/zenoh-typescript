@@ -208,14 +208,14 @@ impl RunningPluginTrait for RunningPlugin {
 struct RemoteState {
     websocket_tx: Sender<RemoteAPIMsg>,
     session_id: Uuid,
-    session: Arc<Session>,
+    session: Session,
     // key_expr: HashSet<KeyExpr<'static>>,
     // PubSub
     subscribers: HashMap<Uuid, JoinHandle<()>>,
     // subscribers: HashMap<Uuid, Subscriber<'static, ()>>,
     publishers: HashMap<Uuid, Publisher<'static>>,
     // Queryable
-    queryables: HashMap<Uuid, Queryable<'static, ()>>,
+    queryables: HashMap<Uuid, Queryable<()>>,
     unanswered_queries: Arc<std::sync::RwLock<HashMap<Uuid, Query>>>,
 }
 
@@ -270,7 +270,7 @@ fn run_websocket_server(
                 let mut write_guard = state_map.write().await;
 
                 let session = match zenoh::session::init(zenoh_runtime.clone()).await {
-                    Ok(session) => session.into_arc(),
+                    Ok(session) => session,
                     Err(err) => {
                         tracing::error!("Unable to get Zenoh session from Runtime {err}");
                         return;

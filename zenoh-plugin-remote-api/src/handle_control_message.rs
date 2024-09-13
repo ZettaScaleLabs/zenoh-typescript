@@ -3,13 +3,9 @@ use std::{error::Error, net::SocketAddr};
 use tracing::{error, warn};
 use uuid::Uuid;
 use zenoh::{
-    bytes::EncodingBuilderTrait,
     handlers::{FifoChannel, RingChannel},
     key_expr::KeyExpr,
-    qos::QoSBuilderTrait,
     query::Selector,
-    sample::SampleBuilderTrait,
-    session::SessionDeclarations,
 };
 
 use crate::{
