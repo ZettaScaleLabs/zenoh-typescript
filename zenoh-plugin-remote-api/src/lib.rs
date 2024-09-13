@@ -341,8 +341,25 @@ fn run_websocket_server(
                 pin_mut!(ch_rx_stream, incoming_ws);
                 future::select(ch_rx_stream, incoming_ws).await;
 
-                state_map.write().await.remove(sock_adress.as_ref());
-                tracing::info!("Disconnected {}", sock_adress.as_ref());
+                // cleanup state
+                if let Some(state) = state_map.write().await.remove(sock_adress.as_ref()) {
+                    for (_, publisher) in state.publishers {
+                        if let Err(e) = publisher.undeclare().await {
+                            error!("{e}")
+                        }
+                    }
+                    for (_, subscriber) in state.subscribers {
+                        subscriber.abort();
+                    }
+                    for (_, queryable) in state.queryables {
+                        if let Err(e) = queryable.undeclare().await {
+                            error!("{e}")
+                        }
+                    }
+                    drop(state.unanswered_queries);
+                };
+
+                tracing::info!("Client Disconnected {}", sock_adress.as_ref());
             };
 
             spawn_future(new_websocket);
