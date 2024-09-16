@@ -1,4 +1,3 @@
-import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
@@ -54,7 +53,6 @@ export async function main_thr() {
   console.log("Declare subscriber");
   await session.declare_subscriber(
     "test/thr",
-    new FifoChannel(256),
     subscriber_callback,
   );
 

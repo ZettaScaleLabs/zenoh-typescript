@@ -1,3 +1,4 @@
+import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
@@ -6,7 +7,7 @@ import { Encoding, CongestionControl, Config, Session } from "@ZettaScaleLabs/ze
 export async function main_ping() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
-  let sub = await session.declare_subscriber("test/pong");
+  let sub = await session.declare_subscriber("test/pong", new FifoChannel(256));
   let pub = await session.declare_publisher(
     "test/ping",
     Encoding.default(),

@@ -1,3 +1,4 @@
+import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
@@ -80,7 +81,7 @@ export async function main_sub_test() {
   // Poll Subscribers will only consume data on calls to receieve()
   // This means that interally the FIFO queue will fill up to the point that new values will be dropped
   // The dropping of these values occurs in the Remote-API Plugin
-  let poll_subscriber: Subscriber = await session.declare_subscriber("demo/example/zenoh-rs-pub");
+  let poll_subscriber: Subscriber = await session.declare_subscriber("demo/example/zenoh-rs-pub", new FifoChannel(256));
 
   while (true) {
     // let value = await poll_subscriber.receive();

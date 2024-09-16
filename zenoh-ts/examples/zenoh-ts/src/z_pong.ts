@@ -1,4 +1,3 @@
-import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
@@ -17,7 +16,7 @@ export async function main_pong() {
     await pub.put(sample.payload());
   };
 
-  await session.declare_subscriber("test/pong", new FifoChannel(256), subscriber_callback);
+  await session.declare_subscriber("test/pong", subscriber_callback);
 
   let count = 0;
   while (true) {
