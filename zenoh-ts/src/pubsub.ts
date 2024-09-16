@@ -26,8 +26,11 @@ export class Subscriber {
   private remote_subscriber: RemoteSubscriber;
   private callback_subscriber: boolean;
 
-  async dispose() {
+  static registry: FinalizationRegistry<RemoteSubscriber> = new FinalizationRegistry((r_subscriber: RemoteSubscriber) => r_subscriber.undeclare());
+
+  dispose() {
     this.undeclare();
+    Subscriber.registry.unregister(this);
   }
 
   constructor(
@@ -36,6 +39,7 @@ export class Subscriber {
   ) {
     this.remote_subscriber = remote_subscriber;
     this.callback_subscriber = callback_subscriber;
+    Subscriber.registry.register(this, remote_subscriber, this)
   }
 
   async receive(): Promise<Sample | void> {
@@ -56,6 +60,7 @@ export class Subscriber {
 
   undeclare() {
     this.remote_subscriber.undeclare();
+    Subscriber.registry.unregister(this);
   }
 
   static async new(
@@ -107,17 +112,24 @@ export class Publisher {
   private _key_expr: KeyExpr;
   private _congestion_control: CongestionControl;
   private _priority: Priority;
+  static registry: FinalizationRegistry<RemotePublisher> = new FinalizationRegistry((r_publisher: RemotePublisher) => r_publisher.undeclare());
+
+  dispose() {
+    this.undeclare();
+    Publisher.registry.unregister(this);
+  }
 
   private constructor(
-    publisher: RemotePublisher,
+    remote_publisher: RemotePublisher,
     key_expr: KeyExpr,
     congestion_control: CongestionControl,
     priority: Priority,
   ) {
-    this._remote_publisher = publisher;
+    this._remote_publisher = remote_publisher;
     this._key_expr = key_expr;
     this._congestion_control = congestion_control;
     this._priority = priority;
+    Publisher.registry.register(this, remote_publisher, this)
   }
 
   /**
@@ -188,8 +200,9 @@ export class Publisher {
    *   
    * @returns void
    */
-  async undeclare() {
-    await this._remote_publisher.undeclare();
+  undeclare() {
+    this._remote_publisher.undeclare();
+    Publisher.registry.unregister(this);
   }
 
   /**

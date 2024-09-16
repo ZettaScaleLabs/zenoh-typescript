@@ -219,6 +219,27 @@ struct RemoteState {
     unanswered_queries: Arc<std::sync::RwLock<HashMap<Uuid, Query>>>,
 }
 
+impl RemoteState{
+
+    async fn cleanup(self){
+        for (_, publisher) in self.publishers {
+            if let Err(e) = publisher.undeclare().await {
+                error!("{e}")
+            }
+        }
+        for (_, subscriber) in self.subscribers {
+            subscriber.abort();
+        }
+        for (_, queryable) in self.queryables {
+            if let Err(e) = queryable.undeclare().await {
+                error!("{e}")
+            }
+        }
+        drop(self.unanswered_queries);
+    }
+}
+
+
 pub trait Streamable:
     tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Send + Unpin
 {
@@ -307,12 +328,11 @@ fn run_websocket_server(
                     .expect("Error during the websocket handshake occurred");
 
                 let (ws_tx, ws_rx) = ws_stream.split();
-
+                
                 let ch_rx_stream = ws_ch_rx
                     .into_stream()
                     .map(|remote_api_msg| {
-                        // TODO: Take Care of unwrap.
-                        let val = serde_json::to_string(&remote_api_msg).unwrap();
+                        let val = serde_json::to_string(&remote_api_msg).unwrap(); // This unwrap should be alright 
                         Ok(Message::Text(val))
                     })
                     .forward(ws_tx);
@@ -343,20 +363,7 @@ fn run_websocket_server(
 
                 // cleanup state
                 if let Some(state) = state_map.write().await.remove(sock_adress.as_ref()) {
-                    for (_, publisher) in state.publishers {
-                        if let Err(e) = publisher.undeclare().await {
-                            error!("{e}")
-                        }
-                    }
-                    for (_, subscriber) in state.subscribers {
-                        subscriber.abort();
-                    }
-                    for (_, queryable) in state.queryables {
-                        if let Err(e) = queryable.undeclare().await {
-                            error!("{e}")
-                        }
-                    }
-                    drop(state.unanswered_queries);
+                    state.cleanup().await;
                 };
 
                 tracing::info!("Client Disconnected {}", sock_adress.as_ref());

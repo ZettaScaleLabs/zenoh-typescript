@@ -45,7 +45,8 @@ pub async fn handle_control_message(
         }
         ControlMsg::CloseSession => {
             if let Some(state_map) = state_writer.remove(&sock_addr) {
-                drop(state_map);
+                state_map.cleanup().await;
+
             } else {
                 warn!("State Map Does not contain SocketAddr");
             }

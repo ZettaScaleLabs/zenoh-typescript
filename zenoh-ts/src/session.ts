@@ -60,8 +60,16 @@ export class Session {
   // WebSocket Backend
   private remote_session: RemoteSession;
 
+  static registry: FinalizationRegistry<RemoteSession> = new FinalizationRegistry((r_session: RemoteSession) => r_session.close());
+
+  dispose() {
+    this.close();
+    Session.registry.unregister(this);
+  }
+
   private constructor(remote_session: RemoteSession) {
     this.remote_session = remote_session;
+    Session.registry.register(this,remote_session,this)
   }
 
   /**
@@ -88,6 +96,7 @@ export class Session {
    */
   async close() {
     this.remote_session.close();
+    Session.registry.unregister(this);
   }
 
   /**

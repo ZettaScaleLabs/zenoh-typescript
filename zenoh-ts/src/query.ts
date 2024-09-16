@@ -28,8 +28,16 @@ import { Option } from "./session";
 export class Queryable {
   private _remote_queryable: RemoteQueryable;
 
+  static registry: FinalizationRegistry<RemoteQueryable> = new FinalizationRegistry((r_queryable: RemoteQueryable) => r_queryable.undeclare());
+
+  dispose() {
+    this.undeclare();
+    Queryable.registry.unregister(this);
+  }
+
   constructor(remote_queryable: RemoteQueryable) {
     this._remote_queryable = remote_queryable;
+    Queryable.registry.register(this,remote_queryable,this)
   }
 
   /**
@@ -63,6 +71,7 @@ export class Queryable {
    */
   async undeclare() {
     this._remote_queryable.undeclare();
+    Queryable.registry.unregister(this);
   }
 
   static async new(remote_queryable: RemoteQueryable): Promise<Queryable> {

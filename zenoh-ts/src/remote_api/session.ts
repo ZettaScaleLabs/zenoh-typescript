@@ -200,7 +200,7 @@ export class RemoteSession {
     this.send_ctrl_message(data_message);
   }
 
-  async close(): Promise<void> {
+  close(): void {
     let data_message: ControlMsg = "CloseSession";
     this.send_ctrl_message(data_message);
     this.ws.close();
@@ -210,6 +210,7 @@ export class RemoteSession {
   //     let control_message: ControlMsg = { "CreateKeyExpr": key_expr };
   //     this.send_ctrl_message(control_message);
   // }
+
   async declare_remote_subscriber(
     key_expr: string,
     handler: HandlerChannel,
