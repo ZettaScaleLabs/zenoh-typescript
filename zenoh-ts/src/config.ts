@@ -17,6 +17,7 @@ export class Config {
   /**
    * Construct a new config, containing a locator
    * @param {string} locator - A string that respects the Locator canon form: <proto>/<address>[?<metadata>].
+   * i.e. ws/127.0.0.1:10000
    * 
    * @returns {Config} configuration instance
    */

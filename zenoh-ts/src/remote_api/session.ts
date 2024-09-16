@@ -238,7 +238,7 @@ export class RemoteSession {
     key_expr: string,
     complete: boolean,
     reply_tx: SimpleChannel<QueryReplyWS>,
-    callback?: (sample: QueryWS) => Promise<void>,
+    callback?: (sample: QueryWS) => void,
   ): RemoteQueryable {
     let uuid = uuidv4();
 

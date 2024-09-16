@@ -27,7 +27,7 @@ import { Option } from "./session";
  */
 export class Queryable {
   private _remote_queryable: RemoteQueryable;
-
+  private _callback_queryable;
   static registry: FinalizationRegistry<RemoteQueryable> = new FinalizationRegistry((r_queryable: RemoteQueryable) => r_queryable.undeclare());
 
   dispose() {
@@ -35,9 +35,10 @@ export class Queryable {
     Queryable.registry.unregister(this);
   }
 
-  constructor(remote_queryable: RemoteQueryable) {
+  constructor(remote_queryable: RemoteQueryable, callback_queryable: boolean) {
     this._remote_queryable = remote_queryable;
-    Queryable.registry.register(this,remote_queryable,this)
+    this._callback_queryable = callback_queryable;
+    Queryable.registry.register(this, remote_queryable, this)
   }
 
   /**
@@ -46,12 +47,11 @@ export class Queryable {
    */
   async receive(): Promise<Query | void> {
 
-    // TODO: Make this Callback Queryable ?
-    // if (this.callback_queryable === true) {
-    //     let message = "Cannot call `receive()` on Subscriber created with callback:";
-    //     console.log(message);
-    //     return
-    // }
+    if (this._callback_queryable === true) {
+        let message = "Cannot call `receive()` on Subscriber created with callback:";
+        console.log(message);
+        return
+    }
 
     // QueryWS -> Query
     let opt_query_ws = await this._remote_queryable.receive();
@@ -74,8 +74,8 @@ export class Queryable {
     Queryable.registry.unregister(this);
   }
 
-  static async new(remote_queryable: RemoteQueryable): Promise<Queryable> {
-    return new Queryable(remote_queryable);
+  static async new(remote_queryable: RemoteQueryable, callback_queryable: boolean): Promise<Queryable> {
+    return new Queryable(remote_queryable, callback_queryable);
   }
 }
 

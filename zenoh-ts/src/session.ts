@@ -404,17 +404,19 @@ export class Session {
   async declare_queryable(
     into_key_expr: IntoKeyExpr,
     complete: boolean,
-    callback?: (query: Query) => Promise<void>,
+    callback?: (query: Query) => void,
   ): Promise<Queryable> {
     let key_expr = KeyExpr.new(into_key_expr);
     let remote_queryable: RemoteQueryable;
     let reply_tx: SimpleChannel<QueryReplyWS> =
       new SimpleChannel<QueryReplyWS>();
 
+    let callback_queryable = false;
     if (callback != undefined) {
-      const callback_conversion = async function (
+      callback_queryable = true;
+      const callback_conversion = function (
         query_ws: QueryWS,
-      ): Promise<void> {
+      ): void {
         let query: Query = QueryWS_to_Query(query_ws, reply_tx);
 
         callback(query);
@@ -433,7 +435,7 @@ export class Session {
       );
     }
 
-    let queryable = await Queryable.new(remote_queryable);
+    let queryable = await Queryable.new(remote_queryable, callback_queryable);
     return queryable;
   }
 
