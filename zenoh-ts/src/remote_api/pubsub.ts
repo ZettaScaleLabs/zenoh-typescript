@@ -91,7 +91,7 @@ export class RemotePublisher {
 // ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████  ██████  ██████  ███████  ██████ ██   ██ ██ ██████  ███████ ██   ██
 
 // If defined with a Callback, All samples passed to the Callback,
-// else, must call receive on the
+// else, must call receive on the 
 export class RemoteSubscriber {
   private key_expr: String;
   private subscriber_id: UUID;

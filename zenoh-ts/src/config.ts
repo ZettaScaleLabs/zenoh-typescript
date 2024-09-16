@@ -13,7 +13,15 @@ export class Config {
   private constructor(locator: string) {
     this.locator = locator;
   }
-  static async new(locator: string): Promise<Config> {
+
+  /**
+   * Construct a new config, containing a locator
+   * @param {string} locator - A string that respects the Locator canon form: <proto>/<address>[?<metadata>].
+   * 
+   * @returns {Config} configuration instance
+   */
+
+  static new(locator: string): Config {
     return new Config(locator);
   }
 }

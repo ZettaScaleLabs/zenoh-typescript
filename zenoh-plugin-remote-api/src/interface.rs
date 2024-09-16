@@ -5,6 +5,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 use zenoh::{
     key_expr::OwnedKeyExpr,
+    pubsub::Reliability,
     qos::{CongestionControl, Priority},
     query::{ConsolidationMode, Query, Reply, ReplyError},
     sample::{Sample, SampleKind},
@@ -193,6 +194,12 @@ pub enum ControlMsg {
         )]
         #[ts(type = "number | undefined")]
         priority: Option<Priority>,
+        #[serde(
+            deserialize_with = "deserialize_reliability",
+            serialize_with = "serialize_reliability"
+        )]
+        #[ts(type = "number | undefined")]
+        reliability: Option<Reliability>,
         #[ts(type = "boolean | undefined")]
         express: Option<bool>,
         id: Uuid,
@@ -319,6 +326,41 @@ where
     S: Serializer,
 {
     match priority {
+        Some(prio) => s.serialize_u8(*prio as u8),
+        None => s.serialize_none(),
+    }
+}
+
+fn deserialize_reliability<'de, D>(d: D) -> Result<Option<Reliability>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<u8>::deserialize(d) {
+        Ok(Some(value)) => Ok(Some(match value {
+            0u8 => Reliability::Reliable,
+            1u8 => Reliability::BestEffort,
+            val => {
+                return Err(serde::de::Error::custom(format!(
+                    "Value not valid for Reliability Enum {:?}",
+                    val
+                )))
+            }
+        })),
+        Ok(None) => Ok(None),
+        val => {
+            return Err(serde::de::Error::custom(format!(
+                "Value not valid for Reliability Enum {:?}",
+                val
+            )))
+        }
+    }
+}
+
+fn serialize_reliability<S>(reliability: &Option<Reliability>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match reliability {
         Some(prio) => s.serialize_u8(*prio as u8),
         None => s.serialize_none(),
     }

@@ -120,14 +120,14 @@ export class RemoteSession {
   // Zenoh Session Functions
   //
   // Put
-  async put(key_expr: string,
+  put(key_expr: string,
     payload: Array<number>,
     encoding?: string,
     congestion_control?: number,
     priority?: number,
     express?: boolean,
     attachment?: Array<number>
-  ): Promise<void> {
+  ): void {
     let owned_keyexpr: OwnedKeyExprWrapper = key_expr;
     let data_message: ControlMsg = {
       Put: {
@@ -147,7 +147,6 @@ export class RemoteSession {
     key_expr: string,
     parameters: string | null,
     handler: HandlerChannel,
-    // 
     consolidation?: number,
     congestion_control?: number,
     priority?: number,
@@ -206,10 +205,6 @@ export class RemoteSession {
     this.ws.close();
   }
 
-  // async declare_ke(key_expr: string) {
-  //     let control_message: ControlMsg = { "CreateKeyExpr": key_expr };
-  //     this.send_ctrl_message(control_message);
-  // }
 
   async declare_remote_subscriber(
     key_expr: string,
@@ -275,6 +270,7 @@ export class RemoteSession {
     congestion_control: number,
     priority: number,
     express: boolean,
+    reliability: number,
   ): RemotePublisher {
     let uuid: string = uuidv4();
     let publisher = new RemotePublisher(key_expr, uuid, this);
@@ -285,6 +281,7 @@ export class RemoteSession {
         congestion_control: congestion_control,
         priority: priority,
         express: express,
+        reliability: reliability,
         id: uuid,
       },
     };

@@ -1,3 +1,4 @@
+import { Priority, Reliability } from "../../../dist/sample";
 import "./style.css";
 import "./webpage.ts";
 
@@ -6,11 +7,14 @@ import { Encoding, CongestionControl, Config, KeyExpr, Publisher, Session } from
 export async function main_pub() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
-  let key_expr = KeyExpr.new("demo/ping");
+  let key_expr = KeyExpr.new("demo/example/zenoh-ts-pub");
   let publisher: Publisher = await session.declare_publisher(
     key_expr,
     Encoding.default(),
     CongestionControl.BLOCK,
+    Priority.DATA, 
+    true, 
+    Reliability.RELIABLE
   );
 
   const payload = [122, 101, 110, 111, 104];

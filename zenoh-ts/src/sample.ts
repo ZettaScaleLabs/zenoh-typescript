@@ -78,6 +78,8 @@ export function congestion_control_to_int(
       return 0;
     case CongestionControl.BLOCK:
       return 1;
+    default:
+      return 0;
   }
 }
 
@@ -138,7 +140,27 @@ export function priority_to_int(prio: Priority): number {
       return 6;
     case Priority.BACKGROUND:
       return 7;
+    default:
+      // Default is Priority.DATA
+      return 5;
   }
+}
+
+export enum Reliability {
+  RELIABLE = "RELIABLE", // Default is reliable
+  BEST_EFFORT = "BEST_EFFORT",
+}
+
+export function reliability_to_int(reliability: Reliability) {
+  switch (reliability) {
+    case Reliability.RELIABLE:
+      return 0
+    case Reliability.BEST_EFFORT:
+      return 1
+    default:
+      return 0;
+  }
+
 }
 
 /**

@@ -15,6 +15,13 @@ use crate::{
     spawn_future, StateMap,
 };
 
+///
+/// Macro to replace the pattern of adding to builders if a field exists
+/// i.e. add_if_some!(consolidation, get_builder);
+/// expands to
+/// if Some(consolidation) = consolidation{
+///     get_builder = get_builder.consolidation(consolidation);
+/// }
 macro_rules! add_if_some {
     ($x:ident, $y:ident) => {
         if let Some($x) = $x {
@@ -23,7 +30,8 @@ macro_rules! add_if_some {
     };
 }
 
-pub async fn handle_control_message(
+/// Function to handle control messages recieved from the client to Plugin
+pub(crate) async fn handle_control_message(
     ctrl_msg: ControlMsg,
     sock_addr: SocketAddr,
     state_map: StateMap,
@@ -46,7 +54,6 @@ pub async fn handle_control_message(
         ControlMsg::CloseSession => {
             if let Some(state_map) = state_writer.remove(&sock_addr) {
                 state_map.cleanup().await;
-
             } else {
                 warn!("State Map Does not contain SocketAddr");
             }
@@ -213,20 +220,15 @@ pub async fn handle_control_message(
             congestion_control,
             priority,
             express,
+            reliability,
         } => {
             let mut publisher_builder = state_map.session.declare_publisher(key_expr);
-            if let Some(encoding) = encoding {
-                publisher_builder = publisher_builder.encoding(encoding);
-            }
-            if let Some(congestion_control) = congestion_control {
-                publisher_builder = publisher_builder.congestion_control(congestion_control);
-            }
-            if let Some(priority) = priority {
-                publisher_builder = publisher_builder.priority(priority);
-            }
-            if let Some(express) = express {
-                publisher_builder = publisher_builder.express(express);
-            };
+            add_if_some!(encoding, publisher_builder);
+            add_if_some!(congestion_control, publisher_builder);
+            add_if_some!(priority, publisher_builder);
+            add_if_some!(express, publisher_builder);
+            add_if_some!(reliability, publisher_builder);
+
             let publisher = publisher_builder.await?;
             state_map.publishers.insert(uuid, publisher);
         }

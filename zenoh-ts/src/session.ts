@@ -31,6 +31,8 @@ import {
   Sample_from_SampleWS,
   consolidation_mode_to_int,
   ConsolidationMode,
+  Reliability,
+  reliability_to_int,
 } from "./sample";
 import { State } from "channel-ts/lib/channel";
 import { Config } from "./config";
@@ -69,7 +71,7 @@ export class Session {
 
   private constructor(remote_session: RemoteSession) {
     this.remote_session = remote_session;
-    Session.registry.register(this,remote_session,this)
+    Session.registry.register(this, remote_session, this)
   }
 
   /**
@@ -102,12 +104,17 @@ export class Session {
   /**
    * Puts a value on the session, on a specific key expression KeyExpr
    *
-   * @param keyexpr - something that implements intoKeyExpr
-   * @param value - something that implements intoValue
+   * @param {IntoKeyExpr} into_key_expr - something that implements intoKeyExpr
+   * @param {IntoZBytes} into_zbytes - something that implements intoValue
+   * @param {Encoding=} encoding - encoding type 
+   * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
+   * @param {Priority=} priority - priority of the written data
+   * @param {boolean=} express 
+   * @param {IntoZBytes=} attachment
    *
    * @returns void
    */
-  async put(
+  put(
     into_key_expr: IntoKeyExpr,
     into_zbytes: IntoZBytes,
     encoding?: Encoding,
@@ -115,7 +122,7 @@ export class Session {
     priority?: Priority,
     express?: boolean,
     attachment?: IntoZBytes
-  ): Promise<void> {
+  ): void {
     let key_expr = KeyExpr.new(into_key_expr);
     let z_bytes = ZBytes.new(into_zbytes);
 
@@ -152,13 +159,24 @@ export class Session {
     );
   }
 
-  async delete(
+  /**
+   * Executes a Delete on a session, for a specific key expression KeyExpr
+   *
+   * @param {IntoKeyExpr} into_key_expr - something that implements intoKeyExpr
+   * @param {CongestionControl=} congestion_control - Optional :
+   * @param {Priority=} priority - Optional :
+   * @param {boolean=} express - Optional :
+   * @param {IntoZBytes=} attachment - Optional :
+   *
+   * @returns void
+   */
+  delete(
     into_key_expr: IntoKeyExpr,
     congestion_control?: CongestionControl,
     priority?: Priority,
     express?: boolean,
     attachment?: IntoZBytes
-  ): Promise<void> {
+  ): void {
     let key_expr = KeyExpr.new(into_key_expr);
 
     let _congestion_control;
@@ -177,7 +195,6 @@ export class Session {
     if (attachment != undefined) {
       _attachment = Array.from(ZBytes.new(attachment).payload())
     }
-
 
     this.remote_session.delete(
       key_expr.toString(),
@@ -308,7 +325,7 @@ export class Session {
           // This horribleness comes from SimpleChannel sending a 0 when the channel is closed
           if (message != undefined && (message as unknown as number) != 0) {
             let reply = Reply.new(message);
-            if (callback != undefined){
+            if (callback != undefined) {
               callback(reply);
             }
           } else {
@@ -426,21 +443,24 @@ export class Session {
   * @remarks
   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
   * 
-  * @param keyexpr - string of key_expression
-  * @param encoding - Optional, Type of Encoding data to be sent over
-  * @param congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
-  * @param priority - Optional, The Priority of zenoh messages
+  * @param {IntoKeyExpr} keyexpr - string of key_expression
+  * @param {Encoding} encoding - Optional, Type of Encoding data to be sent over
+  * @param {CongestionControl} congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
+  * @param {Priority} priority - Optional, The Priority of zenoh messages
+  * @param {boolean} express - Optional, The Priority of zenoh messages
+  * @param {Reliability} reliability - Optional, The Priority of zenoh messages
   *
   * @returns Publisher
   */
-  async declare_publisher(
+  declare_publisher(
     keyexpr: IntoKeyExpr,
     encoding?: Encoding,
     congestion_control?: CongestionControl,
     priority?: Priority,
     express?: boolean,
-  ): Promise<Publisher> {
-    let key_expr: KeyExpr = KeyExpr.new(keyexpr);
+    reliability?: Reliability,
+  ): Publisher {
+    let _key_expr: KeyExpr = KeyExpr.new(keyexpr);
 
     let _congestion_ctrl = 0; // Default CongestionControl.DROP
     if (congestion_control != null) {
@@ -456,6 +476,13 @@ export class Session {
       priority = Priority.DATA;
     }
 
+    let _reliability = 0; // Default Reliable
+    if (reliability != null) {
+      _reliability = reliability_to_int(reliability);
+    } else {
+      reliability = Reliability.RELIABLE;
+    }
+
     let _express = false;
     if (express != null) {
       _express = express;
@@ -467,19 +494,21 @@ export class Session {
     }
 
     let remote_publisher: RemotePublisher =
-      await this.remote_session.declare_remote_publisher(
-        key_expr.toString(),
+      this.remote_session.declare_remote_publisher(
+        _key_expr.toString(),
         _encoding.toString(),
         _congestion_ctrl,
         _priority,
         _express,
+        _reliability
       );
 
-    let publisher: Publisher = await Publisher.new(
-      key_expr,
+    let publisher: Publisher = Publisher.new(
+      _key_expr,
       remote_publisher,
       congestion_control,
       priority,
+      reliability
     );
     return publisher;
   }
@@ -504,11 +533,9 @@ export enum RecvErr {
   MalformedReply,
 }
 
-
 /**
  * Receiver returned from `get` call on a session
  */
-
 export class Receiver {
   private receiver: SimpleChannel<ReplyWS | RecvErr>;
 

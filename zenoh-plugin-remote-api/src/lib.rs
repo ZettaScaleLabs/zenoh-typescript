@@ -219,9 +219,8 @@ struct RemoteState {
     unanswered_queries: Arc<std::sync::RwLock<HashMap<Uuid, Query>>>,
 }
 
-impl RemoteState{
-
-    async fn cleanup(self){
+impl RemoteState {
+    async fn cleanup(self) {
         for (_, publisher) in self.publishers {
             if let Err(e) = publisher.undeclare().await {
                 error!("{e}")
@@ -236,9 +235,12 @@ impl RemoteState{
             }
         }
         drop(self.unanswered_queries);
+
+        if let Err(err) = self.session.close().await {
+            error!("{err}")
+        };
     }
 }
-
 
 pub trait Streamable:
     tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Send + Unpin
@@ -282,7 +284,6 @@ fn run_websocket_server(
             let state_map = state_map.clone();
             let zenoh_runtime = zenoh_runtime.clone();
             let opt_tls_acceptor = opt_tls_acceptor.clone();
-            println!("NEW raw {sock_addr:?}");
 
             let new_websocket = async move {
                 let sock_adress = Arc::new(sock_addr);
@@ -297,10 +298,12 @@ fn run_websocket_server(
                         return;
                     }
                 };
+                let id = Uuid::new_v4();
+                tracing::debug!("Client {sock_addr:?} -> {id}");
 
                 let state: RemoteState = RemoteState {
                     websocket_tx: ws_ch_tx.clone(),
-                    session_id: Uuid::new_v4(),
+                    session_id: id,
                     session,
                     subscribers: HashMap::new(),
                     publishers: HashMap::new(),
@@ -328,11 +331,11 @@ fn run_websocket_server(
                     .expect("Error during the websocket handshake occurred");
 
                 let (ws_tx, ws_rx) = ws_stream.split();
-                
+
                 let ch_rx_stream = ws_ch_rx
                     .into_stream()
                     .map(|remote_api_msg| {
-                        let val = serde_json::to_string(&remote_api_msg).unwrap(); // This unwrap should be alright 
+                        let val = serde_json::to_string(&remote_api_msg).unwrap(); // This unwrap should be alright
                         Ok(Message::Text(val))
                     })
                     .forward(ws_tx);

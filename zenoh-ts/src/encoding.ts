@@ -70,6 +70,9 @@ enum encoding {
 
 export type IntoEncoding = Encoding | String | string;
 
+/** 
+ * Zenoh Encoding Class
+*/
 export class Encoding {
   private _schema: string;
 
