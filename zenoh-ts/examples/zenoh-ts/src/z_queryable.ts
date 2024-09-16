@@ -29,15 +29,16 @@ export async function main_queryable() {
   }
 
   let queryable_cb: Queryable = await session.declare_queryable(key_expr, true, callback);
-  await sleep(1000 * 2);
+  await sleep(1000 * 5);
   queryable_cb.undeclare()
-  
+
+
   // Declaring a Queryable with a handler
   let queryable: Queryable = await session.declare_queryable(key_expr, true);
 
   let query = await queryable.receive();
   while (query instanceof Query) {
-    console.log("Query Payload");
+
     console.log(query.selector());
     let zbytes: ZBytes | null = query.payload();
 
