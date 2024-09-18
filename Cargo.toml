@@ -4,7 +4,7 @@ members = ["zenoh-plugin-remote-api"]
 resolver = "1"
 
 [workspace.package]
-version = "1.0.0-dev"
+version = "1.0.0-dev-12-g95ed45e"
 repository = "https://github.com/zettascalelabs/zenoh-ts"
 homepage = "http://zenoh.io"
 authors = [
