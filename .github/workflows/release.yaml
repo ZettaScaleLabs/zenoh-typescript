@@ -41,7 +41,7 @@ jobs:
     #uses: eclipse-zenoh/ci/.github/workflows/branch-bump-tag-crates.yml@main
     uses: ZettaScaleLabs/ci/.github/workflows/branch-bump-tag-crates.yml@add-secrets
     with:
-      runs-on: "self-hosted"
+      runs-on: '["self-hosted"]'
       repo: ${{ github.repository }}
       live-run: ${{ inputs.live-run || false }}
       version: ${{ inputs.version }}
@@ -58,7 +58,7 @@ jobs:
     #uses: eclipse-zenoh/ci/.github/workflows/build-crates-debian.yml@main
     uses: ZettaScaleLabs/ci/.github/workflows/build-crates-debian.yml@add-secrets
     with:
-      runs-on: "self-hosted"
+      runs-on: '["self-hosted"]'
       repo: ${{ github.repository }}
       version: ${{ needs.tag.outputs.version }}
       branch: ${{ needs.tag.outputs.branch }}
@@ -71,7 +71,7 @@ jobs:
     #uses: eclipse-zenoh/ci/.github/workflows/build-crates-standalone.yml@main
     uses: ZettaScaleLabs/ci/.github/workflows/build-crates-standalone.yml@add-secrets
     with:
-      runs-on: "self-hosted"
+      runs-on: '["self-hosted"]'
       repo: ${{ github.repository }}
       version: ${{ needs.tag.outputs.version }}
       branch: ${{ needs.tag.outputs.branch }}
