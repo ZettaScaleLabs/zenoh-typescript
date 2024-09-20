@@ -8,6 +8,9 @@
     remote_api: {
         "websocket_port": "10000",
     },
+    rest:{
+	"http_port":"8080"
+    },
   },
 }
 

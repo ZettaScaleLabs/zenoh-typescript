@@ -156,11 +156,11 @@ pub(crate) async fn handle_control_message(
         }
         // SUBSCRIBER
         ControlMsg::DeclareSubscriber {
-            key_expr: key_expr_str,
+            key_expr: owned_key_expr,
             handler,
             id: subscriber_uuid,
         } => {
-            let key_expr = KeyExpr::new(key_expr_str).unwrap();
+            let key_expr = KeyExpr::new(owned_key_expr.clone()).unwrap();
             let ch_tx = state_map.websocket_tx.clone();
 
             let join_handle = match handler {
@@ -202,11 +202,13 @@ pub(crate) async fn handle_control_message(
                 }
             };
 
-            state_map.subscribers.insert(subscriber_uuid, join_handle);
+            state_map
+                .subscribers
+                .insert(subscriber_uuid, (join_handle, owned_key_expr));
             return Ok(Some(ControlMsg::Subscriber(subscriber_uuid)));
         }
         ControlMsg::UndeclareSubscriber(uuid) => {
-            if let Some(join_handle) = state_map.subscribers.remove(&uuid) {
+            if let Some((join_handle, _)) = state_map.subscribers.remove(&uuid) {
                 join_handle.abort(); // This should drop the underlying subscriber of the future
             } else {
                 warn!("UndeclareSubscriber: No Subscriber with UUID {uuid}");
@@ -273,10 +275,12 @@ pub(crate) async fn handle_control_message(
                 })
                 .await?;
 
-            state_map.queryables.insert(queryable_uuid, queryable);
+            state_map
+                .queryables
+                .insert(queryable_uuid, (queryable, key_expr));
         }
         ControlMsg::UndeclareQueryable(uuid) => {
-            if let Some(queryable) = state_map.queryables.remove(&uuid) {
+            if let Some((queryable, _)) = state_map.queryables.remove(&uuid) {
                 queryable.undeclare().await?;
             };
         }
