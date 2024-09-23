@@ -199,7 +199,7 @@ pub enum ControlMsg {
         #[serde(
             deserialize_with = "deserialize_reliability",
             serialize_with = "serialize_reliability",
-            default,
+            default
         )]
         #[ts(type = "number | undefined")]
         reliability: Option<Reliability>,

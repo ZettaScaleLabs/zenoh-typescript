@@ -32,7 +32,6 @@ fn main() {
     let config = std::fs::read_to_string("config.json5").unwrap();
     let config: serde_json::Value = serde_json::from_str(&config).unwrap();
 
-
     if let Err(es) = schema.validate(&config) {
         let es = es.map(|e| format!("{}", e)).collect::<Vec<_>>().join("\n");
         panic!("config.json5 schema validation error: {}", es);
