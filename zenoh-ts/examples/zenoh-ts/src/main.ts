@@ -14,7 +14,7 @@ async function main() {
   // main_thr();
   // main_ping();
   // main_pong();
-  // main_sub();
+  main_sub();
   // main_pub();
   // main_queryable();
   // main_get();

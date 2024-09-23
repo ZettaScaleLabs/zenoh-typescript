@@ -255,10 +255,44 @@ impl RemoteAPIRuntime {
 
 #[derive(Debug, Serialize)]
 struct AdminSpaceClient {
+    uuid: String,
     remote_address: SocketAddr,
     publishers: Vec<String>,
     subscribers: Vec<String>,
     queryables: Vec<String>,
+}
+
+impl From<(&SocketAddr, &RemoteState)> for AdminSpaceClient {
+    fn from(value: (&SocketAddr, &RemoteState)) -> Self {
+        let remote_state = value.1;
+        let sock_addr = value.0;
+
+        let pub_keyexprs = remote_state
+            .publishers
+            .values()
+            .map(|x| x.key_expr().to_string())
+            .collect::<Vec<String>>();
+
+        let query_keyexprs = remote_state
+            .queryables
+            .values()
+            .map(|(_, key_expr)| key_expr.to_string())
+            .collect::<Vec<String>>();
+
+        let sub_keyexprs = remote_state
+            .subscribers
+            .values()
+            .map(|(_, key_expr)| key_expr.to_string())
+            .collect::<Vec<String>>();
+
+        AdminSpaceClient {
+            uuid: remote_state.session_id.to_string(),
+            remote_address: sock_addr.clone(),
+            publishers: pub_keyexprs,
+            subscribers: sub_keyexprs,
+            queryables: query_keyexprs,
+        }
+    }
 }
 
 async fn run_admin_space_queryable(zenoh_runtime: Runtime, state_map: StateMap, config: Config) {
@@ -297,54 +331,16 @@ async fn run_admin_space_queryable(zenoh_runtime: Runtime, state_map: StateMap, 
     loop {
         match admin_queryable.recv_async().await {
             Ok(query) => {
-                let query_ke = query.key_expr();
+                let query_ke: OwnedKeyExpr = query.key_expr().to_owned().into();
 
                 if query_ke.is_wild() {
                     if query_ke.contains("clients") {
                         let read_guard = state_map.read().await;
                         let mut admin_space_clients = Vec::new();
                         for (sock, remote_state) in read_guard.iter() {
-                            // let pub_keyexprs = Vec::new();
-                            let pub_keyexprs = remote_state
-                                .publishers
-                                .values()
-                                .map(|x| x.key_expr().to_string())
-                                .collect::<Vec<String>>();
-
-                            let query_keyexprs = remote_state
-                                .queryables
-                                .values()
-                                .map(|(_, key_expr)| key_expr.to_string())
-                                .collect::<Vec<String>>();
-
-                            let sub_keyexprs = remote_state
-                                .subscribers
-                                .values()
-                                .map(|(_, key_expr)| key_expr.to_string())
-                                .collect::<Vec<String>>();
-
-                            let admin_space_client = AdminSpaceClient {
-                                remote_address: sock.clone(),
-                                publishers: pub_keyexprs,
-                                subscribers: sub_keyexprs,
-                                queryables: query_keyexprs,
-                            };
-                            admin_space_clients.push(admin_space_client);
+                            admin_space_clients.push(AdminSpaceClient::from((sock, remote_state)));
                         }
-                        match serde_json::to_string_pretty(&admin_space_clients) {
-                            Ok(json_string) => {
-                                if let Err(err) = query
-                                    .reply(query_ke, json_string)
-                                    .encoding(Encoding::APPLICATION_JSON)
-                                    .await
-                                {
-                                    error!("AdminSpace: Reply to Query failed, {}", err);
-                                };
-                            }
-                            Err(_) => {
-                                error!("AdminSpace: Could not seralize client data");
-                            }
-                        };
+                        send_reply(admin_space_clients, query, query_ke).await;
                     } else {
                         for (ke, admin_ref) in admin_space.iter() {
                             if query_ke.intersects(ke) {
@@ -357,6 +353,33 @@ async fn run_admin_space_queryable(zenoh_runtime: Runtime, state_map: StateMap, 
                     if own_ke.contains("config") {
                         send_admin_reply(&query, &own_ke, &AdminRef::Config, &config).await;
                     }
+                    if own_ke.contains("client") {
+                        let mut opt_id = None;
+                        let split = own_ke.split("/");
+                        let mut next_is_id = false;
+                        for elem in split {
+                            if next_is_id {
+                                opt_id = Some(elem);
+                            } else if elem.contains("client") {
+                                next_is_id = true;
+                            }
+                        }
+                        if let Some(id) = opt_id {
+                            let read_guard = state_map.read().await;
+                            for (sock, remote_state) in read_guard.iter() {
+                                if remote_state.session_id.to_string() == id {
+                                    send_reply(
+                                        AdminSpaceClient::from((sock, remote_state)),
+                                        query,
+                                        own_ke,
+                                    )
+                                    .await;
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Err(_) => {
@@ -364,6 +387,26 @@ async fn run_admin_space_queryable(zenoh_runtime: Runtime, state_map: StateMap, 
             }
         }
     }
+}
+
+async fn send_reply<T>(reply: T, query: Query, query_ke: OwnedKeyExpr)
+where
+    T: Sized + Serialize,
+{
+    match serde_json::to_string_pretty(&reply) {
+        Ok(json_string) => {
+            if let Err(err) = query
+                .reply(query_ke, json_string)
+                .encoding(Encoding::APPLICATION_JSON)
+                .await
+            {
+                error!("AdminSpace: Reply to Query failed, {}", err);
+            };
+        }
+        Err(_) => {
+            error!("AdminSpace: Could not seralize client data");
+        }
+    };
 }
 
 async fn send_admin_reply(
@@ -626,7 +669,8 @@ async fn handle_message(
             Err(err) => {
                 tracing::error!(
                     "RemoteAPI: WS Message Cannot be Deserialized to RemoteAPIMsg {}, message: {}",
-                    err, text
+                    err,
+                    text
                 );
             }
         },
