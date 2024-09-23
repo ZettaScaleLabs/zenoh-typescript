@@ -13,7 +13,6 @@ import { IntoKeyExpr, KeyExpr } from "./key_expr";
 import { IntoZBytes, ZBytes } from "./z_bytes";
 import { Sample, Sample_from_SampleWS } from "./sample";
 import { Encoding } from "./encoding";
-import { Option } from "./session";
 
 //  ██████  ██    ██ ███████ ██████  ██    ██  █████  ██████  ██      ███████
 // ██    ██ ██    ██ ██      ██   ██  ██  ██  ██   ██ ██   ██ ██      ██
@@ -24,17 +23,26 @@ import { Option } from "./session";
 
 /**
  * Queryable class used to receive Query's from the network and handle Reply's
+ * created by Session.declare_queryable
  */
 export class Queryable {
   private _remote_queryable: RemoteQueryable;
   private _callback_queryable;
+  /** Finalization registry used for cleanup on drop
+   * @hidden 
+   */
   static registry: FinalizationRegistry<RemoteQueryable> = new FinalizationRegistry((r_queryable: RemoteQueryable) => r_queryable.undeclare());
 
+  /** 
+   * @hidden
+   */
   dispose() {
     this.undeclare();
     Queryable.registry.unregister(this);
   }
-
+  /** 
+   * @hidden user must use new function
+   */
   constructor(remote_queryable: RemoteQueryable, callback_queryable: boolean) {
     this._remote_queryable = remote_queryable;
     this._callback_queryable = callback_queryable;
@@ -74,6 +82,9 @@ export class Queryable {
     Queryable.registry.unregister(this);
   }
 
+  /** 
+   * @hidden : user must use declare_queryable
+   */
   static new(remote_queryable: RemoteQueryable, callback_queryable: boolean): Queryable {
     return new Queryable(remote_queryable, callback_queryable);
   }
@@ -81,16 +92,17 @@ export class Queryable {
 
 /**
  * Convenience function to convert between QueryWS and Query 
+ * @hidden
  */
 export function QueryWS_to_Query(
   query_ws: QueryWS,
   reply_tx: SimpleChannel<QueryReplyWS>,
 ): Query {
   let key_expr: KeyExpr = KeyExpr.new(query_ws.key_expr);
-  let payload: Option<ZBytes> = null;
-  let attachment: Option<ZBytes> = null;
+  let payload: ZBytes | undefined = undefined;
+  let attachment: ZBytes | undefined = undefined;
   let parameters: Parameters = Parameters.new(query_ws.parameters);
-  let encoding: Option<Encoding> = null;
+  let encoding: Encoding | undefined = undefined;
 
   if (query_ws.payload != null) {
     payload = ZBytes.new(query_ws.payload);
@@ -127,10 +139,31 @@ export class Query {
   private _query_id: UUIDv4;
   private _key_expr: KeyExpr;
   private _parameters: Parameters;
-  private _payload: Option<ZBytes>;
-  private _attachment: Option<ZBytes>;
-  private _encoding: Option<Encoding>;
+  private _payload: ZBytes | undefined;
+  private _attachment: ZBytes | undefined;
+  private _encoding: Encoding | undefined;
   private _reply_tx: SimpleChannel<QueryReplyWS>;
+
+  /**
+  * @hidden
+  */
+  private constructor(
+    query_id: UUIDv4,
+    key_expr: KeyExpr,
+    parameters: Parameters,
+    payload: ZBytes | undefined,
+    attachment: ZBytes | undefined,
+    encoding: Encoding | undefined,
+    reply_tx: SimpleChannel<QueryReplyWS>,
+  ) {
+    this._query_id = query_id;
+    this._key_expr = key_expr;
+    this._parameters = parameters;
+    this._payload = payload;
+    this._attachment = attachment;
+    this._encoding = encoding;
+    this._reply_tx = reply_tx;
+  }
 
   /**
    * gets an selector of Query
@@ -155,29 +188,25 @@ export class Query {
   }
   /**
     * gets the Optioanl payload of Query
-    * @returns Option<ZBytes>
+    * @returns ZBytes | undefined
     */
-  payload(): Option<ZBytes> {
+  payload(): ZBytes | undefined {
     return this._payload;
   }
   /**
     * gets the Optional Encoding of a Query
-    * @returns Option<ZBytes>
+    * @returns Encoding | undefined
     */
-  encoding(): Option<Encoding> {
+  encoding(): Encoding | undefined {
     return this._encoding;
   }
   /**
     * gets the Optional Attachment of a Query
-    * @returns Option<ZBytes>
+    * @returns ZBytes | undefined
     */
-  attachment(): Option<ZBytes> {
+  attachment(): ZBytes | undefined {
     return this._attachment;
   }
-
-  // QueryReplyVariant = { "Reply": { key_expr: OwnedKeyExprWrapper, payload: Array<number>, } } |
-  //                     { "ReplyErr": { payload: Array<number>, } } |
-  //                     { "ReplyDelete": { key_expr: OwnedKeyExprWrapper, } };
 
   // Send Reply here.
   private reply_ws(variant: QueryReplyVariant): void {
@@ -190,9 +219,9 @@ export class Query {
 
   /**
     * Sends a Reply to for Query
-    * @param key_expr IntoKeyExpr
-    * @param payload: IntoZBytes
-    * @returns Option<ZBytes>
+    * @param {IntoKeyExpr} key_expr 
+    * @param {IntoZBytes} payload
+    * @returns void
     */
   reply(key_expr: IntoKeyExpr, payload: IntoZBytes): void {
     let _key_expr: KeyExpr = KeyExpr.new(key_expr);
@@ -207,8 +236,8 @@ export class Query {
   }
   /**
   * Sends an Error Reply to a query
-  * @param payload: IntoZBytes
-  * @returns Option<ZBytes>
+  * @param {IntoZBytes} payload
+  * @returns void
   */
   reply_err(payload: IntoZBytes): void {
     let z_bytes: ZBytes = ZBytes.new(payload);
@@ -221,7 +250,7 @@ export class Query {
   /**
     * Sends an Error Reply to a query
     * @param key_expr IntoKeyExpr
-    * @returns Option<ZBytes>
+    * @returns void
     */
   reply_del(key_expr: IntoKeyExpr): void {
     let _key_expr: KeyExpr = KeyExpr.new(key_expr);
@@ -231,37 +260,19 @@ export class Query {
     this.reply_ws(qr_variant);
   }
 
-  private constructor(
-    query_id: UUIDv4,
-    key_expr: KeyExpr,
-    parameters: Parameters,
-    payload: Option<ZBytes>,
-    attachment: Option<ZBytes>,
-    encoding: Encoding | null,
-    reply_tx: SimpleChannel<QueryReplyWS>,
-  ) {
-    this._query_id = query_id;
-    this._key_expr = key_expr;
-    this._parameters = parameters;
-    this._payload = payload;
-    this._attachment = attachment;
-    this._encoding = encoding;
-    this._reply_tx = reply_tx;
-  }
-
-
   /**
     * New Function Used to Construct Query, 
     * Note: Users should not need to call this function
     * But will receieve 'Query's from Queryables 
+    * @hidden
     */
   static new(
     query_id: UUIDv4,
     key_expr: KeyExpr,
     parameters: Parameters,
-    payload: Option<ZBytes>,
-    attachment: Option<ZBytes>,
-    encoding: Encoding | null,
+    payload: ZBytes | undefined,
+    attachment: ZBytes | undefined,
+    encoding: Encoding | undefined,
     reply_tx: SimpleChannel<QueryReplyWS>,
   ) {
     return new Query(
@@ -396,6 +407,11 @@ export class Parameters {
   }
 }
 
+
+/**
+ * ReplyError returned from a `get` on a session
+ * 
+ */
 export class ReplyError {
   private _payload: ZBytes;
   private _encoding: Encoding;
@@ -421,6 +437,10 @@ export class ReplyError {
     this._payload = payload;
   }
 
+  /**
+    * ReplyError gets created by the reply of a `get` on a session
+    * @hidden
+    */
   static new(reply_err_ws: ReplyErrorWS): ReplyError {
     let zbytes = ZBytes.new(reply_err_ws.payload);
     let encoding = Encoding.from_str(reply_err_ws.encoding);
@@ -428,6 +448,9 @@ export class ReplyError {
   }
 }
 
+/**
+ * Reply object from a zenoh `get`
+ */
 export class Reply {
   private _result: Sample | ReplyError;
 
@@ -439,10 +462,16 @@ export class Reply {
     return this._result;
   }
 
+  /**
+   * @hidden
+   */
   private constructor(result: Sample | ReplyError) {
     this._result = result;
   }
 
+  /**
+  * @hidden
+  */
   static new(reply_ws: ReplyWS): Reply {
     if ("Ok" in reply_ws.result) {
       let sample_ws = reply_ws.result["Ok"];

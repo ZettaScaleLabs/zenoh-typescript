@@ -31,6 +31,9 @@ export enum RemoteRecvErr {
 }
 
 type JSONMessage = string;
+/**
+ * @hidden
+ */
 export type UUIDv4 = String | string;
 
 export class RemoteSession {

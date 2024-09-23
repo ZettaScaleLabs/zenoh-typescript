@@ -19,20 +19,35 @@ import { Encoding, IntoEncoding } from "./encoding";
 //      ██ ██    ██ ██   ██      ██ ██      ██   ██ ██ ██   ██ ██      ██   ██
 // ███████  ██████  ██████  ███████  ██████ ██   ██ ██ ██████  ███████ ██   ██
 
+
+/**
+ * Class to represent a Subscriber on Zenoh, 
+ * created via calling `declare_subscriber()` on a `session`
+ */
+
 export class Subscriber {
   /**
-   * Class to represent a Subscriber on Zenoh
+   * @hidden 
    */
   private remote_subscriber: RemoteSubscriber;
+  /**
+   * @hidden 
+   */
   private callback_subscriber: boolean;
-
+  /** Finalization registry used for cleanup on drop
+   * @hidden 
+   */
   static registry: FinalizationRegistry<RemoteSubscriber> = new FinalizationRegistry((r_subscriber: RemoteSubscriber) => r_subscriber.undeclare());
-
+  /**
+   * @hidden 
+   */
   dispose() {
     this.undeclare();
     Subscriber.registry.unregister(this);
   }
-
+  /**
+   * @hidden 
+   */
   constructor(
     remote_subscriber: RemoteSubscriber,
     callback_subscriber: boolean,
@@ -41,7 +56,7 @@ export class Subscriber {
     this.callback_subscriber = callback_subscriber;
     Subscriber.registry.register(this, remote_subscriber, this)
   }
-  
+
   /**
    * Receives a new message on the subscriber
    *  note: If subscriber was created with a callback, this recieve will return undefined, 
@@ -78,7 +93,7 @@ export class Subscriber {
    * Create a new subscriber, 
    * note : This function should never be called directly by the user
    * please use `declare_subscriber` on a session to create a subscriber
-   *
+   * @hidden
    */
   static async new(
     remote_subscriber: RemoteSubscriber,
@@ -98,11 +113,14 @@ export enum ChannelType {
   Fifo,
 }
 
+/**
+ * General interface for a Handler, not to be exposed by the user
+ * @hidden
+ */
 export interface Handler {
   size: number;
   channel_type: ChannelType;
 }
-
 
 /**
   * RingChannel handler: 
@@ -135,28 +153,38 @@ export class FifoChannel implements Handler {
 // ██       ██████  ██████  ███████ ██ ███████ ██   ██ ███████ ██   ██
 export class Publisher {
   /**
-   * Class that represents a Zenoh Publisher
+   * Class that represents a Zenoh Publisher, 
+   * created by calling `declare_publisher()` on a `session`
    */
   private _remote_publisher: RemotePublisher;
   private _key_expr: KeyExpr;
   private _congestion_control: CongestionControl;
   private _priority: Priority;
   private _reliability: Reliability;
-  private _encoding : Encoding;
+  private _encoding: Encoding;
+  /** Finalization registry used for cleanup on drop
+   * @hidden 
+   */
   static registry: FinalizationRegistry<RemotePublisher> = new FinalizationRegistry((r_publisher: RemotePublisher) => r_publisher.undeclare());
 
+  /** 
+   * @hidden 
+   */
   dispose() {
     this.undeclare();
     Publisher.registry.unregister(this);
   }
 
+  /** 
+   * @hidden 
+   */
   private constructor(
     remote_publisher: RemotePublisher,
     key_expr: KeyExpr,
     congestion_control: CongestionControl,
     priority: Priority,
     reliability: Reliability,
-    encoding:Encoding,
+    encoding: Encoding,
   ) {
     this._remote_publisher = remote_publisher;
     this._key_expr = key_expr;
@@ -270,6 +298,7 @@ export class Publisher {
    * @param {Reliability} reliability - Reliability for publishing data
    * 
    * @returns a new Publisher instance
+   * @hidden 
    */
   static new(
     key_expr: KeyExpr,
@@ -277,7 +306,7 @@ export class Publisher {
     congestion_control: CongestionControl,
     priority: Priority,
     reliability: Reliability,
-    encoding:Encoding, 
+    encoding: Encoding,
   ): Publisher {
     return new Publisher(
       remote_publisher,

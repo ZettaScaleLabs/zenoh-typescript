@@ -40,19 +40,17 @@ import { Encoding } from "./encoding";
 import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
 import { HandlerChannel } from "./remote_api/interface/HandlerChannel";
 
-export type Option<T> = T | null;
-
 function executeAsync(func: any) {
   setTimeout(func, 0);
 }
 
 /**
  * Options for a Put function 
- * @param {Encoding=} encoding - encoding type 
- * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
- * @param {Priority=} priority - priority of the written data
- * @param {boolean=} express  - express 
- * @param {IntoZBytes=} attachment - Additional Data sent with the request
+ * @prop {Encoding=} encoding - encoding type 
+ * @prop {CongestionControl=} congestion_control - congestion_control applied when routing the data
+ * @prop {Priority=} priority - priority of the written data
+ * @prop {boolean=} express  - express 
+ * @prop {IntoZBytes=} attachment - Additional Data sent with the request
 */
 
 export interface PutOpts {
@@ -65,10 +63,10 @@ export interface PutOpts {
 
 /**
  * Options for a Delete function 
- * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
- * @param {Priority=} priority - priority of the written data
- * @param {boolean=} express  - Express 
- * @param {IntoZBytes=} attachment - Additional Data sent with the request
+ * @prop {CongestionControl=} congestion_control - congestion_control applied when routing the data
+ * @prop {Priority=} priority - priority of the written data
+ * @prop {boolean=} express  - Express 
+ * @prop {IntoZBytes=} attachment - Additional Data sent with the request
 */
 export interface DeleteOpts {
   congestion_control?: CongestionControl,
@@ -79,13 +77,13 @@ export interface DeleteOpts {
 
 /**
  * Options for a Get function 
- * @param {ConsolidationMode=} consolidation - consolidation mode
- * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
- * @param {Priority=} priority - priority of the written data
- * @param {boolean=} express  - Express 
- * @param {Encoding=} encoding - Encoding type of payload 
- * @param {IntoZBytes=} payload - Payload associated with getrequest
- * @param {IntoZBytes=} attachment - Additional Data sent with the request
+ * @prop {ConsolidationMode=} consolidation - consolidation mode
+ * @prop {CongestionControl=} congestion_control - congestion_control applied when routing the data
+ * @prop {Priority=} priority - priority of the written data
+ * @prop {boolean=} express  - Express 
+ * @prop {Encoding=} encoding - Encoding type of payload 
+ * @prop {IntoZBytes=} payload - Payload associated with getrequest
+ * @prop {IntoZBytes=} attachment - Additional Data sent with the request
 */
 export interface GetOptions {
   consolidation?: ConsolidationMode,
@@ -99,8 +97,8 @@ export interface GetOptions {
 
 /**
  * Options for a Queryable
- * @param complete - Change queryable completeness.
- * @param callback - Callback function for this queryable
+ * @prop complete - Change queryable completeness.
+ * @prop callback - Callback function for this queryable
 */
 export interface QueryableOpts {
   complete?: boolean,
@@ -109,11 +107,11 @@ export interface QueryableOpts {
 
 /**
  *  Set of options used when declaring a publisher
- * @param {Encoding} encoding - Optional, Type of Encoding data to be sent over
- * @param {CongestionControl} congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
- * @param {Priority} priority - Optional, The Priority of zenoh messages
- * @param {boolean} express - Optional, The Priority of zenoh messages
- * @param {Reliability} reliability - Optional, The Priority of zenoh messages
+ * @prop {Encoding} encoding - Optional, Type of Encoding data to be sent over
+ * @prop {CongestionControl} congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
+ * @prop {Priority} priority - Optional, The Priority of zenoh messages
+ * @prop {boolean} express - Optional, The Priority of zenoh messages
+ * @prop {Reliability} reliability - Optional, The Priority of zenoh messages
  */
 export interface PublisherOptions {
   encoding?: Encoding,
@@ -135,7 +133,9 @@ export interface PublisherOptions {
 export class Session {
   // WebSocket Backend
   private remote_session: RemoteSession;
-
+  /** Finalization registry used for cleanup on drop
+   * @hidden 
+   */
   static registry: FinalizationRegistry<RemoteSession> = new FinalizationRegistry((r_session: RemoteSession) => r_session.close());
 
   dispose() {
@@ -223,7 +223,7 @@ export class Session {
    * Executes a Delete on a session, for a specific key expression KeyExpr
    *
    * @param {IntoKeyExpr} into_key_expr - something that implements intoKeyExpr
-   * @param {DeleteOpts} delete_options - optional additional parameters to go with a delete function
+   * @param {DeleteOpts} delete_opts - optional additional parameters to go with a delete function
    *
    * @returns void
    */
@@ -250,6 +250,9 @@ export class Session {
     );
   }
 
+  /** 
+   * @hidden internal function for handlers
+  */
   private check_handler_or_callback<T>(handler?: FifoChannel | RingChannel | ((sample: T) => Promise<void>)):
     [undefined | ((callback: T) => Promise<void>), HandlerChannel] {
 
@@ -367,17 +370,17 @@ export class Session {
    * @remarks
    *  If a Subscriber is created with a callback, it cannot be simultaneously polled for new values
    * 
-   * @param keyexpr - string of key_expression
-   * @param handler - Either a HandlerChannel or a Callback Function to be called for all samples
+   * @param {IntoKeyExpr} key_expr - string of key_expression
+   * @param {((sample: Sample) => Promise<void>) | Handler} handler - Either a HandlerChannel or a Callback Function to be called for all samples
    *
    * @returns Subscriber
    */
   // Handler size : This is to match the API_DATA_RECEPTION_CHANNEL_SIZE of zenoh internally
   async declare_subscriber(
-    into_key_expr: IntoKeyExpr,
+    key_expr: IntoKeyExpr,
     handler: ((sample: Sample) => Promise<void>) | Handler = new FifoChannel(256),
   ): Promise<Subscriber> {
-    let key_expr = KeyExpr.new(into_key_expr);
+    let _key_expr = KeyExpr.new(key_expr);
     let remote_subscriber: RemoteSubscriber;
     let callback_subscriber = false;
     let [callback, handler_type] = this.check_handler_or_callback<Sample>(handler);
@@ -391,13 +394,13 @@ export class Session {
         }
       };
       remote_subscriber = await this.remote_session.declare_remote_subscriber(
-        key_expr.toString(),
+        _key_expr.toString(),
         handler_type,
         callback_conversion,
       );
     } else {
       remote_subscriber = await this.remote_session.declare_remote_subscriber(
-        key_expr.toString(),
+        _key_expr.toString(),
         handler_type,
       );
     }
@@ -416,7 +419,7 @@ export class Session {
   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
   * 
   * @param {IntoKeyExpr} key_expr - string of key_expression
-  * @param {QueryableOpts} queryable_opts: QueryableOpts
+  * @param {QueryableOpts=} queryable_opts - Optional additional settings for a Queryable [QueryableOpts]
   *
   * @returns Queryable
   */
@@ -553,8 +556,13 @@ export enum RecvErr {
  * Receiver returned from `get` call on a session
  */
 export class Receiver {
+  /**
+   * @hidden
+   */
   private receiver: SimpleChannel<ReplyWS | RecvErr>;
-
+  /**
+   * @hidden
+   */
   private constructor(receiver: SimpleChannel<ReplyWS | RecvErr>) {
     this.receiver = receiver;
   }
@@ -584,6 +592,12 @@ export class Receiver {
       return RecvErr.MalformedReply;
     }
   }
+
+  /**
+   *  Receiver gets created by `get` call
+   * 
+   * @hidden Reply
+   */
   static new(reply_tx: SimpleChannel<ReplyWS>) {
     return new Receiver(reply_tx);
   }
