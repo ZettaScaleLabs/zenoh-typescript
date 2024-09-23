@@ -33,7 +33,7 @@ export enum ConsolidationMode {
  * Convenience function to convert between Congestion function and int
  */
 export function consolidation_mode_to_int(
-  congestion_control: ConsolidationMode,
+  congestion_control?: ConsolidationMode,
 ): number {
   switch (congestion_control) {
     case ConsolidationMode.Auto:
@@ -45,7 +45,6 @@ export function consolidation_mode_to_int(
     case ConsolidationMode.Latest:
       return 3
     default:
-      console.log("Unknown ConsolidationMode Variant, default to Auto");
       return 0;
   }
 }
@@ -54,7 +53,7 @@ export function consolidation_mode_to_int(
  * Convenience function to convert between Congestion function and int
  */
 export function congestion_control_from_int(
-  prio_u8: number,
+  prio_u8?: number,
 ): CongestionControl {
   switch (prio_u8) {
     case 0:
@@ -62,7 +61,6 @@ export function congestion_control_from_int(
     case 1:
       return CongestionControl.BLOCK;
     default:
-      console.log("Unknown CongestionControl Variant, default to DROP");
       return CongestionControl.DROP;
   }
 }
@@ -71,7 +69,7 @@ export function congestion_control_from_int(
  * Convenience function to convert between Congestion function and int
  */
 export function congestion_control_to_int(
-  congestion_control: CongestionControl,
+  congestion_control?: CongestionControl,
 ): number {
   switch (congestion_control) {
     case CongestionControl.DROP:
@@ -124,7 +122,7 @@ export function priority_from_int(prio_u8: number): Priority {
 /**
  * Convenience function to convert between Priority function and int
  */
-export function priority_to_int(prio: Priority): number {
+export function priority_to_int(prio?: Priority): number {
   switch (prio) {
     case Priority.REAL_TIME:
       return 1;

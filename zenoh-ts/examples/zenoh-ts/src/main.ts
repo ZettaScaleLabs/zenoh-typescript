@@ -10,15 +10,13 @@ import { main_put } from "./z_put.ts";
 import { main_queryable } from "./z_queryable.ts";
 import { main_delete } from "./z_delete.ts";
 
-
 async function main() {
-
   // main_thr();
   // main_ping();
   // main_pong();
   // main_sub();
   // main_pub();
-  main_queryable();
+  // main_queryable();
   // main_get();
   // main_delete();
   // main_put();

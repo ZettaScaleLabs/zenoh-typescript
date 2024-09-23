@@ -21,10 +21,10 @@ export async function main_get() {
   };
 
   console.log("Start z_get")
-  await session.get("test/queryable/**", get_callback);
+  await session.get("demo/example/**", get_callback);
 
   // Poll receiever
-  let receiver: void | Receiver  = await session.get("test/queryable/**");
+  let receiver: void | Receiver  = await session.get("demo/example/**");
   if (!(receiver instanceof Receiver)){
     return // Return in case of callback get query
   }

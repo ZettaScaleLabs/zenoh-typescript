@@ -38,14 +38,89 @@ import { State } from "channel-ts/lib/channel";
 import { Config } from "./config";
 import { Encoding } from "./encoding";
 import { QueryReplyWS } from "./remote_api/interface/QueryReplyWS";
-import { Error } from "./remote_api/session";
 import { HandlerChannel } from "./remote_api/interface/HandlerChannel";
 
-export { Error };
 export type Option<T> = T | null;
 
 function executeAsync(func: any) {
   setTimeout(func, 0);
+}
+
+/**
+ * Options for a Put function 
+ * @param {Encoding=} encoding - encoding type 
+ * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
+ * @param {Priority=} priority - priority of the written data
+ * @param {boolean=} express  - express 
+ * @param {IntoZBytes=} attachment - Additional Data sent with the request
+*/
+
+export interface PutOpts {
+  encoding?: Encoding,
+  congestion_control?: CongestionControl,
+  priority?: Priority,
+  express?: boolean,
+  attachment?: IntoZBytes
+}
+
+/**
+ * Options for a Delete function 
+ * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
+ * @param {Priority=} priority - priority of the written data
+ * @param {boolean=} express  - Express 
+ * @param {IntoZBytes=} attachment - Additional Data sent with the request
+*/
+export interface DeleteOpts {
+  congestion_control?: CongestionControl,
+  priority?: Priority,
+  express?: boolean,
+  attachment?: IntoZBytes
+}
+
+/**
+ * Options for a Get function 
+ * @param {ConsolidationMode=} consolidation - consolidation mode
+ * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
+ * @param {Priority=} priority - priority of the written data
+ * @param {boolean=} express  - Express 
+ * @param {Encoding=} encoding - Encoding type of payload 
+ * @param {IntoZBytes=} payload - Payload associated with getrequest
+ * @param {IntoZBytes=} attachment - Additional Data sent with the request
+*/
+export interface GetOptions {
+  consolidation?: ConsolidationMode,
+  congestion_control?: CongestionControl,
+  priority?: Priority,
+  express?: boolean,
+  encoding?: Encoding,
+  payload?: IntoZBytes,
+  attachment?: IntoZBytes
+}
+
+/**
+ * Options for a Queryable
+ * @param complete - Change queryable completeness.
+ * @param callback - Callback function for this queryable
+*/
+export interface QueryableOpts {
+  complete?: boolean,
+  callback?: (query: Query) => void,
+}
+
+/**
+ *  Set of options used when declaring a publisher
+ * @param {Encoding} encoding - Optional, Type of Encoding data to be sent over
+ * @param {CongestionControl} congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
+ * @param {Priority} priority - Optional, The Priority of zenoh messages
+ * @param {boolean} express - Optional, The Priority of zenoh messages
+ * @param {Reliability} reliability - Optional, The Priority of zenoh messages
+ */
+export interface PublisherOptions {
+  encoding?: Encoding,
+  congestion_control?: CongestionControl,
+  priority?: Priority,
+  express?: boolean,
+  reliability?: Reliability,
 }
 
 // ███████ ███████ ███████ ███████ ██  ██████  ███    ██
@@ -57,7 +132,6 @@ function executeAsync(func: any) {
 /**
  * Zenoh Session
  */
-
 export class Session {
   // WebSocket Backend
   private remote_session: RemoteSession;
@@ -106,46 +180,32 @@ export class Session {
    *
    * @param {IntoKeyExpr} into_key_expr - something that implements intoKeyExpr
    * @param {IntoZBytes} into_zbytes - something that implements intoValue
-   * @param {Encoding=} encoding - encoding type 
-   * @param {CongestionControl=} congestion_control - congestion_control applied when routing the data
-   * @param {Priority=} priority - priority of the written data
-   * @param {boolean=} express 
-   * @param {IntoZBytes=} attachment
-   *
+   * @param {PutOpts=} put_opts - an interface for the options settings on puts 
    * @returns void
    */
   put(
     into_key_expr: IntoKeyExpr,
     into_zbytes: IntoZBytes,
-    encoding?: Encoding,
-    congestion_control?: CongestionControl,
-    priority?: Priority,
-    express?: boolean,
-    attachment?: IntoZBytes
+    put_opts?: PutOpts,
   ): void {
     let key_expr = KeyExpr.new(into_key_expr);
     let z_bytes = ZBytes.new(into_zbytes);
 
-    let _encoding;
-    let _congestion_control;
     let _priority;
     let _express;
     let _attachment;
 
-    if (encoding != undefined) {
-      _encoding = encoding.toString()
+    let _encoding = put_opts?.encoding?.toString()
+
+    let _congestion_control = congestion_control_to_int(put_opts?.congestion_control);
+
+    if (put_opts?.priority != undefined) {
+      _priority = priority_to_int(put_opts?.priority);
     }
-    if (congestion_control != undefined) {
-      _congestion_control = congestion_control_to_int(congestion_control);
-    }
-    if (priority != undefined) {
-      _priority = priority_to_int(priority);
-    }
-    if (express != undefined) {
-      _express = express
-    }
-    if (attachment != undefined) {
-      _attachment = Array.from(ZBytes.new(attachment).payload())
+    _express = put_opts?.express?.valueOf();
+
+    if (put_opts?.attachment != undefined) {
+      _attachment = Array.from(ZBytes.new(put_opts?.attachment).payload())
     }
 
     this.remote_session.put(
@@ -163,37 +223,22 @@ export class Session {
    * Executes a Delete on a session, for a specific key expression KeyExpr
    *
    * @param {IntoKeyExpr} into_key_expr - something that implements intoKeyExpr
-   * @param {CongestionControl=} congestion_control - Optional :
-   * @param {Priority=} priority - Optional :
-   * @param {boolean=} express - Optional :
-   * @param {IntoZBytes=} attachment - Optional :
+   * @param {DeleteOpts} delete_options - optional additional parameters to go with a delete function
    *
    * @returns void
    */
   delete(
     into_key_expr: IntoKeyExpr,
-    congestion_control?: CongestionControl,
-    priority?: Priority,
-    express?: boolean,
-    attachment?: IntoZBytes
+    delete_opts?: DeleteOpts
   ): void {
     let key_expr = KeyExpr.new(into_key_expr);
+    let _congestion_control = congestion_control_to_int(delete_opts?.congestion_control);
+    let _priority = priority_to_int(delete_opts?.priority);
+    let _express = delete_opts?.express;
+    let _attachment
 
-    let _congestion_control;
-    let _priority;
-    let _express;
-    let _attachment;
-    if (congestion_control != undefined) {
-      _congestion_control = congestion_control_to_int(congestion_control);
-    }
-    if (priority != undefined) {
-      _priority = priority_to_int(priority);
-    }
-    if (express != undefined) {
-      _express = express
-    }
-    if (attachment != undefined) {
-      _attachment = Array.from(ZBytes.new(attachment).payload())
+    if (delete_opts?.attachment != undefined) {
+      _attachment = Array.from(ZBytes.new(delete_opts?.attachment).payload())
     }
 
     this.remote_session.delete(
@@ -241,13 +286,7 @@ export class Session {
   async get(
     into_selector: IntoSelector,
     handler: ((sample: Reply) => Promise<void>) | Handler = new FifoChannel(256),
-    consolidation?: ConsolidationMode,
-    congestion_control?: CongestionControl,
-    priority?: Priority,
-    express?: boolean,
-    encoding?: Encoding,
-    payload?: IntoZBytes,
-    attachment?: IntoZBytes
+    get_options?: GetOptions
   ): Promise<Receiver | undefined> {
 
     let selector: Selector;
@@ -258,7 +297,7 @@ export class Session {
       if (split_string.length == 1) {
         key_expr = KeyExpr.new(into_selector);
         selector = Selector.new(key_expr);
-      } else if (split_string.length == 2) {
+      } else if (split_string.length == 2 && split_string[0] != undefined && split_string[1] != undefined) {
         key_expr = KeyExpr.new(split_string[0]);
         let parameters: Parameters = Parameters.new(split_string[1]);
         selector = Selector.new(key_expr, parameters);
@@ -272,37 +311,20 @@ export class Session {
     let [callback, handler_type] = this.check_handler_or_callback<Reply>(handler);
 
     // Optional Parameters 
-    let _consolidation;
-    let _encoding;
-    let _congestion_control;
-    let _priority;
-    let _express;
+    let _consolidation = consolidation_mode_to_int(get_options?.consolidation)
+    let _encoding = get_options?.encoding?.toString();
+    let _congestion_control = congestion_control_to_int(get_options?.congestion_control);
+    let _priority = priority_to_int(get_options?.priority);
+    let _express = get_options?.express;
     let _attachment;
     let _payload;
 
-    if (consolidation != undefined) {
-      _consolidation = consolidation_mode_to_int(consolidation)
+    if (get_options?.attachment != undefined) {
+      _attachment = Array.from(ZBytes.new(get_options?.attachment).payload())
     }
-    if (encoding != undefined) {
-      _encoding = encoding.toString()
+    if (get_options?.payload != undefined) {
+      _payload = Array.from(ZBytes.new(get_options?.payload).payload())
     }
-    if (congestion_control != undefined) {
-      _congestion_control = congestion_control_to_int(congestion_control);
-    }
-    if (priority != undefined) {
-      _priority = priority_to_int(priority);
-    }
-    if (express != undefined) {
-      _express = express
-    }
-    if (attachment != undefined) {
-      _attachment = Array.from(ZBytes.new(attachment).payload())
-    }
-    if (payload != undefined) {
-      _payload = Array.from(ZBytes.new(payload).payload())
-    }
-
-    console.log("Send Get");
 
     let chan: SimpleChannel<ReplyWS> = await this.remote_session.get(
       selector.key_expr().toString(),
@@ -316,7 +338,7 @@ export class Session {
       _payload,
       _attachment,
     );
-    console.log("After Send Get");
+
     let receiver = Receiver.new(chan);
 
     if (callback != undefined) {
@@ -351,8 +373,6 @@ export class Session {
    * @returns Subscriber
    */
   // Handler size : This is to match the API_DATA_RECEPTION_CHANNEL_SIZE of zenoh internally
-  async declare_subscriber(into_key_expr: IntoKeyExpr, handler: (sample: Sample) => Promise<void>): Promise<Subscriber>;
-  async declare_subscriber(into_key_expr: IntoKeyExpr, handler: Handler): Promise<Subscriber>;
   async declare_subscriber(
     into_key_expr: IntoKeyExpr,
     handler: ((sample: Sample) => Promise<void>) | Handler = new FifoChannel(256),
@@ -395,25 +415,29 @@ export class Session {
   * @remarks
   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
   * 
-  * @param keyexpr - string of key_expression
-  * @param complete - boolean representing Queryable completeness
-  * @param callback function - Function to be called for all samples
+  * @param {IntoKeyExpr} key_expr - string of key_expression
+  * @param {QueryableOpts} queryable_opts: QueryableOpts
   *
   * @returns Queryable
   */
   async declare_queryable(
-    into_key_expr: IntoKeyExpr,
-    complete: boolean,
-    callback?: (query: Query) => void,
+    key_expr: IntoKeyExpr,
+    queryable_opts?: QueryableOpts
   ): Promise<Queryable> {
-    let key_expr = KeyExpr.new(into_key_expr);
+    let _key_expr = KeyExpr.new(key_expr);
     let remote_queryable: RemoteQueryable;
     let reply_tx: SimpleChannel<QueryReplyWS> =
       new SimpleChannel<QueryReplyWS>();
 
+    let _complete = false;
+    if (queryable_opts?.complete != undefined) {
+      _complete = queryable_opts?.complete;
+    };
+
     let callback_queryable = false;
-    if (callback != undefined) {
+    if (queryable_opts?.callback != undefined) {
       callback_queryable = true;
+      let callback = queryable_opts?.callback;
       const callback_conversion = function (
         query_ws: QueryWS,
       ): void {
@@ -421,21 +445,21 @@ export class Session {
 
         callback(query);
       };
-      remote_queryable = await this.remote_session.declare_remote_queryable(
-        key_expr.toString(),
-        complete,
+      remote_queryable = this.remote_session.declare_remote_queryable(
+        _key_expr.toString(),
+        _complete,
         reply_tx,
         callback_conversion,
       );
     } else {
-      remote_queryable = await this.remote_session.declare_remote_queryable(
-        key_expr.toString(),
-        complete,
+      remote_queryable = this.remote_session.declare_remote_queryable(
+        _key_expr.toString(),
+        _complete,
         reply_tx,
       );
     }
 
-    let queryable = await Queryable.new(remote_queryable, callback_queryable);
+    let queryable = Queryable.new(remote_queryable, callback_queryable);
     return queryable;
   }
 
@@ -446,60 +470,49 @@ export class Session {
   *  If a Queryable is created with a callback, it cannot be simultaneously polled for new Query's
   * 
   * @param {IntoKeyExpr} keyexpr - string of key_expression
-  * @param {Encoding} encoding - Optional, Type of Encoding data to be sent over
-  * @param {CongestionControl} congestion_control - Optional, Type of Congestion control to be used (BLOCK / DROP)
-  * @param {Priority} priority - Optional, The Priority of zenoh messages
-  * @param {boolean} express - Optional, The Priority of zenoh messages
-  * @param {Reliability} reliability - Optional, The Priority of zenoh messages
-  *
+  * @param {PublisherOptions} publisher_opts - Optional, set of options to be used when declaring a publisher
   * @returns Publisher
   */
   declare_publisher(
     keyexpr: IntoKeyExpr,
-    encoding?: Encoding,
-    congestion_control?: CongestionControl,
-    priority?: Priority,
-    express?: boolean,
-    reliability?: Reliability,
+    publisher_opts: PublisherOptions
   ): Publisher {
     let _key_expr: KeyExpr = KeyExpr.new(keyexpr);
 
-    let _congestion_ctrl = 0; // Default CongestionControl.DROP
-    if (congestion_control != null) {
-      _congestion_ctrl = congestion_control_to_int(congestion_control);
-    } else {
-      congestion_control = CongestionControl.DROP;
+    let _express = publisher_opts?.express;
+
+    let _priority;
+    let priority = Priority.DATA;
+    if (publisher_opts?.priority != null) {
+      _priority = priority_to_int(publisher_opts?.priority);
+      priority = publisher_opts?.priority;
     }
 
-    let _priority = 5; // Default Priority.DATA
-    if (priority != null) {
-      _priority = priority_to_int(priority);
-    } else {
-      priority = Priority.DATA;
+    let _congestion_control;
+    let congestion_control = CongestionControl.DROP;
+    if (publisher_opts?.congestion_control != null) {
+      _congestion_control = congestion_control_to_int(publisher_opts?.congestion_control);
+      congestion_control = publisher_opts?.congestion_control;
     }
 
     let _reliability = 0; // Default Reliable
-    if (reliability != null) {
-      _reliability = reliability_to_int(reliability);
-    } else {
-      reliability = Reliability.RELIABLE;
+    let reliability = Reliability.RELIABLE;
+    if (publisher_opts?.reliability != null) {
+      _reliability = reliability_to_int(publisher_opts?.reliability);
     }
 
-    let _express = false;
-    if (express != null) {
-      _express = express;
-    }
-
-    let _encoding = Encoding.default();
-    if (encoding != null) {
-      _encoding = encoding;
+    let _encoding = "";
+    let encoding = Encoding.default();
+    if (publisher_opts?.encoding != null) {
+      _encoding = publisher_opts?.encoding.toString();
+      encoding = publisher_opts?.encoding;
     }
 
     let remote_publisher: RemotePublisher =
       this.remote_session.declare_remote_publisher(
         _key_expr.toString(),
-        _encoding.toString(),
-        _congestion_ctrl,
+        _encoding,
+        _congestion_control,
         _priority,
         _express,
         _reliability
@@ -510,7 +523,8 @@ export class Session {
       remote_publisher,
       congestion_control,
       priority,
-      reliability
+      reliability,
+      encoding
     );
     return publisher;
   }

@@ -25,12 +25,6 @@ import { HandlerChannel } from "./interface/HandlerChannel";
 // ██   ██ ██      ██  ██  ██ ██    ██    ██    ██               ██ ██           ██      ██ ██ ██    ██ ██  ██ ██
 // ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████ ███████ ███████ ███████ ██  ██████  ██   ████
 
-export class Error {
-  msg: string
-  constructor(msg: string) {
-    this.msg = msg;
-  }
-}
 
 export enum RemoteRecvErr {
   Disconnected,
@@ -84,7 +78,7 @@ export class RemoteSession {
         chan.send(event.data);
       };
 
-      ws.onclose = function (event: any) {
+      ws.onclose = function () {
         // `this` here is a websocket object
         console.warn("Websocket connection to remote-api-plugin has been disconnected")
       };
@@ -266,11 +260,11 @@ export class RemoteSession {
 
   declare_remote_publisher(
     key_expr: string,
-    encoding: string,
-    congestion_control: number,
-    priority: number,
-    express: boolean,
-    reliability: number,
+    encoding?: string,
+    congestion_control?: number,
+    priority?: number,
+    express?: boolean,
+    reliability?: number,
   ): RemotePublisher {
     let uuid: string = uuidv4();
     let publisher = new RemotePublisher(key_expr, uuid, this);

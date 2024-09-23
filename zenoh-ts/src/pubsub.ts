@@ -142,6 +142,7 @@ export class Publisher {
   private _congestion_control: CongestionControl;
   private _priority: Priority;
   private _reliability: Reliability;
+  private _encoding : Encoding;
   static registry: FinalizationRegistry<RemotePublisher> = new FinalizationRegistry((r_publisher: RemotePublisher) => r_publisher.undeclare());
 
   dispose() {
@@ -155,12 +156,14 @@ export class Publisher {
     congestion_control: CongestionControl,
     priority: Priority,
     reliability: Reliability,
+    encoding:Encoding,
   ) {
     this._remote_publisher = remote_publisher;
     this._key_expr = key_expr;
     this._congestion_control = congestion_control;
     this._priority = priority;
     this._reliability = reliability;
+    this._encoding = encoding;
 
     Publisher.registry.register(this, remote_publisher, this)
   }
@@ -209,6 +212,14 @@ export class Publisher {
     );
   }
 
+  /**
+  * get Encoding declared for Publisher
+  *   
+  * @returns {Encoding}
+  */
+  encoding(): Encoding {
+    return this._encoding;
+  }
 
   /**
   * get Priority declared for Publisher
@@ -265,15 +276,16 @@ export class Publisher {
     remote_publisher: RemotePublisher,
     congestion_control: CongestionControl,
     priority: Priority,
-    reliability: Reliability
-
+    reliability: Reliability,
+    encoding:Encoding, 
   ): Publisher {
     return new Publisher(
       remote_publisher,
       key_expr,
       congestion_control,
       priority,
-      reliability
+      reliability,
+      encoding
     );
   }
 }

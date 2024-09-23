@@ -71,7 +71,6 @@ pub(crate) async fn handle_control_message(
             payload,
             attachment,
         } => {
-            println!("Recieved Get {:?}", key_expr);
             let selector = Selector::owned(key_expr, parameters.unwrap_or_default());
             let mut get_builder = state_map.session.get(selector);
 

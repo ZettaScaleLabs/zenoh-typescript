@@ -48,9 +48,9 @@ export class Queryable {
   async receive(): Promise<Query | void> {
 
     if (this._callback_queryable === true) {
-        let message = "Cannot call `receive()` on Subscriber created with callback:";
-        console.log(message);
-        return
+      let message = "Cannot call `receive()` on Subscriber created with callback:";
+      console.log(message);
+      return
     }
 
     // QueryWS -> Query
@@ -74,7 +74,7 @@ export class Queryable {
     Queryable.registry.unregister(this);
   }
 
-  static async new(remote_queryable: RemoteQueryable, callback_queryable: boolean): Promise<Queryable> {
+  static new(remote_queryable: RemoteQueryable, callback_queryable: boolean): Queryable {
     return new Queryable(remote_queryable, callback_queryable);
   }
 }
@@ -386,15 +386,15 @@ export class Parameters {
       if (p.length != 0) {
         for (const pair of p.split(";") || []) {
           const [key, value] = pair.split("=");
-          params.set(key, value);
+          if (key != undefined && value != undefined) {
+            params.set(key, value);
+          }
         }
       }
       return new Parameters(params);
     }
   }
 }
-
-
 
 export class ReplyError {
   private _payload: ZBytes;
@@ -495,6 +495,10 @@ export class Selector {
     } else {
       return this._parameters;
     }
+  }
+
+  toString(): string {
+    return this._key_expr.toString + "?" + this._parameters?.toString()
   }
 
   private constructor(keyexpr: KeyExpr, parameters?: Parameters) {

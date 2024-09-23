@@ -3,7 +3,7 @@ import { deserialize_string } from "../../../dist/z_bytes";
 import "./style.css";
 import "./webpage.ts";
 
-import { Sample, Config, Subscriber, Session } from "@ZettaScaleLabs/zenoh-ts";
+import { Sample, Config, Subscriber, Session, KeyExpr } from "@ZettaScaleLabs/zenoh-ts";
 
 export async function main_sub() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
@@ -17,9 +17,11 @@ export async function main_sub() {
     );
   };
 
+  let key_expr = KeyExpr.new("demo/example/zenoh-ts-sub");
+  console.log("Declare Subscriber ", key_expr.toString());
   // Callback Subscriber take a callback which will be called upon every sample received.
   let callback_subscriber: Subscriber = await session.declare_subscriber(
-    "demo/pub",
+    key_expr,
     callback,
   );
 
@@ -30,7 +32,7 @@ export async function main_sub() {
   // Poll Subscribers will only consume data on calls to receieve()
   // This means that interally the FIFO queue will fill up to the point that new values will be dropped
   // The dropping of these values occurs in the Remote-API Plugin
-  let poll_subscriber: Subscriber = await session.declare_subscriber("demo/pub", new RingChannel(10));
+  let poll_subscriber: Subscriber = await session.declare_subscriber("demo/example/zenoh-ts-sub", new RingChannel(10));
   let sample = await poll_subscriber.receive();
   while (sample != undefined) {
     console.log!(

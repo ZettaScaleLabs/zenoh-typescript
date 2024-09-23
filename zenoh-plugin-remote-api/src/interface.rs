@@ -184,19 +184,22 @@ pub enum ControlMsg {
         encoding: Option<String>,
         #[serde(
             deserialize_with = "deserialize_congestion_control",
-            serialize_with = "serialize_congestion_control"
+            serialize_with = "serialize_congestion_control",
+            default
         )]
         #[ts(type = "number | undefined")]
         congestion_control: Option<CongestionControl>,
         #[serde(
             deserialize_with = "deserialize_priority",
-            serialize_with = "serialize_priority"
+            serialize_with = "serialize_priority",
+            default
         )]
         #[ts(type = "number | undefined")]
         priority: Option<Priority>,
         #[serde(
             deserialize_with = "deserialize_reliability",
-            serialize_with = "serialize_reliability"
+            serialize_with = "serialize_reliability",
+            default,
         )]
         #[ts(type = "number | undefined")]
         reliability: Option<Reliability>,

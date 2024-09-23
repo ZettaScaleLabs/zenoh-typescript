@@ -427,17 +427,14 @@ impl RunningPluginTrait for RunningPlugin {
     }
 }
 
-//
 type StateMap = Arc<RwLock<HashMap<SocketAddr, RemoteState>>>;
-// Sender
+
 struct RemoteState {
     websocket_tx: Sender<RemoteAPIMsg>,
     session_id: Uuid,
     session: Session,
-    // key_expr: HashSet<KeyExpr<'static>>,
     // PubSub
     subscribers: HashMap<Uuid, (JoinHandle<()>, OwnedKeyExpr)>,
-    // subscribers: HashMap<Uuid, Subscriber<'static, ()>>,
     publishers: HashMap<Uuid, Publisher<'static>>,
     // Queryable
     queryables: HashMap<Uuid, (Queryable<()>, OwnedKeyExpr)>,
@@ -628,8 +625,8 @@ async fn handle_message(
             },
             Err(err) => {
                 tracing::error!(
-                    "RemoteAPI: WS Message Cannot be Deserialized to RemoteAPIMsg {}",
-                    err
+                    "RemoteAPI: WS Message Cannot be Deserialized to RemoteAPIMsg {}, message: {}",
+                    err, text
                 );
             }
         },
