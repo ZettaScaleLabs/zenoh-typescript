@@ -1,8 +1,7 @@
-import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
-import { Sample, Config, Subscriber, Session } from "@ZettaScaleLabs/zenoh-ts";
+import { FifoChannel, Sample, Config, Subscriber, Session } from "@ZettaScaleLabs/zenoh-ts";
 
 interface Deserialize<T> {
   deserialize(buffer: Uint8Array): T
@@ -19,23 +18,23 @@ export class ArrayTDeserilaizer<T extends Deserialize<T>> implements Deserialize
 
   deserialize(buffer: Uint8Array): Array<T> {
 
-    if (buffer.length ==0){
+    if (buffer.length == 0) {
       return new Array()
     }
 
-    function read_length(buffer: Uint8Array){
-      if (buffer.length == 0){
+    function read_length(buffer: Uint8Array) {
+      if (buffer.length == 0) {
         return 0;
       }
       let b = buffer[0];
-      buffer = buffer.subarray(1,buffer.length)
+      buffer = buffer.subarray(1, buffer.length)
       let v = 0;
       let i = 0;
       let VLE_LEN_MAX = 9;
-      while( (b & 128) != 0  && i !=7 *(VLE_LEN_MAX - 1)){
-        v = v | (b &127) << i;
+      while ((b & 128) != 0 && i != 7 * (VLE_LEN_MAX - 1)) {
+        v = v | (b & 127) << i;
         b = buffer[0];
-        buffer = buffer.subarray(1,buffer.length)
+        buffer = buffer.subarray(1, buffer.length)
         i += 7;
       }
       v |= (b) << i;
@@ -44,7 +43,7 @@ export class ArrayTDeserilaizer<T extends Deserialize<T>> implements Deserialize
 
     let r_length = read_length(buffer);
 
-    console.log("length to read",r_length);
+    console.log("length to read", r_length);
 
     // let empty = false;
     // while(empty){
@@ -56,19 +55,19 @@ export class ArrayTDeserilaizer<T extends Deserialize<T>> implements Deserialize
   }
 }
 
-function read_length(buffer: Uint8Array){
-  if (buffer.length == 0){
+function read_length(buffer: Uint8Array) {
+  if (buffer.length == 0) {
     return 0;
   }
   let b = buffer[0];
-  buffer = buffer.subarray(1,buffer.length)
+  buffer = buffer.subarray(1, buffer.length)
   let v = 0;
   let i = 0;
   let VLE_LEN_MAX = 9;
-  while( (b & 128) != 0  && i !=7 *(VLE_LEN_MAX - 1)){
-    v = v | (b &127) << i;
+  while ((b & 128) != 0 && i != 7 * (VLE_LEN_MAX - 1)) {
+    v = v | (b & 127) << i;
     b = buffer[0];
-    buffer = buffer.subarray(1,buffer.length)
+    buffer = buffer.subarray(1, buffer.length)
     i += 7;
   }
   v |= (b) << i;
@@ -95,7 +94,7 @@ export async function main_sub_test() {
       let bytes = value2.payload().payload();
       console.log(bytes)
       let r_length = read_length(bytes);
-      console.log("length to read",r_length);
+      console.log("length to read", r_length);
       console.log(bytes)
 
     }

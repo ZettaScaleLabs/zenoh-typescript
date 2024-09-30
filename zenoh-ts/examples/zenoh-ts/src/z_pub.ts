@@ -1,8 +1,7 @@
-import { Priority, Reliability } from "../../../dist/sample";
 import "./style.css";
 import "./webpage.ts";
 
-import { Encoding, CongestionControl, Config, KeyExpr, Publisher, Session } from "@ZettaScaleLabs/zenoh-ts";
+import { Priority, Reliability, Encoding, CongestionControl, Config, KeyExpr, Publisher, Session } from "@ZettaScaleLabs/zenoh-ts";
 
 export async function main_pub() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));

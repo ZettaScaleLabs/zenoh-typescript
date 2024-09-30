@@ -12,7 +12,7 @@ export async function main_queryable() {
 
   // Declaring a queryable with a callback
   function callback(query: Query) {
-    let zbytes: ZBytes | null = query.payload();
+    let zbytes: ZBytes | undefined = query.payload();
 
     if (zbytes == null) {
       console.log!(`>> [Queryable ] Received Query ${query.selector()}`);
@@ -44,7 +44,7 @@ export async function main_queryable() {
   let query = await queryable.receive();
   while (query instanceof Query) {
 
-    let zbytes: ZBytes | null = query.payload();
+    let zbytes: ZBytes | undefined = query.payload();
 
     if (zbytes == null) {
       console.log!(`>> [Queryable ] Received Query ${query.selector().toString()}`);

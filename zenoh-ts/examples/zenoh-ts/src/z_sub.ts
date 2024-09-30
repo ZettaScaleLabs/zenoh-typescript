@@ -1,9 +1,9 @@
-import { RingChannel } from "../../../dist/pubsub";
-import { deserialize_string } from "../../../dist/z_bytes";
 import "./style.css";
 import "./webpage.ts";
 
-import { Sample, Config, Subscriber, Session, KeyExpr } from "@ZettaScaleLabs/zenoh-ts";
+import {
+  RingChannel, deserialize_string, Sample, Config, Subscriber, Session, KeyExpr
+} from "@ZettaScaleLabs/zenoh-ts";
 
 export async function main_sub() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));

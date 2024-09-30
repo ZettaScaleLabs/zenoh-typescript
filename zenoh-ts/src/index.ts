@@ -14,9 +14,9 @@
 
 // API Layer Files
 import { KeyExpr, IntoKeyExpr } from "./key_expr";
-import { ZBytes, IntoZBytes } from "./z_bytes";
+import { ZBytes, IntoZBytes, deserialize_bool, deserialize_uint, deserialize_int, deserialize_float, deserialize_string } from "./z_bytes";
 import { CongestionControl, ConsolidationMode, Priority, Reliability, Sample, SampleKind } from "./sample";
-import { Publisher, Subscriber } from "./pubsub";
+import { Publisher, Subscriber, FifoChannel, RingChannel } from "./pubsub";
 import { IntoSelector, Parameters, IntoParameters, Query, Queryable, Reply, ReplyError, Selector } from "./query";
 import { Session, RecvErr, Receiver, DeleteOpts, PutOpts, GetOptions, QueryableOpts, PublisherOptions } from "./session";
 import { Config } from "./config";
@@ -24,9 +24,9 @@ import { Encoding, IntoEncoding } from "./encoding";
 
 // Exports
 export { KeyExpr, IntoKeyExpr };
-export { ZBytes, IntoZBytes };
+export { ZBytes, IntoZBytes, deserialize_bool, deserialize_uint, deserialize_int, deserialize_float, deserialize_string };
 export { CongestionControl, ConsolidationMode, Priority, Reliability, Sample, SampleKind };
-export { Publisher, Subscriber };
+export { Publisher, Subscriber, FifoChannel, RingChannel };
 export { IntoSelector, Parameters, IntoParameters, Query, Queryable, Reply, ReplyError, Selector };
 export { Session, RecvErr, Receiver, DeleteOpts, PutOpts, GetOptions, QueryableOpts, PublisherOptions };
 export { Config };
