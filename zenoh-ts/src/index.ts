@@ -15,20 +15,19 @@
 // API Layer Files
 import { KeyExpr, IntoKeyExpr } from "./key_expr";
 import { ZBytes, IntoZBytes } from "./z_bytes";
-import { CongestionControl, Sample } from "./sample";
+import { CongestionControl, ConsolidationMode, Priority, Reliability, Sample, SampleKind } from "./sample";
 import { Publisher, Subscriber } from "./pubsub";
-import { IntoSelector, Parameters, Query, Queryable, Reply, Selector } from "./query";
-import { Session, RecvErr, Receiver } from "./session";
+import { IntoSelector, Parameters, IntoParameters, Query, Queryable, Reply, ReplyError, Selector } from "./query";
+import { Session, RecvErr, Receiver, DeleteOpts, PutOpts, GetOptions, QueryableOpts, PublisherOptions } from "./session";
 import { Config } from "./config";
-import { Encoding } from "./encoding";
+import { Encoding, IntoEncoding } from "./encoding";
 
 // Exports
 export { KeyExpr, IntoKeyExpr };
 export { ZBytes, IntoZBytes };
-export { Sample };
+export { CongestionControl, ConsolidationMode, Priority, Reliability, Sample, SampleKind };
 export { Publisher, Subscriber };
-export { IntoSelector, Parameters, Query, Queryable, Reply, Selector };
+export { IntoSelector, Parameters, IntoParameters, Query, Queryable, Reply, ReplyError, Selector };
+export { Session, RecvErr, Receiver, DeleteOpts, PutOpts, GetOptions, QueryableOpts, PublisherOptions };
 export { Config };
-export { Session, Receiver, RecvErr };
-export { Encoding, CongestionControl };
-
+export { Encoding, IntoEncoding };

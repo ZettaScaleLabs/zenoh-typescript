@@ -32,8 +32,10 @@ use flume::Sender;
 use futures::{future, pin_mut, StreamExt, TryStreamExt};
 use interface::RemoteAPIMsg;
 use rustls_pemfile::{certs, private_key};
+use serde::Serialize;
 use tokio::{
     net::{TcpListener, TcpStream},
+    select,
     sync::RwLock,
     task::JoinHandle,
 };
@@ -49,9 +51,14 @@ use tokio_tungstenite::tungstenite::protocol::Message;
 use tracing::{debug, error};
 use uuid::Uuid;
 use zenoh::{
+    bytes::{Encoding, ZBytes},
     internal::{
         plugins::{RunningPluginTrait, ZenohPlugin},
         runtime::Runtime,
+    },
+    key_expr::{
+        format::{kedefine, keformat},
+        keyexpr, OwnedKeyExpr,
     },
     pubsub::Publisher,
     query::{Query, Queryable},
@@ -70,6 +77,14 @@ use crate::{
     handle_control_message::handle_control_message, handle_data_message::handle_data_message,
 };
 
+kedefine!(
+    // Admin space key expressions of plugin's version
+    pub ke_admin_version: "${plugin_status_key:**}/__version__",
+
+    // Admin prefix of this bridge
+    pub ke_admin_prefix: "@/${zenoh_id:*}/remote-plugin/",
+);
+
 const WORKER_THREAD_NUM: usize = 2;
 const MAX_BLOCK_THREAD_NUM: usize = 50;
 const GIT_VERSION: &str = git_version::git_version!(prefix = "v", cargo_prefix = "v");
@@ -83,6 +98,33 @@ lazy_static::lazy_static! {
         .enable_all()
         .build()
         .expect("Unable to create runtime");
+    static ref KE_ANY_N_SEGMENT: &'static keyexpr =  unsafe { keyexpr::from_str_unchecked("**") };
+}
+
+// An reference used in admin space to point to a struct (DdsEntity or Route) stored in another map
+#[derive(Debug)]
+enum AdminRef {
+    Config,
+    Version,
+}
+
+#[inline(always)]
+pub(crate) fn spawn_runtime<F>(task: F) -> JoinHandle<F::Output>
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    // Check whether able to get the current runtime
+    match tokio::runtime::Handle::try_current() {
+        Ok(rt) => {
+            // Able to get the current runtime (standalone binary), use the current runtime
+            rt.spawn(task)
+        }
+        Err(_) => {
+            // Unable to get the current runtime (dynamic plugins), reuse the global runtime
+            TOKIO_RUNTIME.spawn(task)
+        }
+    }
 }
 
 pub fn spawn_future(fut: impl Future<Output = ()> + 'static + std::marker::Send) -> JoinHandle<()> {
@@ -105,13 +147,11 @@ fn load_key(path: &Path) -> io::Result<PrivateKeyDer<'static>> {
         ))
 }
 
-pub struct RemoteApiPlugin {}
+pub struct RemoteApiPlugin;
 
 #[cfg(feature = "dynamic_plugin")]
 zenoh_plugin_trait::declare_plugin!(RemoteApiPlugin);
-
 impl ZenohPlugin for RemoteApiPlugin {}
-
 impl Plugin for RemoteApiPlugin {
     type StartArgs = Runtime;
     type Instance = zenoh::internal::plugins::RunningPlugin;
@@ -138,58 +178,284 @@ impl Plugin for RemoteApiPlugin {
         let conf: Config = serde_json::from_value(plugin_conf.clone())
             .map_err(|e| zerror!("Plugin `{}` configuration error: {}", name, e))?;
 
-        let wss_config = match conf.secure_websocket {
-            Some(wss_config) => {
-                tracing::info!("Loading certs from : {} ...", wss_config.certificate_path);
-                let certs = load_certs(Path::new(&wss_config.certificate_path))
-                    .map_err(|err| zerror!("Could not Load Cert `{}`", err))?;
-                tracing::info!(
-                    "Loading Private Key from : {} ...",
-                    wss_config.private_key_path
-                );
-                let key = load_key(Path::new(&wss_config.private_key_path))
-                    .map_err(|err| zerror!("Could not Load Private Key `{}`", err))?;
-                Some((certs, key))
-            }
-            None => None,
-        };
+        let wss_config: Option<(Vec<CertificateDer<'_>>, PrivateKeyDer<'_>)> =
+            match conf.secure_websocket.clone() {
+                Some(wss_config) => {
+                    tracing::info!("Loading certs from : {} ...", wss_config.certificate_path);
+                    let certs = load_certs(Path::new(&wss_config.certificate_path))
+                        .map_err(|err| zerror!("Could not Load WSS Cert `{}`", err))?;
+                    tracing::info!(
+                        "Loading Private Key from : {} ...",
+                        wss_config.private_key_path
+                    );
+                    let key = load_key(Path::new(&wss_config.private_key_path))
+                        .map_err(|err| zerror!("Could not Load WSS Private Key `{}`", err))?;
+                    Some((certs, key))
+                }
+                None => None,
+            };
 
         let weak_runtime = Runtime::downgrade(runtime);
         if let Some(runtime) = weak_runtime.upgrade() {
-            // Create Map Of Websocket State
-            let hm: HashMap<SocketAddr, RemoteState> = HashMap::new();
-            let state_map = Arc::new(RwLock::new(hm));
+            spawn_runtime(run(runtime, conf, wss_config));
 
-            // Run WebServer
-            let runtime_cl = runtime.clone();
-            let state_map_cl = state_map.clone();
-
-            let join_handle =
-                run_websocket_server(conf.websocket_port, runtime_cl, state_map_cl, wss_config);
-
-            // Return WebServer And State
-            let running_plugin = _RunningPluginInner {
-                _zenoh_runtime: runtime,
-                _websocket_server: join_handle,
-                _state_map: state_map,
-            };
-            Ok(Box::new(RunningPlugin(running_plugin)))
+            Ok(Box::new(RunningPlugin(RemoteAPIPlugin)))
         } else {
             bail!("Cannot Get Zenoh Instance of Runtime !")
         }
     }
 }
 
-type StateMap = Arc<RwLock<HashMap<SocketAddr, RemoteState>>>;
+pub async fn run(
+    runtime: Runtime,
+    config: Config,
+    opt_certs: Option<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)>,
+) {
+    let hm: HashMap<SocketAddr, RemoteState> = HashMap::new();
+    let state_map = Arc::new(RwLock::new(hm));
 
-struct _RunningPluginInner {
-    _zenoh_runtime: Runtime,
-    _websocket_server: JoinHandle<()>,
-    _state_map: StateMap,
+    // Return WebServer And State
+    let remote_api_runtime = RemoteAPIRuntime {
+        config: Arc::new(config),
+        wss_certs: opt_certs,
+        zenoh_runtime: runtime,
+        state_map,
+    };
+
+    remote_api_runtime.run().await;
 }
 
+struct RemoteAPIRuntime {
+    config: Arc<Config>,
+    wss_certs: Option<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)>,
+    zenoh_runtime: Runtime,
+    state_map: StateMap,
+}
+
+impl RemoteAPIRuntime {
+    async fn run(self) {
+        let run_websocket_server = run_websocket_server(
+            &self.config.websocket_port,
+            self.zenoh_runtime.clone(),
+            self.state_map.clone(),
+            self.wss_certs,
+        );
+
+        let config = (*self.config).clone();
+
+        let run_admin_space_queryable =
+            run_admin_space_queryable(self.zenoh_runtime.clone(), self.state_map.clone(), config);
+
+        select!(
+            _ = run_websocket_server => {},
+            _ = run_admin_space_queryable => {},
+        );
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct AdminSpaceClient {
+    uuid: String,
+    remote_address: SocketAddr,
+    publishers: Vec<String>,
+    subscribers: Vec<String>,
+    queryables: Vec<String>,
+}
+
+impl From<(&SocketAddr, &RemoteState)> for AdminSpaceClient {
+    fn from(value: (&SocketAddr, &RemoteState)) -> Self {
+        let remote_state = value.1;
+        let sock_addr = value.0;
+
+        let pub_keyexprs = remote_state
+            .publishers
+            .values()
+            .map(|x| x.key_expr().to_string())
+            .collect::<Vec<String>>();
+
+        let query_keyexprs = remote_state
+            .queryables
+            .values()
+            .map(|(_, key_expr)| key_expr.to_string())
+            .collect::<Vec<String>>();
+
+        let sub_keyexprs = remote_state
+            .subscribers
+            .values()
+            .map(|(_, key_expr)| key_expr.to_string())
+            .collect::<Vec<String>>();
+
+        AdminSpaceClient {
+            uuid: remote_state.session_id.to_string(),
+            remote_address: sock_addr.clone(),
+            publishers: pub_keyexprs,
+            subscribers: sub_keyexprs,
+            queryables: query_keyexprs,
+        }
+    }
+}
+
+async fn run_admin_space_queryable(zenoh_runtime: Runtime, state_map: StateMap, config: Config) {
+    let session = match zenoh::session::init(zenoh_runtime.clone()).await {
+        Ok(session) => session,
+        Err(err) => {
+            tracing::error!("Unable to get Zenoh session from Runtime {err}");
+            return;
+        }
+    };
+
+    let admin_prefix = keformat!(
+        ke_admin_prefix::formatter(),
+        zenoh_id = session.zid().into_keyexpr()
+    )
+    .unwrap();
+
+    let mut admin_space: HashMap<OwnedKeyExpr, AdminRef> = HashMap::new();
+
+    admin_space.insert(
+        &admin_prefix / unsafe { keyexpr::from_str_unchecked("config") },
+        AdminRef::Config,
+    );
+    admin_space.insert(
+        &admin_prefix / unsafe { keyexpr::from_str_unchecked("version") },
+        AdminRef::Version,
+    );
+
+    let admin_keyexpr_expr = (&admin_prefix) / *KE_ANY_N_SEGMENT;
+
+    let admin_queryable = session
+        .declare_queryable(admin_keyexpr_expr)
+        .await
+        .expect("Failed fo create AdminSpace Queryable");
+
+    loop {
+        match admin_queryable.recv_async().await {
+            Ok(query) => {
+                let query_ke: OwnedKeyExpr = query.key_expr().to_owned().into();
+
+                if query_ke.is_wild() {
+                    if query_ke.contains("clients") {
+                        let read_guard = state_map.read().await;
+                        let mut admin_space_clients = Vec::new();
+                        for (sock, remote_state) in read_guard.iter() {
+                            admin_space_clients.push(AdminSpaceClient::from((sock, remote_state)));
+                        }
+                        send_reply(admin_space_clients, query, query_ke).await;
+                    } else {
+                        for (ke, admin_ref) in admin_space.iter() {
+                            if query_ke.intersects(ke) {
+                                send_admin_reply(&query, ke, admin_ref, &config).await;
+                            }
+                        }
+                    }
+                } else {
+                    let own_ke: OwnedKeyExpr = query_ke.to_owned().into();
+                    if own_ke.contains("config") {
+                        send_admin_reply(&query, &own_ke, &AdminRef::Config, &config).await;
+                    }
+                    if own_ke.contains("client") {
+                        let mut opt_id = None;
+                        let split = own_ke.split("/");
+                        let mut next_is_id = false;
+                        for elem in split {
+                            if next_is_id {
+                                opt_id = Some(elem);
+                            } else if elem.contains("client") {
+                                next_is_id = true;
+                            }
+                        }
+                        if let Some(id) = opt_id {
+                            let read_guard = state_map.read().await;
+                            for (sock, remote_state) in read_guard.iter() {
+                                if remote_state.session_id.to_string() == id {
+                                    send_reply(
+                                        AdminSpaceClient::from((sock, remote_state)),
+                                        query,
+                                        own_ke,
+                                    )
+                                    .await;
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                tracing::warn!("Admin Space queryable was closed!");
+            }
+        }
+    }
+}
+
+async fn send_reply<T>(reply: T, query: Query, query_ke: OwnedKeyExpr)
+where
+    T: Sized + Serialize,
+{
+    match serde_json::to_string_pretty(&reply) {
+        Ok(json_string) => {
+            if let Err(err) = query
+                .reply(query_ke, json_string)
+                .encoding(Encoding::APPLICATION_JSON)
+                .await
+            {
+                error!("AdminSpace: Reply to Query failed, {}", err);
+            };
+        }
+        Err(_) => {
+            error!("AdminSpace: Could not seralize client data");
+        }
+    };
+}
+
+async fn send_admin_reply(
+    query: &Query,
+    key_expr: &keyexpr,
+    admin_ref: &AdminRef,
+    config: &Config,
+) {
+    let z_bytes: ZBytes = match admin_ref {
+        AdminRef::Version => match serde_json::to_value(RemoteApiPlugin::PLUGIN_LONG_VERSION) {
+            Ok(v) => match ZBytes::try_from(v) {
+                Ok(value) => value,
+                Err(e) => {
+                    tracing::warn!("Error transforming JSON to ZBytes: {}", e);
+                    return;
+                }
+            },
+            Err(e) => {
+                tracing::error!("INTERNAL ERROR serializing config as JSON: {}", e);
+                return;
+            }
+        },
+        AdminRef::Config => match serde_json::to_value(config) {
+            Ok(v) => match ZBytes::try_from(v) {
+                Ok(value) => value,
+                Err(e) => {
+                    tracing::warn!("Error transforming JSON to ZBytes: {}", e);
+                    return;
+                }
+            },
+            Err(e) => {
+                tracing::error!("INTERNAL ERROR serializing config as JSON: {}", e);
+                return;
+            }
+        },
+    };
+    if let Err(e) = query
+        .reply(key_expr.to_owned(), z_bytes)
+        .encoding(zenoh::bytes::Encoding::APPLICATION_JSON)
+        .await
+    {
+        tracing::warn!("Error replying to admin query {:?}: {}", query, e);
+    }
+}
+
+struct RemoteAPIPlugin;
+
 #[allow(dead_code)]
-struct RunningPlugin(_RunningPluginInner);
+struct RunningPlugin(RemoteAPIPlugin);
 
 impl PluginControl for RunningPlugin {}
 
@@ -204,19 +470,54 @@ impl RunningPluginTrait for RunningPlugin {
     }
 }
 
-// Sender
+type StateMap = Arc<RwLock<HashMap<SocketAddr, RemoteState>>>;
+
 struct RemoteState {
     websocket_tx: Sender<RemoteAPIMsg>,
     session_id: Uuid,
-    session: Arc<Session>,
-    // key_expr: HashSet<KeyExpr<'static>>,
+    session: Session,
     // PubSub
-    subscribers: HashMap<Uuid, JoinHandle<()>>,
-    // subscribers: HashMap<Uuid, Subscriber<'static, ()>>,
+    subscribers: HashMap<Uuid, (JoinHandle<()>, OwnedKeyExpr)>,
     publishers: HashMap<Uuid, Publisher<'static>>,
     // Queryable
-    queryables: HashMap<Uuid, Queryable<'static, ()>>,
+    queryables: HashMap<Uuid, (Queryable<()>, OwnedKeyExpr)>,
     unanswered_queries: Arc<std::sync::RwLock<HashMap<Uuid, Query>>>,
+}
+
+impl RemoteState {
+    fn new(websocket_tx: Sender<RemoteAPIMsg>, session_id: Uuid, session: Session) -> Self {
+        Self {
+            websocket_tx,
+            session_id,
+            session,
+            subscribers: HashMap::new(),
+            publishers: HashMap::new(),
+            queryables: HashMap::new(),
+            unanswered_queries: Arc::new(std::sync::RwLock::new(HashMap::new())),
+        }
+    }
+
+    async fn cleanup(self) {
+        for (_, publisher) in self.publishers {
+            if let Err(e) = publisher.undeclare().await {
+                error!("{e}")
+            }
+        }
+        for (_, (subscriber, _)) in self.subscribers {
+            subscriber.abort();
+        }
+
+        for (_, (queryable, _)) in self.queryables {
+            if let Err(e) = queryable.undeclare().await {
+                error!("{e}")
+            }
+        }
+        drop(self.unanswered_queries);
+
+        if let Err(err) = self.session.close().await {
+            error!("{err}")
+        };
+    }
 }
 
 pub trait Streamable:
@@ -227,12 +528,12 @@ impl Streamable for TcpStream {}
 impl Streamable for TlsStream<TcpStream> {}
 
 // Listen on the Zenoh Session
-fn run_websocket_server(
-    ws_port: String,
+async fn run_websocket_server(
+    ws_port: &String,
     zenoh_runtime: Runtime,
     state_map: StateMap,
     opt_certs: Option<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)>,
-) -> JoinHandle<()> {
+) {
     let mut opt_tls_acceptor: Option<TlsAcceptor> = None;
 
     if let Some((certs, key)) = opt_certs {
@@ -244,43 +545,40 @@ fn run_websocket_server(
         opt_tls_acceptor = Some(TlsAcceptor::from(Arc::new(config)));
     }
 
-    let websocket_server_future = async move {
-        tracing::info!("Spawning Remote API Plugin on {:?}", ws_port);
+    tracing::info!("Spawning Remote API Plugin on {:?}", ws_port);
 
-        let tcp = TcpListener::bind(ws_port).await;
+    let tcp = TcpListener::bind(ws_port).await;
 
-        let server: TcpListener = match tcp {
-            Ok(x) => x,
-            Err(err) => {
-                tracing::error!("Unable to start TcpListener {err}");
-                return;
-            }
-        };
+    let server: TcpListener = match tcp {
+        Ok(x) => x,
+        Err(err) => {
+            tracing::error!("Unable to start TcpListener {err}");
+            return;
+        }
+    };
 
-        while let Ok((tcp_stream, sock_addr)) = server.accept().await {
-            println!("raw {sock_addr:?}");
+    while let Ok((tcp_stream, sock_addr)) = server.accept().await {
+        let state_map = state_map.clone();
+        let zenoh_runtime = zenoh_runtime.clone();
+        let opt_tls_acceptor = opt_tls_acceptor.clone();
+
+        let new_websocket = async move {
             let sock_adress = Arc::new(sock_addr);
             let (ws_ch_tx, ws_ch_rx) = flume::unbounded::<RemoteAPIMsg>();
 
             let mut write_guard = state_map.write().await;
 
             let session = match zenoh::session::init(zenoh_runtime.clone()).await {
-                Ok(session) => session.into_arc(),
+                Ok(session) => session,
                 Err(err) => {
                     tracing::error!("Unable to get Zenoh session from Runtime {err}");
-                    continue;
+                    return;
                 }
             };
+            let id = Uuid::new_v4();
+            tracing::debug!("Client {sock_addr:?} -> {id}");
 
-            let state: RemoteState = RemoteState {
-                websocket_tx: ws_ch_tx.clone(),
-                session_id: Uuid::new_v4(),
-                session,
-                subscribers: HashMap::new(),
-                publishers: HashMap::new(),
-                queryables: HashMap::new(),
-                unanswered_queries: Arc::new(std::sync::RwLock::new(HashMap::new())),
-            };
+            let state: RemoteState = RemoteState::new(ws_ch_tx.clone(), id, session);
 
             // if remote state exists in map already. Ignore it and reinitialize
             let _ = write_guard.insert(sock_addr, state);
@@ -291,7 +589,7 @@ fn run_websocket_server(
                     Ok(tls_stream) => Box::new(tls_stream),
                     Err(err) => {
                         error!("Could not secure TcpStream -> TlsStream {:?}", err);
-                        continue;
+                        return;
                     }
                 },
                 None => Box::new(tcp_stream),
@@ -306,8 +604,7 @@ fn run_websocket_server(
             let ch_rx_stream = ws_ch_rx
                 .into_stream()
                 .map(|remote_api_msg| {
-                    // TODO: Take Care of unwrap.
-                    let val = serde_json::to_string(&remote_api_msg).unwrap();
+                    let val = serde_json::to_string(&remote_api_msg).unwrap(); // This unwrap should be alright
                     Ok(Message::Text(val))
                 })
                 .forward(ws_tx);
@@ -335,12 +632,16 @@ fn run_websocket_server(
             pin_mut!(ch_rx_stream, incoming_ws);
             future::select(ch_rx_stream, incoming_ws).await;
 
-            state_map.write().await.remove(sock_adress.as_ref());
-            tracing::info!("Disconnected {}", sock_adress.as_ref());
-        }
-    };
+            // cleanup state
+            if let Some(state) = state_map.write().await.remove(sock_adress.as_ref()) {
+                state.cleanup().await;
+            };
 
-    spawn_future(websocket_server_future)
+            tracing::info!("Client Disconnected {}", sock_adress.as_ref());
+        };
+
+        spawn_future(new_websocket);
+    }
 }
 
 async fn handle_message(
@@ -348,12 +649,10 @@ async fn handle_message(
     sock_addr: SocketAddr,
     state_map: StateMap,
 ) -> Option<RemoteAPIMsg> {
-    tracing::warn!("{msg}");
     match msg {
         Message::Text(text) => match serde_json::from_str::<RemoteAPIMsg>(&text) {
             Ok(msg) => match msg {
                 RemoteAPIMsg::Control(ctrl_msg) => {
-                    tracing::warn!("ctrl_msg {:?}", ctrl_msg);
                     match handle_control_message(ctrl_msg, sock_addr, state_map).await {
                         Ok(ok) => return ok.map(RemoteAPIMsg::Control),
                         Err(err) => {
@@ -369,8 +668,9 @@ async fn handle_message(
             },
             Err(err) => {
                 tracing::error!(
-                    "RemoteAPI: WS Message Cannot be Deserialized to RemoteAPIMsg {}",
-                    err
+                    "RemoteAPI: WS Message Cannot be Deserialized to RemoteAPIMsg {}, message: {}",
+                    err,
+                    text
                 );
             }
         },

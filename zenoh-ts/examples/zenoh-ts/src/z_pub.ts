@@ -1,3 +1,4 @@
+import { Priority, Reliability } from "../../../dist/sample";
 import "./style.css";
 import "./webpage.ts";
 
@@ -6,11 +7,16 @@ import { Encoding, CongestionControl, Config, KeyExpr, Publisher, Session } from
 export async function main_pub() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
-  let key_expr = KeyExpr.new("demo/ping");
-  let publisher: Publisher = await session.declare_publisher(
+  let key_expr = KeyExpr.new("demo/example/zenoh-ts-pub");
+  let publisher: Publisher = session.declare_publisher(
     key_expr,
-    Encoding.default(),
-    CongestionControl.BLOCK,
+    {
+      encoding: Encoding.default(),
+      congestion_control: CongestionControl.BLOCK,
+      priority: Priority.DATA,
+      express: true,
+      reliability: Reliability.RELIABLE
+    }
   );
 
   const payload = [122, 101, 110, 111, 104];
@@ -20,8 +26,9 @@ export async function main_pub() {
 
     console.log("Block statement execution no : " + idx);
     console.log(`Putting Data ('${key_expr}': '${buf}')...`);
-    publisher.put(buf);
-    sleep(1000);
+    publisher.put(buf, Encoding.TEXT_PLAIN, "attachment");
+    await sleep(1000);
+
   }
 }
 

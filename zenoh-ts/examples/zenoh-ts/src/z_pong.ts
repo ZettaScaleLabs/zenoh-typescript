@@ -1,4 +1,3 @@
-import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
@@ -9,15 +8,17 @@ export async function main_pong() {
 
   let pub = await session.declare_publisher(
     "test/ping",
-    Encoding.default(),
-    CongestionControl.BLOCK,
+    {
+      encoding: Encoding.default(),
+      congestion_control: CongestionControl.BLOCK
+    },
   );
 
   const subscriber_callback = async function (sample: Sample): Promise<void> {
     await pub.put(sample.payload());
   };
 
-  await session.declare_subscriber("test/pong", new FifoChannel(256), subscriber_callback);
+  await session.declare_subscriber("test/pong", subscriber_callback);
 
   let count = 0;
   while (true) {

@@ -1,7 +1,7 @@
 use std::{error::Error, net::SocketAddr};
 
 use tracing::{error, warn};
-use zenoh::{bytes::EncodingBuilderTrait, query::Query, sample::SampleBuilderTrait};
+use zenoh::query::Query;
 
 use crate::{
     interface::{DataMsg, QueryReplyVariant, QueryableMsg},

@@ -4,5 +4,5 @@ import { Config, Session } from "@ZettaScaleLabs/zenoh-ts";
 
 export async function main_put() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
-  await session.put("demo/example/zenoh-ts-put", "Put from Typescript!");
+  session.put("demo/example/zenoh-ts-put", "Put from Typescript!");
 }

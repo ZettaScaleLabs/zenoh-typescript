@@ -3,11 +3,11 @@ import { OwnedKeyExprWrapper } from "./remote_api/interface/OwnedKeyExprWrapper"
 import { SampleKindWS } from "./remote_api/interface/SampleKindWS";
 import { SampleWS } from "./remote_api/interface/SampleWS";
 import { ZBytes } from "./z_bytes";
-import { Option } from "./session";
 import { Encoding } from "./encoding";
 
 /**
  * Kinds of Samples that can be received from Zenoh
+ * @enum
  */
 export enum SampleKind {
   PUT = "PUT",
@@ -15,25 +15,37 @@ export enum SampleKind {
 }
 
 /**
- * Congestion control for Publishers
+ * Congestion Control enum
+ * @enum
+ * @default CongestionControl.DROP
  */
 export enum CongestionControl {
   DROP = "DROP",
   BLOCK = "BLOCK",
 }
 
+/**
+ * The kind of consolidation to apply to a query.
+ * @enum
+ * @default ConsolidationMode.Auto
+ */
 export enum ConsolidationMode {
   Auto,
+  /**
+   * No consolidation applied: multiple samples may be received for the same key-timestamp.
+   */
   None,
+
   Monotonic,
   Latest,
 }
 
 /**
  * Convenience function to convert between Congestion function and int
+ * @internal
  */
 export function consolidation_mode_to_int(
-  congestion_control: ConsolidationMode,
+  congestion_control?: ConsolidationMode,
 ): number {
   switch (congestion_control) {
     case ConsolidationMode.Auto:
@@ -45,16 +57,16 @@ export function consolidation_mode_to_int(
     case ConsolidationMode.Latest:
       return 3
     default:
-      console.log("Unknown ConsolidationMode Variant, default to Auto");
       return 0;
   }
 }
 
 /**
  * Convenience function to convert between Congestion function and int
+ * @internal
  */
 export function congestion_control_from_int(
-  prio_u8: number,
+  prio_u8?: number,
 ): CongestionControl {
   switch (prio_u8) {
     case 0:
@@ -62,27 +74,30 @@ export function congestion_control_from_int(
     case 1:
       return CongestionControl.BLOCK;
     default:
-      console.log("Unknown CongestionControl Variant, default to DROP");
       return CongestionControl.DROP;
   }
 }
 
 /**
  * Convenience function to convert between Congestion function and int
+ * @internal
  */
 export function congestion_control_to_int(
-  congestion_control: CongestionControl,
+  congestion_control?: CongestionControl,
 ): number {
   switch (congestion_control) {
     case CongestionControl.DROP:
       return 0;
     case CongestionControl.BLOCK:
       return 1;
+    default:
+      return 0;
   }
 }
 
 /**
- * Priority enum for Publisher
+ * Priority enum
+ * @default Priority.Data
  */
 export enum Priority {
   REAL_TIME = "REAL_TIME",
@@ -96,6 +111,7 @@ export enum Priority {
 
 /**
  * Convenience function to convert between Priority function and int
+ * @internal
  */
 export function priority_from_int(prio_u8: number): Priority {
   switch (prio_u8) {
@@ -121,8 +137,9 @@ export function priority_from_int(prio_u8: number): Priority {
 
 /**
  * Convenience function to convert between Priority function and int
+ * @internal
  */
-export function priority_to_int(prio: Priority): number {
+export function priority_to_int(prio?: Priority): number {
   switch (prio) {
     case Priority.REAL_TIME:
       return 1;
@@ -138,11 +155,38 @@ export function priority_to_int(prio: Priority): number {
       return 6;
     case Priority.BACKGROUND:
       return 7;
+    default:
+      // Default is Priority.DATA
+      return 5;
+  }
+}
+
+/**
+ * Reliability Enum 
+ * @default Reliability.RELIABLE
+ */
+export enum Reliability {
+  RELIABLE = "RELIABLE",
+  BEST_EFFORT = "BEST_EFFORT",
+}
+
+/**
+ * @internal
+ */
+export function reliability_to_int(reliability: Reliability) {
+  switch (reliability) {
+    case Reliability.RELIABLE:
+      return 0
+    case Reliability.BEST_EFFORT:
+      return 1
+    default:
+      return 0;
   }
 }
 
 /**
  * Sample class receieved from Subscriber
+ * 
  */
 export class Sample {
   private _keyexpr: KeyExpr;
@@ -150,10 +194,10 @@ export class Sample {
   private _kind: SampleKind;
   private _encoding: Encoding;
   private _priority: Priority;
-  private _timestamp: Option<string>;
+  private _timestamp: string | undefined;
   private _congestion_control: CongestionControl;
   private _express: boolean;
-  private _attachment: Option<ZBytes>;
+  private _attachment: ZBytes | undefined;
 
   keyexpr(): KeyExpr {
     return this._keyexpr;
@@ -167,7 +211,7 @@ export class Sample {
   encoding(): Encoding {
     return this._encoding;
   }
-  timestamp(): Option<string> {
+  timestamp(): string | undefined {
     return this._timestamp;
   }
   congestion_control(): CongestionControl {
@@ -179,7 +223,7 @@ export class Sample {
   express(): boolean {
     return this._express;
   }
-  attachment(): Option<ZBytes> {
+  attachment(): ZBytes | undefined {
     return this._attachment;
   }
 
@@ -189,10 +233,10 @@ export class Sample {
     kind: SampleKind,
     encoding: Encoding,
     priority: Priority,
-    timestamp: Option<string>,
+    timestamp: string | undefined,
     congestion_control: CongestionControl,
     express: boolean,
-    attachment: Option<ZBytes>,
+    attachment: ZBytes | undefined,
   ) {
     this._keyexpr = keyexpr;
     this._payload = payload;
@@ -211,10 +255,10 @@ export class Sample {
     kind: SampleKind,
     encoding: Encoding,
     priority: Priority,
-    timestamp: Option<string>,
+    timestamp: string | undefined,
     congestion_control: CongestionControl,
     express: boolean,
-    attachment: Option<ZBytes>,
+    attachment: ZBytes | undefined,
   ): Sample {
     return new Sample(
       key_expr,
@@ -254,12 +298,12 @@ export function Sample_from_SampleWS(sample_ws: SampleWS) {
     sample_ws.congestion_control,
   );
 
-  let timestamp: string | null = sample_ws.timestamp;
+  let timestamp: string | undefined = sample_ws.timestamp as string | undefined;
 
   let express: boolean = sample_ws.express;
 
-  let attachment = null;
-  if (sample_ws.attachement != null) {
+  let attachment = undefined;
+  if (sample_ws.attachement != undefined) {
     attachment = ZBytes.new(sample_ws.attachement);
   }
 
@@ -285,7 +329,7 @@ export function SampleWS_from_Sample(
   priority: Priority,
   congestion_control: CongestionControl,
   express: boolean,
-  attachement: Option<ZBytes>,
+  attachement: ZBytes | undefined,
 ): SampleWS {
   let key_expr: OwnedKeyExprWrapper = sample.keyexpr().toString();
   let value: Array<number> = Array.from(sample.payload().payload());

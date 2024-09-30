@@ -1,3 +1,4 @@
+import { FifoChannel } from "../../../dist/pubsub";
 import "./style.css";
 import "./webpage.ts";
 
@@ -6,11 +7,13 @@ import { Encoding, CongestionControl, Config, Session } from "@ZettaScaleLabs/ze
 export async function main_ping() {
   const session = await Session.open(Config.new("ws/127.0.0.1:10000"));
 
-  let sub = await session.declare_subscriber("test/pong");
-  let pub = await session.declare_publisher(
+  let sub = await session.declare_subscriber("test/pong", new FifoChannel(256));
+  let pub = session.declare_publisher(
     "test/ping",
-    Encoding.default(),
-    CongestionControl.BLOCK,
+    {
+      encoding: Encoding.default(),
+      congestion_control: CongestionControl.BLOCK
+    },
   );
 
   // Warm up
@@ -20,7 +23,7 @@ export async function main_ping() {
   let data = [122, 101, 110, 111, 104];
 
   while (elapsed(startTime) < 5) {
-    await pub.put(data);
+    pub.put(data);
     await sub.receive();
   }
 
@@ -28,7 +31,7 @@ export async function main_ping() {
   let samples_out = [];
   for (let i = 0; i < samples; i++) {
     let write_time = new Date();
-    await pub.put(data);
+    pub.put(data);
     await sub.receive();
     samples_out.push(elapsed_ms(write_time));
   }

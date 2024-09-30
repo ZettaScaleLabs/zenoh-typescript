@@ -3,13 +3,9 @@ use std::{error::Error, net::SocketAddr};
 use tracing::{error, warn};
 use uuid::Uuid;
 use zenoh::{
-    bytes::EncodingBuilderTrait,
     handlers::{FifoChannel, RingChannel},
     key_expr::KeyExpr,
-    qos::QoSBuilderTrait,
     query::Selector,
-    sample::SampleBuilderTrait,
-    session::SessionDeclarations,
 };
 
 use crate::{
@@ -19,6 +15,13 @@ use crate::{
     spawn_future, StateMap,
 };
 
+///
+/// Macro to replace the pattern of adding to builders if a field exists
+/// i.e. add_if_some!(consolidation, get_builder);
+/// expands to
+/// if Some(consolidation) = consolidation{
+///     get_builder = get_builder.consolidation(consolidation);
+/// }
 macro_rules! add_if_some {
     ($x:ident, $y:ident) => {
         if let Some($x) = $x {
@@ -27,7 +30,8 @@ macro_rules! add_if_some {
     };
 }
 
-pub async fn handle_control_message(
+/// Function to handle control messages recieved from the client to Plugin
+pub(crate) async fn handle_control_message(
     ctrl_msg: ControlMsg,
     sock_addr: SocketAddr,
     state_map: StateMap,
@@ -49,7 +53,7 @@ pub async fn handle_control_message(
         }
         ControlMsg::CloseSession => {
             if let Some(state_map) = state_writer.remove(&sock_addr) {
-                drop(state_map);
+                state_map.cleanup().await;
             } else {
                 warn!("State Map Does not contain SocketAddr");
             }
@@ -67,7 +71,6 @@ pub async fn handle_control_message(
             payload,
             attachment,
         } => {
-            println!("Recieved Get {:?}", key_expr);
             let selector = Selector::owned(key_expr, parameters.unwrap_or_default());
             let mut get_builder = state_map.session.get(selector);
 
@@ -152,11 +155,11 @@ pub async fn handle_control_message(
         }
         // SUBSCRIBER
         ControlMsg::DeclareSubscriber {
-            key_expr: key_expr_str,
+            key_expr: owned_key_expr,
             handler,
             id: subscriber_uuid,
         } => {
-            let key_expr = KeyExpr::new(key_expr_str).unwrap();
+            let key_expr = KeyExpr::new(owned_key_expr.clone()).unwrap();
             let ch_tx = state_map.websocket_tx.clone();
 
             let join_handle = match handler {
@@ -198,11 +201,13 @@ pub async fn handle_control_message(
                 }
             };
 
-            state_map.subscribers.insert(subscriber_uuid, join_handle);
+            state_map
+                .subscribers
+                .insert(subscriber_uuid, (join_handle, owned_key_expr));
             return Ok(Some(ControlMsg::Subscriber(subscriber_uuid)));
         }
         ControlMsg::UndeclareSubscriber(uuid) => {
-            if let Some(join_handle) = state_map.subscribers.remove(&uuid) {
+            if let Some((join_handle, _)) = state_map.subscribers.remove(&uuid) {
                 join_handle.abort(); // This should drop the underlying subscriber of the future
             } else {
                 warn!("UndeclareSubscriber: No Subscriber with UUID {uuid}");
@@ -216,20 +221,15 @@ pub async fn handle_control_message(
             congestion_control,
             priority,
             express,
+            reliability,
         } => {
             let mut publisher_builder = state_map.session.declare_publisher(key_expr);
-            if let Some(encoding) = encoding {
-                publisher_builder = publisher_builder.encoding(encoding);
-            }
-            if let Some(congestion_control) = congestion_control {
-                publisher_builder = publisher_builder.congestion_control(congestion_control);
-            }
-            if let Some(priority) = priority {
-                publisher_builder = publisher_builder.priority(priority);
-            }
-            if let Some(express) = express {
-                publisher_builder = publisher_builder.express(express);
-            };
+            add_if_some!(encoding, publisher_builder);
+            add_if_some!(congestion_control, publisher_builder);
+            add_if_some!(priority, publisher_builder);
+            add_if_some!(express, publisher_builder);
+            add_if_some!(reliability, publisher_builder);
+
             let publisher = publisher_builder.await?;
             state_map.publishers.insert(uuid, publisher);
         }
@@ -274,10 +274,12 @@ pub async fn handle_control_message(
                 })
                 .await?;
 
-            state_map.queryables.insert(queryable_uuid, queryable);
+            state_map
+                .queryables
+                .insert(queryable_uuid, (queryable, key_expr));
         }
         ControlMsg::UndeclareQueryable(uuid) => {
-            if let Some(queryable) = state_map.queryables.remove(&uuid) {
+            if let Some((queryable, _)) = state_map.queryables.remove(&uuid) {
                 queryable.undeclare().await?;
             };
         }

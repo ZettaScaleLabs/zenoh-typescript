@@ -25,18 +25,15 @@ import { HandlerChannel } from "./interface/HandlerChannel";
 // ██   ██ ██      ██  ██  ██ ██    ██    ██    ██               ██ ██           ██      ██ ██ ██    ██ ██  ██ ██
 // ██   ██ ███████ ██      ██  ██████     ██    ███████     ███████ ███████ ███████ ███████ ██  ██████  ██   ████
 
-export class Error {
-  msg: string
-  constructor(msg: string) {
-    this.msg = msg;
-  }
-}
 
 export enum RemoteRecvErr {
   Disconnected,
 }
 
 type JSONMessage = string;
+/**
+ * @hidden
+ */
 export type UUIDv4 = String | string;
 
 export class RemoteSession {
@@ -81,8 +78,12 @@ export class RemoteSession {
 
       ws.onmessage = function (event: any) {
         // `this` here is a websocket object
-        // console.log("   MSG FROM SVR", event.data);
         chan.send(event.data);
+      };
+
+      ws.onclose = function () {
+        // `this` here is a websocket object
+        console.warn("Websocket connection to remote-api-plugin has been disconnected")
       };
 
       let wait = 0;
@@ -116,14 +117,14 @@ export class RemoteSession {
   // Zenoh Session Functions
   //
   // Put
-  async put(key_expr: string,
+  put(key_expr: string,
     payload: Array<number>,
     encoding?: string,
     congestion_control?: number,
     priority?: number,
     express?: boolean,
     attachment?: Array<number>
-  ): Promise<void> {
+  ): void {
     let owned_keyexpr: OwnedKeyExprWrapper = key_expr;
     let data_message: ControlMsg = {
       Put: {
@@ -143,7 +144,6 @@ export class RemoteSession {
     key_expr: string,
     parameters: string | null,
     handler: HandlerChannel,
-    // 
     consolidation?: number,
     congestion_control?: number,
     priority?: number,
@@ -196,16 +196,13 @@ export class RemoteSession {
     this.send_ctrl_message(data_message);
   }
 
-  async close(): Promise<void> {
+  close(): void {
     let data_message: ControlMsg = "CloseSession";
     this.send_ctrl_message(data_message);
     this.ws.close();
   }
 
-  // async declare_ke(key_expr: string) {
-  //     let control_message: ControlMsg = { "CreateKeyExpr": key_expr };
-  //     this.send_ctrl_message(control_message);
-  // }
+
   async declare_remote_subscriber(
     key_expr: string,
     handler: HandlerChannel,
@@ -238,7 +235,7 @@ export class RemoteSession {
     key_expr: string,
     complete: boolean,
     reply_tx: SimpleChannel<QueryReplyWS>,
-    callback?: (sample: QueryWS) => Promise<void>,
+    callback?: (sample: QueryWS) => void,
   ): RemoteQueryable {
     let uuid = uuidv4();
 
@@ -266,10 +263,11 @@ export class RemoteSession {
 
   declare_remote_publisher(
     key_expr: string,
-    encoding: string,
-    congestion_control: number,
-    priority: number,
-    express: boolean,
+    encoding?: string,
+    congestion_control?: number,
+    priority?: number,
+    express?: boolean,
+    reliability?: number,
   ): RemotePublisher {
     let uuid: string = uuidv4();
     let publisher = new RemotePublisher(key_expr, uuid, this);
@@ -280,6 +278,7 @@ export class RemoteSession {
         congestion_control: congestion_control,
         priority: priority,
         express: express,
+        reliability: reliability,
         id: uuid,
       },
     };

@@ -14,8 +14,9 @@
     "vite": "^5.2.12"
   },
   "dependencies": {
-    "tslog": "^4.9.3",
+    "@ZettaScaleLabs/zenoh-ts": "file:../../",
+    "eslint": "^9.10.0",
     "jscdr": "0.0.3",
-    "@ZettaScaleLabs/zenoh-ts": "file:../../"
+    "tslog": "^4.9.3"
   }
 }
